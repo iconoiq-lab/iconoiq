@@ -1,5 +1,6 @@
 import { Product as FirebaseProduct } from "@/services/productService";
 import { keyAttribute } from "@/lib/productSpecs";
+import { CARD_SHOWS_WEIGHT } from "@/config/sections";
 
 /**
  * UI Product interface matching existing component expectations
@@ -71,7 +72,11 @@ export const adaptFirebaseToUI = (fbProduct: FirebaseProduct): UIProduct => {
     alt: fbProduct.name,
     badge,
     discount,
-    keyAttribute: keyAttribute(fbProduct.specifications, fbProduct.inventory?.weight, fbProduct.inventory?.weightUnit),
+    keyAttribute: keyAttribute(
+      fbProduct.specifications,
+      CARD_SHOWS_WEIGHT ? fbProduct.inventory?.weight : undefined,
+      fbProduct.inventory?.weightUnit,
+    ),
     silverPricing: (fbProduct as any).silverPricing?.enabled
       ? {
           enabled: true,

@@ -7,13 +7,17 @@
 //   node scripts/qa/ui-fixtures.mjs remove
 import { createRequire } from 'node:module';
 import { randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { FIREBASE_PROJECT, BRAND_SLUG } from '../lib/brand.mjs';
 
 const require = createRequire(`${process.cwd()}/package.json`);
 require('dotenv').config({ quiet: true });
 const admin = require('firebase-admin');
-const sa = JSON.parse(Buffer.from(process.env.FIREBASE_ADMIN_SDK_BASE64, 'base64').toString('utf8'));
+// The admin key: FIREBASE_ADMIN_SDK_BASE64 in .env, or the *firebase-adminsdk*.json file in the repo root (git-ignored).
+const keyFile = readdirSync('.').find((f) => /firebase-adminsdk.*\.json$/.test(f));
+const sa = process.env.FIREBASE_ADMIN_SDK_BASE64
+  ? JSON.parse(Buffer.from(process.env.FIREBASE_ADMIN_SDK_BASE64, 'base64').toString('utf8'))
+  : JSON.parse(readFileSync(keyFile, 'utf8'));
 if (sa.project_id !== FIREBASE_PROJECT) throw new Error(`refusing: ${sa.project_id} (.firebaserc says ${FIREBASE_PROJECT})`);
 admin.initializeApp({ credential: admin.credential.cert(sa) });
 const db = admin.firestore();
@@ -43,8 +47,8 @@ async function seed() {
     .filter((p) => Number(p.price) > 0 && !p.silverPricing?.enabled);
   if (products.length < 3) throw new Error('need at least 3 active products');
   const image = (p) => {
-    const first = p.images?.[0];
-    return typeof first === 'string' ? first : first?.url || p.image || '';
+    const first = p.images?.[0] ?? p.media?.images?.[0];
+    return p.media?.thumbnail || (typeof first === 'string' ? first : first?.url) || p.image || '';
   };
   const line = (i, quantity = 1) => {
     const p = products[i % products.length];
@@ -86,7 +90,7 @@ async function seed() {
       pointsEarned: 18, pointsEarnedState: 'held',
     }, [['pending', 7 * DAY], ['processing', 6.5 * DAY], ['outForDelivery', 3.2 * DAY], ['delivered', 3 * DAY], ['returnRequested', 1 * DAY]]],
     ['return-late', 'returnRequested', 14 * DAY, [line(10, 1)], {
-      deliveredAt: at(10 * DAY), returnReason: 'Did not suit my skin', returnRequestedAt: at(2 * DAY), returnStatus: 'pending',
+      deliveredAt: at(10 * DAY), returnReason: 'Wrong kit size for my class', returnRequestedAt: at(2 * DAY), returnStatus: 'pending',
       pointsEarned: 9, pointsEarnedState: 'held',
     }, [['pending', 14 * DAY], ['processing', 13 * DAY], ['outForDelivery', 10.2 * DAY], ['delivered', 10 * DAY], ['returnRequested', 2 * DAY]]],
     ['return-scheduled', 'returnScheduled', 9 * DAY, [line(11, 1)], {
@@ -100,7 +104,7 @@ async function seed() {
       returnApprovedAt: at(12 * DAY), pointsEarned: 20, pointsEarnedState: 'void',
     }, [['pending', 20 * DAY], ['delivered', 15 * DAY], ['returnRequested', 13 * DAY], ['returnScheduled', 12 * DAY], ['returned', 10 * DAY]]],
     ['refunded', 'refunded', 25 * DAY, [line(1, 1)], {
-      deliveredAt: at(21 * DAY), paymentStatus: 'refunded', returnReason: 'Damaged bottle', returnRequestedAt: at(19 * DAY),
+      deliveredAt: at(21 * DAY), paymentStatus: 'refunded', returnReason: 'Box arrived crushed', returnRequestedAt: at(19 * DAY),
       returnStatus: 'approved', pointsEarned: 10, pointsEarnedState: 'void',
     }, [['pending', 25 * DAY], ['delivered', 21 * DAY], ['returnRequested', 19 * DAY], ['returned', 16 * DAY], ['refunded', 15 * DAY]]],
     ['delivery-failed', 'deliveryFailed', 4 * DAY, [line(2, 1)], {

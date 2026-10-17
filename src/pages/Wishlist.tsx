@@ -175,7 +175,7 @@ const Wishlist = () => {
           {/* Hero Banner Section */}
           <section className="relative flex h-[280px] items-center justify-center overflow-hidden bg-charcoal">
             <img
-              src="/demo/wishlist.svg"
+              src="/art/wishlist-banner.webp"
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
             />

@@ -30,6 +30,13 @@ export const SECTIONS: SectionChoice = {
   footer: 'classic',
 };
 
+/**
+ * The Detailed card's detail line falls back to the product's weight when the product has no short spec.
+ * Off where weight tells a shopper nothing. ICONOIQ (2026-10-17): kits, books and cards, and every dummy product
+ * said "500 g", so the card shows a real spec, else "Free delivery" when the item reaches that amount, else nothing.
+ */
+export const CARD_SHOWS_WEIGHT = false;
+
 type Info = { label: string; pick: string };
 export const SECTION_INFO: { [K in SectionKey]: Record<SectionVersion<K>, Info> } = {
   header: {

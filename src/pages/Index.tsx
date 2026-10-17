@@ -18,6 +18,7 @@ import { subscribeHomeBanners, subscribeHomeCollections } from "@/services/homeC
 
 // Below the fold: each section is its own chunk, fetched only as it nears the screen.
 const MarqueeBand = lazy(() => import("@/components/MarqueeBand"));
+const ShopForSection = lazy(() => import("@/components/ShopForSection"));
 const CategoryShowcase = lazy(() => import("@/components/CategoryShowcase"));
 const CategoryTiles = lazy(() => import("@/components/CategoryTiles"));
 const FeatureIcons = lazy(() => import("@/components/FeatureIcons"));
@@ -83,6 +84,11 @@ const Index = () => {
             ))}
           {HOME_BLOCKS.topDeals && <TopDeals />}
           {HOME_BLOCKS.bestSellers && <BestSellers />}
+          {HOME_BLOCKS.shopFor && (
+            <Deferred reserve={HOME_BLOCK_RESERVE.shopFor}>
+              <ShopForSection />
+            </Deferred>
+          )}
           {HOME_BLOCKS.featured && <FeaturedSection />}
           {HOME_BLOCKS.newArrivals && <TrendProducts />}
           {HOME_BLOCKS.trending && <TrendProductSection />}

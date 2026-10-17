@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { Heart, Minus, Plus, ShoppingBag } from "lucide-react";
+import { Heart, Minus, Plus, ShoppingBag, Truck } from "lucide-react";
 import { SmartImage } from "@/components/ui/smart-image";
 import { DealerPriceInline } from "@/components/dealer/DealerPrice";
 import { formatINR } from "@/lib/format";
+import { useFreeDeliveryAbove } from "@/hooks/useFreeDeliveryAbove";
 import { cn } from "@/lib/utils";
 import type { CardActions, Product } from "@/components/ProductCard";
 
@@ -14,8 +15,9 @@ interface CardBodyProps {
 }
 
 /**
- * Detailed: a 4:5 photo, the category, the name, one key attribute (only when
- * the product has one), the price, then a full-width Add to cart beside a
+ * Detailed: a 4:5 photo, the category, the name, one detail line (the product's
+ * short spec; without one, "Free delivery" when this item alone reaches the
+ * store's free-delivery amount; otherwise nothing), the price, then a full-width Add to cart beside a
  * square wishlist button. The bag icon appears once the card is 220px wide, and
  * a very narrow card tightens its buttons (container queries, so it follows the
  * card's width rather than the screen's).
@@ -24,6 +26,9 @@ const DetailedCard = ({ product, actions, priority = false }: CardBodyProps) => 
   const { href, inCartQty, displayPrice, displayDiscount, displayOldPrice, dealer, saved, toggleSaved, handleAddToCart, decrease, increase } = actions;
   const soldOut = typeof product.stock === "number" && product.stock <= 0;
   const category = product.category?.trim();
+  const freeAbove = useFreeDeliveryAbove();
+  // A dealer pays their own unit price, so their card checks that price.
+  const freeDelivery = !product.keyAttribute && freeAbove !== null && (dealer ? dealer.unit : displayPrice) >= freeAbove;
 
   return (
     <article
@@ -65,8 +70,15 @@ const DetailedCard = ({ product, actions, priority = false }: CardBodyProps) => 
             {product.title}
           </Link>
         </h3>
-        {product.keyAttribute && (
+        {product.keyAttribute ? (
           <p className="line-clamp-1 text-xs leading-[1.4] text-muted-foreground">{product.keyAttribute}</p>
+        ) : (
+          freeDelivery && (
+            <p className="flex items-center gap-1 text-xs leading-[1.4] text-muted-foreground">
+              <Truck aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
+              Free delivery
+            </p>
+          )
         )}
 
         <div className="mt-auto pt-1">

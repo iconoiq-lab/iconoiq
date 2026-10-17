@@ -15,6 +15,8 @@ export const HOME_BLOCKS = {
   topDeals: false, // ICONOIQ mockup (2026-10-17)
   /** "Most loved right now": products flagged as best sellers (admin product form). */
   bestSellers: true,
+  /** "Shop for": one photo card per kind of buyer (src/config/shopFor.ts). ICONOIQ, 2026-10-17. */
+  shopFor: true,
   /** "Editor's picks": a dark photo band of featured products. */
   featured: true, // owner 2026-10-17: a fuller, shop-like home page
   /** "New arrivals": products flagged as new arrivals (admin product form). */
@@ -22,7 +24,7 @@ export const HOME_BLOCKS = {
   /** "Trending now": a second product shelf (products flagged as trending). */
   trending: true,
   /** The scrolling word band: always moving, with generic words. Turn it off for a calm, still store. */
-  marquee: false, // ICONOIQ mockup (2026-10-17)
+  marquee: true, // owner 2026-10-17 ("look like a shopping website"): back on, with ICONOIQ's subjects instead of generic words
   /** Category tiles (or the other category display picked in src/config/sections.ts). */
   categories: true,
   /** Four generic promise cards ("Crafted around you"). The facts strip says the same with real numbers. */
@@ -46,6 +48,7 @@ export type HomeBlock = keyof typeof HOME_BLOCKS;
  */
 export const HOME_BLOCK_RESERVE = {
   marquee: 'h-[50px] md:h-[70px]',
+  shopFor: 'h-[760px] md:h-[1290px] lg:h-[610px] xl:h-[660px]',
   categoriesTiles: 'h-[784px] md:h-[643px] lg:h-[631px] xl:h-[711px] min-[1440px]:h-[761px]',
   categoriesShowcase: 'h-[1047px] md:h-[705px]',
   promiseCards: 'h-0 md:h-[503px] lg:h-[464px] xl:h-[449px]',

@@ -1,16 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useRef, useEffect, useState, useMemo } from "react";
-import {
-  Landmark,
-  Ruler,
-  BookOpen,
-  Puzzle,
-  Palette,
-  School,
-  MoreHorizontal,
-  ChevronRight
-} from "lucide-react";
+import { MoreHorizontal, ChevronRight } from "lucide-react";
+import { BookChartIcon, BrushDotsIcon, ClassCapIcon, KitBoxIcon, PuzzlePieceIcon, StencilIcon } from "@/components/icons/IconoIcons";
 import { subscribeToCategories, Category, DEFAULT_CATEGORIES } from "@/services/categoryService";
 import { useScrollChrome } from "@/components/MobileHeader";
 import { EASE_OUT } from "@/lib/motion";
@@ -37,7 +29,8 @@ const CATEGORY_ORDER = DEFAULT_CATEGORIES.map((c) => c.slug);
  * the "more" icon.
  */
 // ICONOIQ: Learning Kits, Templates & Stencils, Books & Charts, Games & Puzzles, Art & Stationery, School & Academy Packs.
-const DEFAULT_ICONS = [Landmark, Ruler, BookOpen, Puzzle, Palette, School];
+// ICONOIQ's own line icons (src/components/icons/IconoIcons.tsx, 2026-10-17).
+const DEFAULT_ICONS = [KitBoxIcon, StencilIcon, BookChartIcon, PuzzlePieceIcon, BrushDotsIcon, ClassCapIcon];
 
 const ICON_MAP: Record<string, any> = {
   ...Object.fromEntries(DEFAULT_CATEGORIES.map((c, i) => [c.slug, DEFAULT_ICONS[i] ?? MoreHorizontal])),

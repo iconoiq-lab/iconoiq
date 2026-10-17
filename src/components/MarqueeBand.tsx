@@ -1,14 +1,16 @@
 import Marquee from "@/components/home/Marquee";
+import { LotusMark } from "@/components/icons/IconoIcons";
 
+// ICONOIQ (2026-10-17): the subjects the kits teach, not shop slogans. Nothing here is a claim.
 const phrases = [
-  "New arrivals",
-  "Best sellers",
-  "Top deals",
-  "Trending now",
-  "Editor’s picks",
-  "Shop all",
-  "Gift ideas",
-  "Discover more",
+  "Deities",
+  "Mudras",
+  "Temple architecture",
+  "Shilpa Shastra",
+  "Navagraha",
+  "Dashavatara",
+  "Kolam & rangoli",
+  "Learn · Draw · Play",
 ];
 
 /** The page's one moving band: charcoal stone, accent lettering, solid and hollow in turn. */
@@ -25,7 +27,7 @@ const MarqueeBand = () => (
           >
             {phrase}
           </span>
-          <span aria-hidden="true" className="sep-diamond" />
+          <LotusMark aria-hidden="true" className="size-5 text-highlight-soft/80 md:size-6" />
         </div>
       ))}
     </Marquee>
