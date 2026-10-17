@@ -1,4 +1,4 @@
-# ICNO-IQ: client store
+# ICONOIQ: client store
 
 Client store made from the Dream Team Ecommerce Template on 2026-10-17 (template commit `2ba27f9`). React 18, Vite, TypeScript, Tailwind, shadcn/ui, Firebase, Vercel functions, Razorpay.
 

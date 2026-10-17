@@ -1,4 +1,4 @@
-# ICNO-IQ: client store
+# ICONOIQ: client store
 
 Online store made from the Dream Team Ecommerce Template (React 18, Vite, TypeScript, Tailwind, shadcn/ui, Firebase, Vercel functions, Razorpay). Working notes: `CLAUDE.md`, progress: `PROGRESS.md`.
 
