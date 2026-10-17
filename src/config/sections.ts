@@ -22,10 +22,10 @@ export type SectionChoice = { [K in SectionKey]: SectionVersion<K> };
 
 /** This store's picks. */
 export const SECTIONS: SectionChoice = {
-  header: 'classic',
-  hero: 'classic',
-  productCard: 'classic',
-  categoryDisplay: 'classic',
+  header: 'centered',
+  hero: 'split',
+  productCard: 'detailed',
+  categoryDisplay: 'tiles',
   productPage: 'classic',
   footer: 'classic',
 };
