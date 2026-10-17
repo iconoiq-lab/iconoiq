@@ -24,7 +24,7 @@ const CenteredHeaderBar = ({ isScrolled, search, icons }: CenteredHeaderBarProps
   return (
     <header className={desktopHeaderClass(isScrolled)}>
       <div className="max-w-[1440px] mx-auto px-8 lg:px-12">
-        <div className="grid h-[68px] grid-cols-[1fr_auto_1fr] items-center gap-8">
+        <div className="grid h-[84px] grid-cols-[1fr_auto_1fr] items-center gap-8">
           {search}
 
           <Link to="/" aria-label={`${BRAND.name} home`} className="flex items-center flex-shrink-0 rounded-control">
@@ -34,7 +34,7 @@ const CenteredHeaderBar = ({ isScrolled, search, icons }: CenteredHeaderBarProps
               width={LOGO.width}
               height={LOGO.height}
               decoding="async"
-              className="h-9 w-auto"
+              className="h-14 w-auto"
             />
           </Link>
 

@@ -1,6 +1,6 @@
 # ICONOIQ: progress
 
-**Overall: 41% (11 of 27 steps done, 1 waiting)**
+**Overall: 56% (15 of 27 steps done, 2 waiting)**
 
 ✅ done · ⏳ to do or in progress · ⛔ waiting on the client or the owner (say what in the line). After ticking steps, run `node scripts/progress.mjs` to update the line above. Add or remove steps to fit the client (new features go under Phase 4).
 
@@ -24,19 +24,19 @@
 - ✅ Feature switches in `src/config/features.ts` (the template defaults, as the owner asked)
 - ✅ Categories and subcategories (`DEFAULT_CATEGORIES`)
 - ✅ Delivery and support defaults (`DEFAULT_DELIVERY` and its copy in `api/create-order.ts`, `BRAND.replyWithin` and `BRAND.shipsTo`)
-- ⏳ Checks pass (`node scripts/check.mjs`)
+- ✅ Checks pass (`node scripts/check.mjs`; 2026-10-17)
 
 ## Phase 2. Look
 
 - ✅ Palette, fonts, radius and motion chosen (`ui-ux-pro-max`)
 - ✅ Homepage mockup at 390 px and 1440 px, light and dark
-- ⛔ Client's yes on the mockup (waiting on the owner)
+- ✅ Client's yes on the mockup (owner, 2026-10-17: yes)
 
 ## Phase 3. Apply look
 
-- ⏳ Design tokens and fonts
-- ⏳ Logo files built from `brand-assets/`
-- ⏳ Every page checked at 390 px and 1440 px, light and dark
+- ✅ Design tokens and fonts (Temple Modern: palette, Marcellus + Figtree, radius, home blocks and order from the mockup)
+- ✅ Logo files built from `brand-assets/` (the client's picture logo + an IQ monogram)
+- ⛔ Every page checked at 390 px and 1440 px, light and dark: done except the hero slides and the schools banner, which wait on the Firestore indexes (owner: the links in `docs/setup/ICONOIQ_INDEXES.md`); signed-in pages wait for Phase 5
 
 ## Phase 4. New features
 
@@ -44,7 +44,7 @@
 
 ## Phase 5. Accounts
 
-- ⏳ Client's Firebase project, rules and indexes (no demo products: categories seed from `DEFAULT_CATEGORIES` on the first admin visit)
+- ⛔ Client's Firebase project, rules and indexes: rules deployed, email sign-in on, `.firebaserc` switched, categories and 15 dummy products seeded (2026-10-17); the 12 indexes wait on the owner (`docs/setup/ICONOIQ_INDEXES.md`)
 - ⏳ Razorpay keys (test, then live)
 - ⏳ Vercel project and env vars
 - ⏳ Domain and `VITE_SITE_URL`

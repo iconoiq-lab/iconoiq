@@ -2,10 +2,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useRef, useEffect, useState, useMemo } from "react";
 import {
-  Sparkles,
-  Tag,
-  Gift,
-  Package,
+  Landmark,
+  Ruler,
+  BookOpen,
+  Puzzle,
+  Palette,
+  School,
   MoreHorizontal,
   ChevronRight
 } from "lucide-react";
@@ -34,7 +36,8 @@ const CATEGORY_ORDER = DEFAULT_CATEGORIES.map((c) => c.slug);
  * them for the store's own). A category with no icon here, such as one the admin adds, gets
  * the "more" icon.
  */
-const DEFAULT_ICONS = [Sparkles, Tag, Gift, Package];
+// ICONOIQ: Learning Kits, Templates & Stencils, Books & Charts, Games & Puzzles, Art & Stationery, School & Academy Packs.
+const DEFAULT_ICONS = [Landmark, Ruler, BookOpen, Puzzle, Palette, School];
 
 const ICON_MAP: Record<string, any> = {
   ...Object.fromEntries(DEFAULT_CATEGORIES.map((c, i) => [c.slug, DEFAULT_ICONS[i] ?? MoreHorizontal])),

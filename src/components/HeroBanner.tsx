@@ -18,9 +18,9 @@ import { SplitSlide } from "@/components/hero/SplitSlide";
  * artwork should therefore be photography without baked-in text.
  */
 const HERO_LINES = [
-  "Discover\nwhat\u2019s new.",
-  "Shop the\nfull range.",
-  "Find your\nnext favourite.",
+  "Learn the language\nof temple art.",
+  "Every symbol\ntells a story.",
+  "For homes, schools\nand academies.",
 ];
 
 /** Time each slide stays on screen before the next one. */

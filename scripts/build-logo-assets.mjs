@@ -20,7 +20,8 @@
  *                          uses it as a mask.
  *
  * PNG art is used as it is for the dark wordmark and the tile. The light wordmark
- * is then its negative, and a mark PNG is used unchanged for the loading and
+ * is brand-assets/logo-light.png when it exists (a multi-colour picture logo, whose
+ * negative would turn the colours), otherwise the negative of logo.png. A mark PNG is used unchanged for the loading and
  * illustration files (supply an SVG if you need the letter alone).
  *
  * Outputs (see "Logo and image files" in CLAUDE.md):
@@ -72,6 +73,7 @@ const mark = readArt('mark');
 /** The wordmark in dark or light ink. */
 function wordmark(light) {
   if (logo.svg) return rasterSvg(light ? swap(logo.svg, INK, PAPER) : logo.svg);
+  if (light && existsSync('brand-assets/logo-light.png')) return sharp('brand-assets/logo-light.png');
   return light ? sharp(logo.png).negate({ alpha: false }) : sharp(logo.png);
 }
 

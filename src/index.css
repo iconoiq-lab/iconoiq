@@ -1,4 +1,4 @@
-/* Fonts: Fraunces (headings) + Inter (body).
+/* Fonts: Marcellus (headings) + Figtree (body).
    Loaded by a <link rel="stylesheet"> in index.html, after the preconnects. */
 
 @tailwind base;
@@ -7,66 +7,66 @@
 
 /*
  * Store design system (template defaults; each client gets their own values).
- * Near-black ink is the signature colour (primary), blue is the highlight, and
- * surfaces are stone white (light) or near-black stone (dark).
+ * Chocolate ink is the signature colour (primary), bronze is the highlight, and
+ * surfaces are temple ivory (light) or deep cocoa (dark).
  * Every colour below is HSL without hsl(), so Tailwind opacity modifiers work.
  * docs/ui-system.md is the practical guide to these tokens.
  */
 @layer base {
   :root {
-    --background: 60 8% 98%;
-    --foreground: 24 8% 10%;
+    --background: 39 52% 94%;
+    --foreground: 19 42% 12%;
 
-    --cream: 60 8% 98%;
-    --cream-dark: 60 3% 96%;
+    --cream: 38 46% 89%;
+    --cream-dark: 38 38% 84%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 24 8% 10%;
+    --card: 40 100% 98%;
+    --card-foreground: 19 42% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 24 8% 10%;
+    --popover: 40 100% 98%;
+    --popover-foreground: 19 42% 12%;
 
     /* Ink - signature colour. Hover is a step darker (--primary-dark). */
-    --primary: 24 8% 10%;
-    --primary-foreground: 60 8% 98%;
-    --primary-light: 30 6% 25%;
-    --primary-dark: 20 13% 4%;
+    --primary: 22 58% 30%;
+    --primary-foreground: 39 52% 96%;
+    --primary-light: 24 48% 40%;
+    --primary-dark: 22 61% 22%;
 
-    --secondary: 60 3% 96%;
-    --secondary-foreground: 24 8% 10%;
+    --secondary: 38 42% 89%;
+    --secondary-foreground: 19 42% 12%;
 
-    --muted: 60 3% 96%;
-    --muted-foreground: 33 5% 32%;
+    --muted: 38 42% 89%;
+    --muted-foreground: 22 22% 32%;
 
     /* Soft stone tone for menu highlights and ghost hovers. The brand colour lives only on --primary. */
-    --accent: 60 3% 96%;
-    --accent-foreground: 24 8% 10%;
+    --accent: 38 42% 89%;
+    --accent-foreground: 19 42% 12%;
 
-    /* Blue highlight for small emphasis text. Deep enough for small text on the page. */
-    --highlight: 221 83% 53%;
-    --highlight-foreground: 0 0% 100%;
-    /* Light blue in both modes: for accent-on-dark text (footer, bands, image overlays) */
-    --highlight-soft: 213 94% 68%;
+    /* Bronze highlight for small emphasis text. Deep enough for small text on the page. */
+    --highlight: 33 72% 31%;
+    --highlight-foreground: 39 52% 96%;
+    /* Soft gold in both modes: for accent-on-dark text (footer, bands, image overlays) */
+    --highlight-soft: 38 67% 65%;
 
     /* Charcoal bands (testimonials, footer, offer ribbon) in both modes */
-    --charcoal: 24 8% 10%;
-    --charcoal-foreground: 60 8% 98%;
+    --charcoal: 22 37% 8%;
+    --charcoal-foreground: 36 56% 91%;
 
     /* #A9271E: 6.7:1 on the page, 6.7:1 under its foreground */
-    --destructive: 4 70% 39%;
-    --destructive-foreground: 60 8% 98%;
+    --destructive: 4 70% 36%;
+    --destructive-foreground: 39 52% 96%;
 
-    --border: 20 4% 90%;
+    --border: 36 38% 81%;
     /* Form control borders: 3.4:1 or better on the page, card and muted (WCAG 1.4.11 non-text contrast) */
-    --input: 24 4% 52%;
-    --ring: 24 8% 10%;
+    --input: 27 20% 50%;
+    --ring: 22 58% 30%;
 
     --radius: 0.75rem;
 
     /* Typography */
-    --font-heading: 'Fraunces', Georgia, serif;
+    --font-heading: 'Marcellus', 'Times New Roman', serif;
     --font-heading-stretch: 100%;
-    --font-body: 'Inter', system-ui, sans-serif;
+    --font-body: 'Figtree', system-ui, sans-serif;
 
     /* Shadows (names kept from the original theme). Their ink is --charcoal, so a re-skin recolours them with it. */
     --shadow-sm: 0 1px 3px hsl(var(--charcoal) / 0.05), 0 1px 2px hsl(var(--charcoal) / 0.04);
@@ -81,74 +81,78 @@
     --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.14) 50%, transparent 100%);
 
     /* Film grain overlay strength (see body::after) */
-    --grain-opacity: 0.045;
+    --grain-opacity: 0.035;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 30 6% 25%;
-    --sidebar-primary: 24 8% 10%;
-    --sidebar-primary-foreground: 60 8% 98%;
-    --sidebar-accent: 60 3% 96%;
-    --sidebar-accent-foreground: 24 8% 10%;
-    --sidebar-border: 20 4% 90%;
-    --sidebar-ring: 24 8% 10%;
+    /* Temple gold: arch outlines and pillar diamonds (decoration only, never text) */
+    --gold: 38 64% 52%;
+
+    --sidebar-background: 40 100% 98%;
+    --sidebar-foreground: 22 30% 22%;
+    --sidebar-primary: 22 58% 30%;
+    --sidebar-primary-foreground: 39 52% 96%;
+    --sidebar-accent: 38 42% 89%;
+    --sidebar-accent-foreground: 19 42% 12%;
+    --sidebar-border: 36 38% 81%;
+    --sidebar-ring: 22 58% 30%;
   }
 
   .dark {
-    --background: 20 13% 4%;
-    --foreground: 60 8% 98%;
+    --background: 25 38% 5%;
+    --foreground: 36 56% 91%;
 
-    --cream: 24 8% 10%;
-    --cream-dark: 12 6% 15%;
+    --cream: 25 33% 8%;
+    --cream-dark: 26 28% 12%;
 
-    --card: 24 8% 10%;
-    --card-foreground: 60 8% 98%;
+    --card: 26 31% 9%;
+    --card-foreground: 36 56% 91%;
 
-    --popover: 24 8% 10%;
-    --popover-foreground: 60 8% 98%;
+    --popover: 26 31% 9%;
+    --popover-foreground: 36 56% 91%;
 
     /* The dark primary is near white, so there is no lighter step: --primary-light is the dimmer hover shade
        (used by .btn-copper:hover) and --primary-dark is a dark chip colour (ProductOfferTag). */
-    --primary: 60 8% 98%;
-    --primary-foreground: 20 13% 4%;
-    --primary-light: 24 5% 83%;
-    --primary-dark: 30 6% 25%;
+    --primary: 38 64% 58%;
+    --primary-foreground: 22 37% 8%;
+    --primary-light: 38 70% 66%;
+    --primary-dark: 38 55% 48%;
 
-    --secondary: 12 6% 15%;
-    --secondary-foreground: 60 8% 98%;
+    --secondary: 26 27% 12%;
+    --secondary-foreground: 36 56% 91%;
 
-    --muted: 12 6% 15%;
-    --muted-foreground: 24 5% 64%;
+    --muted: 26 27% 12%;
+    --muted-foreground: 33 25% 68%;
 
-    --accent: 12 6% 15%;
-    --accent-foreground: 60 8% 98%;
+    --accent: 26 27% 12%;
+    --accent-foreground: 36 56% 91%;
 
-    --highlight: 213 94% 68%;
-    --highlight-foreground: 20 13% 4%;
-    --highlight-soft: 213 94% 68%;
+    --highlight: 38 67% 65%;
+    --highlight-foreground: 22 37% 8%;
+    --highlight-soft: 38 67% 65%;
 
-    --charcoal: 24 8% 10%;
-    --charcoal-foreground: 60 8% 98%;
+    --charcoal: 25 40% 3%;
+    --charcoal-foreground: 36 56% 91%;
 
     /* 5.5:1 on the dark page, 5.5:1 under its dark foreground */
     --destructive: 0 70% 62%;
-    --destructive-foreground: 20 13% 4%;
+    --destructive-foreground: 22 37% 8%;
 
-    --border: 12 6% 15%;
-    --input: 23 5% 45%;
-    --ring: 60 8% 98%;
+    --border: 27 24% 17%;
+    --input: 30 15% 42%;
+    --ring: 38 64% 58%;
 
     --shadow-gold: 0 4px 18px hsl(var(--primary) / 0.1);
 
-    --grain-opacity: 0.06;
+    --grain-opacity: 0.05;
+    --gold: 38 64% 52%;
 
-    --sidebar-background: 20 13% 4%;
-    --sidebar-foreground: 20 4% 90%;
-    --sidebar-primary: 60 8% 98%;
-    --sidebar-primary-foreground: 20 13% 4%;
-    --sidebar-accent: 12 6% 15%;
-    --sidebar-accent-foreground: 60 8% 98%;
-    --sidebar-border: 12 6% 15%;
-    --sidebar-ring: 60 8% 98%;
+    --sidebar-background: 25 38% 5%;
+    --sidebar-foreground: 36 30% 80%;
+    --sidebar-primary: 38 64% 58%;
+    --sidebar-primary-foreground: 22 37% 8%;
+    --sidebar-accent: 26 27% 12%;
+    --sidebar-accent-foreground: 36 56% 91%;
+    --sidebar-border: 27 24% 17%;
+    --sidebar-ring: 38 64% 58%;
   }
 }
 
@@ -251,7 +255,7 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-stretch: var(--font-heading-stretch);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.005em;
   }
 
   /* Soft film grain over the whole site (brief: "soft grain"). Fixed, tiled, never catches clicks. */
@@ -280,7 +284,7 @@
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
-  /* On charcoal (bands, footer) the ring turns light blue: 6.9:1. */
+  /* On charcoal (bands, footer) the ring turns soft gold. */
   .tx-slate :where(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible,
   .bg-charcoal :where(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible,
   footer :where(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
@@ -558,10 +562,10 @@
    Every texture is an inline SVG / gradient: no image requests.
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --radius-panel: 18px;
-  --radius-card: 12px;
-  --radius-control: 6px;
-  --radius-chip: 4px;
+  --radius-panel: 28px;
+  --radius-card: 18px;
+  --radius-control: 999px;
+  --radius-chip: 999px;
   /* Strength of the page textures (tx-paper, tx-sheet, tx-slate and the tx-contour rings): 1 is the template's look,
      0 turns them off for a flat, matte store. Each texture rule lays a veil of its own surface colour over the
      texture, so one number scales them all. The film grain has its own --grain-opacity. */
@@ -578,7 +582,7 @@
   /* Heading weights, used only when <html data-heading-weight="light"> is set (see the rule after this block).
      h1 and h2 take -lg; h3 to h6 and other heading-font text take -sm. Components ask for 600 to 700. */
   --heading-weight-lg: 400;
-  --heading-weight-sm: 500;
+  --heading-weight-sm: 400; /* Marcellus has one weight (400): never let the browser fake a bold */
   --tx-veil-cream: linear-gradient(hsl(var(--cream) / calc(1 - var(--texture-opacity))), hsl(var(--cream) / calc(1 - var(--texture-opacity))));
   --tx-veil-card: linear-gradient(hsl(var(--card) / calc(1 - var(--texture-opacity))), hsl(var(--card) / calc(1 - var(--texture-opacity))));
   --tx-veil-charcoal: linear-gradient(hsl(var(--charcoal) / calc(1 - var(--texture-opacity))), hsl(var(--charcoal) / calc(1 - var(--texture-opacity))));
@@ -673,15 +677,26 @@
   --status-neutral-line: 30 6% 25%;
 }
 
+/* ICONOIQ kolam dot grid (Phase 2 mockup): a quiet heritage texture behind the hero's text panel.
+   Follows --texture-opacity, so a flat store turns it off with the other textures. */
+.kolam-dots {
+  background-image: radial-gradient(hsl(var(--highlight) / calc(0.16 * var(--texture-opacity))) 1.2px, transparent 1.4px);
+  background-size: 22px 22px;
+}
+.dark .kolam-dots {
+  background-image: radial-gradient(hsl(var(--highlight) / calc(0.12 * var(--texture-opacity))) 1.2px, transparent 1.4px);
+}
+
 /* Heading weights, opt-in: with <html data-heading-weight="light"> the h1/h2 and the h3-h6/.font-heading elements
    that ask for a weight class (font-medium, font-semibold, font-bold, font-extrabold) take --heading-weight-lg and
    --heading-weight-sm instead, so a light serif needs no edit to the ~200 classes. Outside every @layer, so it comes
    after Tailwind's utilities and wins. The :not(h1, h2) keeps an h1.font-heading on the -lg weight (:is(.font-heading)
-   alone would out-rank the h1/h2 rule). Without the attribute nothing here applies. */
+   alone would out-rank the h1/h2 rule). [style*="--font-heading"] catches the ~30 spots that set the heading font
+   inline (the marquee, section labels). Without the attribute nothing here applies. */
 html[data-heading-weight="light"] :is(h1, h2):is(.font-medium, .font-semibold, .font-bold, .font-extrabold) {
   font-weight: var(--heading-weight-lg);
 }
-html[data-heading-weight="light"] :is(h3, h4, h5, h6, .font-heading, .font-serif):not(h1, h2):is(.font-semibold, .font-bold, .font-extrabold) {
+html[data-heading-weight="light"] :is(h3, h4, h5, h6, .font-heading, .font-serif, [style*="--font-heading"]):not(h1, h2):is(.font-semibold, .font-bold, .font-extrabold) {
   font-weight: var(--heading-weight-sm);
 }
 

@@ -129,7 +129,7 @@ const MobileHeader = ({ skipLink = true }: MobileHeaderProps) => {
         width={LOGO.width}
         height={LOGO.height}
         decoding="async"
-        className="h-9 w-auto object-contain min-[360px]:h-10"
+        className="h-10 w-auto object-contain min-[360px]:h-11"
       />
     </Link>
   );

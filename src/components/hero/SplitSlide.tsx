@@ -60,7 +60,7 @@ export function SplitSlide({
   return (
     <div className="flex flex-1 flex-col lg:grid lg:h-[min(72vh,48vw)] lg:flex-none lg:grid-cols-12">
       {/* Text panel. It comes first in the DOM, so a screen reader meets the line before the (decorative) photo. */}
-      <div className="flex flex-1 flex-col justify-center bg-muted px-5 py-6 md:px-10 md:py-8 lg:col-span-5 lg:flex-none lg:p-12">
+      <div className="kolam-dots flex flex-1 flex-col justify-center bg-muted px-5 py-6 md:px-10 md:py-8 lg:col-span-5 lg:flex-none lg:p-12">
         <h2
           className="whitespace-pre-line text-[32px] font-semibold leading-[1.04] text-foreground [text-wrap:balance] md:text-[44px] lg:text-[60px] xl:text-[68px]"
           style={{ fontFamily: "var(--font-heading)", fontStretch: "var(--font-heading-stretch)", letterSpacing: "-0.03em" }}

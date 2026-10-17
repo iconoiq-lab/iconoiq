@@ -27,7 +27,8 @@ test('--sheen, --hover-lift and the heading weights exist and default to the tem
   assert.equal(declared('hover-lift-sm'), 'calc(var(--hover-lift) * 2 / 3)'); // 2px by default
   assert.equal(declared('hover-lift-lg'), 'calc(var(--hover-lift) * 4 / 3)'); // 4px by default
   assert.equal(declared('heading-weight-lg'), '400');
-  assert.equal(declared('heading-weight-sm'), '500');
+  // ICONOIQ (Phase 3): Marcellus has one weight, so the small headings stay at 400 too (template: 500).
+  assert.equal(declared('heading-weight-sm'), '400');
 });
 
 test('the foil sweep, the contour rings and the offer foil all scale with --sheen', () => {
@@ -75,7 +76,7 @@ test('the heading-weight rule is opt-in (data-heading-weight="light") and sits o
   assert.ok(noComments.slice(lineStart, at).includes('html[data-heading-weight="light"]'), 'the rule is guarded by the attribute');
   assert.match(
     noComments,
-    /html\[data-heading-weight="light"\] :is\(h3, h4, h5, h6, \.font-heading, \.font-serif\):not\(h1, h2\):is\(/,
+    /html\[data-heading-weight="light"\] :is\(h3, h4, h5, h6, \.font-heading, \.font-serif(, \[style\*="--font-heading"\])?\):not\(h1, h2\):is\(/,
     'the -sm rule keeps :not(h1, h2)',
   );
   // Brace depth at the rule: 0 means it is not inside an @layer or @media block, so it comes after

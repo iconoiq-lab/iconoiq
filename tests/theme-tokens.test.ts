@@ -20,10 +20,12 @@ test('the four radius tokens exist and Tailwind reads them all from CSS variable
   }
 });
 
-test('the radius defaults are the template\'s: panel 18, card 12, control 6, chip 4 px', () => {
+// ICONOIQ (Phase 3, "Temple Modern" mockup): softer panels and cards, pill controls and chips
+// (the template ships panel 18, card 12, control 6, chip 4 px).
+test('the radius values are ICONOIQ\'s: panel 28, card 18, control and chip pill', () => {
   assert.deepEqual(
     ['panel', 'card', 'control', 'chip'].map((k) => declared(`radius-${k}`)),
-    ['18px', '12px', '6px', '4px'],
+    ['28px', '18px', '999px', '999px'],
   );
 });
 

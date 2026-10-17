@@ -202,7 +202,7 @@ const Footer = () => {
               height={LOGO.height}
               loading="lazy"
               decoding="async"
-              className="h-12 w-auto mb-5"
+              className="h-16 w-auto mb-5"
             />
             <p className="text-charcoal-foreground/65 text-sm leading-relaxed mb-6 max-w-sm text-pretty">
               {settings.brandTagline}

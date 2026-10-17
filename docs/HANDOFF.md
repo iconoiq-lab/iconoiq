@@ -7,29 +7,27 @@ This file holds the working state between chats, so a new chat never needs the o
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-10-17 (Phases 0-1 done; Phase 2 mockup made and waiting for the owner's yes; dummy-product photos half made)
+Last updated: 2026-10-17 (Phases 0-3 done; own Firebase set up with the dummy catalogue; Firestore indexes wait on the owner)
 
 ## State
 
 - **Branch and last commit:** main, local only. The template is the `template` git remote.
-- **Done:** Phase 0 closed (owner's answers are in `REQUIREMENTS.md`, plan and [NEED] list in `PROGRESS.md`). Phase 1 set: `brand.ts` (name, contact, address, price bands, member prefix `IQ`), the six default categories, delivery days 4-7, every name copy. Features are the template defaults. Phone, email, WhatsApp and hours now follow Admin > Commerce > Support on every customer-facing page (`useCustomerSupport`; the footer shows the support values unless its own editor fields are filled).
-- **Still the template's until later phases:** the look and logo (Phases 2-3), the demo Firebase project's categories and products (Phase 5), the template's policy text (Phase 6).
-- **Phase 2 (look):** `docs/look/home-mockup.html` ("Temple Modern": ivory, chocolate, bronze, gold; Marcellus headings, Figtree body; arch-topped image frames, kolam dot texture, pillar-diamond dividers; pill buttons), shots in `docs/look/shots/`, contrast 40/40 pass. Section picks set in `src/config/sections.ts`: header centered, hero split, productCard detailed, categoryDisplay tiles (product page and footer classic). The `ui-ux-pro-max` search suggested a kids' blue/pink/Comic Neue system: rejected, the client's own palette (proposal: bronze, gold, chocolate, beige) wins.
-- **Own Firebase now:** the owner created `iconoiq-85b53`; `.env` holds its web config and the Cloudinary values (cloud `kufiymn0`, unsigned preset `iconoiq`); the admin key file `iconoiq-85b53-firebase-adminsdk-*.json` is in the root (git-ignored). `.firebaserc` still names the demo project: switch it before any deploy. Firestore, Auth and Storage setup, rules and indexes are not done yet (Phase 5 work, pulled forward for the dummy products).
-- **Images (ChatGPT, Dream Team browser):** logos `client-brief/generated/iconoiq-logo-on-dark.png` (true transparent, white letters) and `iconoiq-logo-on-light.png` (derived from it in Python: grey tones recoloured to chocolate). Product and banner originals in `client-brief/generated/iq-*.png` (git-ignored), web copies in `docs/look/img/*.webp`. Done: hero-1/2, classroom, p01 nataraja kit, p02 gopuram kit, p03 mudra cards, p04 drawing templates, p05 brass stencils, p06 picture book, p07 navagraha charts, p09 avatar puzzle, p11 colouring kit, p15 ganesha kit. Requested but not yet downloaded (open ChatGPT chats in the DREAM TEAM SERVICES browser, or regenerate): p08 activity book, p10 memory card game, p12 kolam stencils, p13 classroom pack. Still to request: p14 Natyam academy pack.
-- **Unfinished or uncommitted work:** none. The Phase 1 step "Checks pass" waits for `node scripts/check.mjs` (tests and build already pass).
-- **How to run and check it:** `npm run dev` (port 5182: `npx vite --port 5182 --strictPort --host 127.0.0.1`; if it is busy, see Gotchas); `node scripts/check.mjs` runs tests, build and screenshots (light and dark, 390 px and 1440 px).
+- **Done:** Phase 0 (answers in `REQUIREMENTS.md`, plan and [NEED] list in `PROGRESS.md`), Phase 1 (brand, categories, delivery, name copies; contact details follow Admin > Commerce > Support via `useCustomerSupport`), Phase 2 (owner said yes to `docs/look/home-mockup.html`), Phase 3 (look applied, below).
+- **Phase 3, the look ("Temple Modern"):** tokens from the mockup in `src/index.css` (plus derived popover/secondary/accent/sidebar values and a `--gold` token), radius 28/18/pill/pill, Marcellus + Figtree (`index.html`, `data-heading-weight="light"`, both heading weights 400 because Marcellus has one weight; the light-weight rule also covers inline `--font-heading` styles, so no fake bold), theme colours `#F8F2E8`/`#120C08`, manifest `#794120`. Contrast 62/62. Logo: the client's picture logo (`brand-assets/logo.png`, `logo-light.png`; `build-logo-assets.mjs` now uses `logo-light.png` for the light wordmark instead of a negative) and a Marcellus "IQ" monogram (`mark.svg`). Home page per the mockup notes: facts strip on; top deals, Editor's picks, scrolling word band and phrase band off; category tiles moved to straight after the hero (`src/pages/Index.tsx`), six across with arch tops; kolam dots behind the hero text; hero lines from the mockup (`HeroBanner.tsx`); category strip icons for all six.
+- **Firebase `iconoiq-85b53` (owner OK 2026-10-17):** `.firebaserc` now names it. Firestore rules deployed (through the Rules API with the project's admin key: the `firebase` CLI here is logged in with another Google account). Email sign-in was already on. The 6 categories and the dummy catalogue are seeded by `node scripts/seed-iconoiq.mjs` (content in `scripts/iconoiq/content.mjs`; 15 products, 2 hero slides, 6 category tiles, 6 collections, 1 schools banner; all `demo: true`; `--remove` clears them; photo URLs cached in `scripts/iconoiq/images.json`, Cloudinary folder `iconoiq-85b53/dummy`). Product specs are `[NEED]`; descriptions say "Sample listing". **Indexes are not deployed:** the admin key may not create them. Until they exist the hero slides, the schools banner and product reviews do not load (the hero shows its "Welcome to ICONOIQ" fallback).
+- **Photos:** all 15 dummy product photos done (ChatGPT, DREAM TEAM SERVICES browser); originals in `client-brief/generated/iq-*.png` (git-ignored), web copies in `docs/look/img/`.
+- **Still the template's until later phases:** policy text and About/Contact photos (`[NEED]` placeholders, Phase 6), the Contact page's "Website example.com" (until `VITE_SITE_URL`, Phase 5).
+- **Unfinished or uncommitted work:** none.
+- **How to run and check it:** `npm run dev` (port 5182: `npx vite --port 5182 --strictPort --host 127.0.0.1`); `node scripts/check.mjs` runs tests, build and screenshots.
 
 ## Next steps (in order)
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 1 | Owner's yes on `docs/look/home-mockup.html` (or changes). Then tick Phase 2 in `PROGRESS.md` | No | High |
-| 2 | Finish the dummy catalogue photos (list above; same ChatGPT style prompt: square studio photo on #F3EADB ivory backdrop, soft window light from the left), download into `client-brief/generated/` and make webp copies | No | High |
-| 3 | Phase 3 (apply the look) per `docs/template/PHASE3.md`: paste the mockup token block into `src/index.css`, fonts in `index.html`, manifest colours, logo assets from the two PNGs (`brand-assets/`, `node scripts/build-logo-assets.mjs`; the logo is a wide 3:1 picture logo, so check header/footer sizes), the arch/kolam/pillar layer on the template's blocks (visual only, no feature changes), category strip icons, then every page at 390/1440 light/dark and `node scripts/check.mjs` | No | High |
-| 4 | Set up `iconoiq-85b53` (Firestore, Auth email sign-in, rules and indexes deployed with the owner's OK, `.firebaserc`), upload the photos to Cloudinary and add the 15 dummy products (names and prices in the Decisions below), marked as dummies | No | High |
+| 1 | Owner: create the 12 Firestore indexes with the links in `docs/setup/ICONOIQ_INDEXES.md` (signed in as the owner of `iconoiq-85b53`), or run `firebase login:add` with that account so `firebase deploy --only firestore:indexes` works. Then check the home hero and schools banner at 390/1440 light/dark and tick Phase 3's last step | No | Medium |
+| 2 | Phase 5 (accounts): Storage rules if Storage is used (`storage.rules`), make an admin account (`scripts/make-admin.mjs`) and check the admin pages, Razorpay test keys, Vercel project and env vars (`docs/setup/`) | No | High |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (my answer on the mockup: <yes or changes>), then steps 2-4.`
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (indexes are created: yes/no), then Next step 2.`
 
 ## Waiting on the client or the user
 
@@ -45,6 +43,9 @@ Last updated: 2026-10-17 (Phases 0-1 done; Phase 2 mockup made and waiting for t
 - 2026-10-17: Look "Temple Modern" (see State). Dummy catalogue (owner: dummy products with ChatGPT photos for now, real ones in Phase 6): Learning Kits: Nataraja Iconography Learning Kit ₹1,499, Ganesha Form & Symbol Kit ₹1,299, Temple Gopuram Build-and-Learn Kit ₹2,499, Hasta Mudra Learning Cards ₹999; Templates & Stencils: Deity Proportion Drawing Templates ₹799, Brass Temple Motif Stencil Set ₹1,899; Books & Charts: Shilpa Shastra Picture Book ₹449, Navagraha Wall Chart Set ₹349, Trace & Colour Activity Book ₹299; Games & Puzzles: Dashavatara Jigsaw Puzzle ₹599, Gods & Symbols Memory Game ₹399; Art & Stationery: Temple Art Colouring Kit ₹549, Kolam & Rangoli Stencil Pack ₹249; School & Academy Packs: Classroom Iconography Pack ₹4,999, Natyam Academy Mudra Pack ₹3,499.
 - 2026-10-17 (owner): ChatGPT and other creative work runs in the "DREAM TEAM SERVICES" Chrome; the client's own accounts (Cloudinary, Firebase) in the "ICONOIQ" Chrome.
 
+- 2026-10-17: Home blocks follow the mockup's notes (owner's yes): top deals off (no real offers, and it said "Savings" and "Deal of the week"), Editor's picks, the scrolling word band and the phrase band off; facts strip on. Switch top deals back on only with real discounts.
+- 2026-10-17: Firebase indexes are made by the owner (links file), because the admin key cannot create them and the CLI login is another account.
+
 ## Gotchas
 
 - `node scripts/check.mjs` prints two "still the template's" warnings (`replyWithin` '24 hours' and `shipsTo`): expected, those values are the owner's provisional choice for now.
@@ -53,6 +54,6 @@ Last updated: 2026-10-17 (Phases 0-1 done; Phase 2 mockup made and waiting for t
 - `node scripts/check.mjs` takes about 2 minutes. The home page logs one 404 for `/catalog/products.json` until a catalogue snapshot is published: expected, not a failure.
 - `npx tsc -p tsconfig.app.json --noEmit` needs `--ignoreDeprecations 5.0`; 7 type errors are old (template baseline).
 - `npm run lint` reports 48 old errors from the template's source store.
-- `.env` now points at ICONOIQ's own project, so the old warning about the demo project no longer applies to the preview; still never deploy until `.firebaserc` is switched. (Old note: and opening a category page or the product form as admin calls `seedDefaultCategories()`, which writes `DEFAULT_CATEGORIES` to that project.
+- `.env` and `.firebaserc` both name ICONOIQ's own project `iconoiq-85b53` now.
 - Dev server port: if 5182 is busy, use another (`npx vite --port 5184 --strictPort --host 127.0.0.1`); `check.mjs` uses 5183 for its preview.
 - Dev pages never reach network idle (Firebase listeners keep running): in Playwright scripts wait for `load` plus a short fixed wait, never `networkidle`.

@@ -69,17 +69,8 @@ const Index = () => {
         <div className="relative z-raised">
           <HeroBanner />
           {HOME_BLOCKS.facts && <FactsStrip />}
-          {/* Each block below is switched in src/config/homeBlocks.ts (with the height it reserves); the order is set here. */}
-          {HOME_BLOCKS.topDeals && <TopDeals />}
-          {HOME_BLOCKS.bestSellers && <BestSellers />}
-          {HOME_BLOCKS.featured && <FeaturedSection />}
-          {HOME_BLOCKS.newArrivals && <TrendProducts />}
-          {HOME_BLOCKS.trending && <TrendProductSection />}
-          {HOME_BLOCKS.marquee && (
-            <Deferred reserve={HOME_BLOCK_RESERVE.marquee}>
-              <MarqueeBand />
-            </Deferred>
-          )}
+          {/* Each block below is switched in src/config/homeBlocks.ts (with the height it reserves); the order is set here.
+              ICONOIQ (Phase 2 mockup, 2026-10-17): the category tiles come straight after the hero and facts. */}
           {HOME_BLOCKS.categories &&
             (tiles ? (
               <Deferred reserve={HOME_BLOCK_RESERVE.categoriesTiles}>
@@ -90,6 +81,16 @@ const Index = () => {
                 <CategoryShowcase />
               </Deferred>
             ))}
+          {HOME_BLOCKS.topDeals && <TopDeals />}
+          {HOME_BLOCKS.bestSellers && <BestSellers />}
+          {HOME_BLOCKS.featured && <FeaturedSection />}
+          {HOME_BLOCKS.newArrivals && <TrendProducts />}
+          {HOME_BLOCKS.trending && <TrendProductSection />}
+          {HOME_BLOCKS.marquee && (
+            <Deferred reserve={HOME_BLOCK_RESERVE.marquee}>
+              <MarqueeBand />
+            </Deferred>
+          )}
           {HOME_BLOCKS.promiseCards && (
             <Deferred reserve={HOME_BLOCK_RESERVE.promiseCards}>
               <FeatureIcons />

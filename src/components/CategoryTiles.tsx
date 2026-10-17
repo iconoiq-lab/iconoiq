@@ -24,7 +24,10 @@ const displayName = (subtitle: string, categories: Pick<Category, "name" | "slug
 
 // A wrapping row rather than a grid, so a short last row sits in the centre (2, 3 or 4 tiles across).
 const GRID = "flex flex-wrap justify-center gap-3 md:gap-5";
-const TILE = "w-[calc((100%-0.75rem)/2)] md:w-[calc((100%-2.5rem)/3)] lg:w-[calc((100%-3.75rem)/4)]";
+// ICONOIQ: six categories, so six across on a laptop (two rows of three on a tablet, three rows of two on a phone).
+const TILE = "w-[calc((100%-0.75rem)/2)] md:w-[calc((100%-2.5rem)/3)] lg:w-[calc((100%-6.25rem)/6)]";
+/** ICONOIQ's temple-door arch: a round top over the card's own bottom corners. */
+const ARCH = "rounded-t-[999px] rounded-b-card";
 
 /** Tiles up to this position load their photo straight away; later ones wait until they near the screen. */
 const EAGER_TILES = 4;
@@ -74,7 +77,7 @@ const CategoryTiles = () => {
           <div className={GRID}>
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className={i === 3 ? `hidden lg:block ${TILE}` : TILE}>
-                <Skeleton className="aspect-[4/5] w-full rounded-card" />
+                <Skeleton className={`aspect-[4/5] w-full ${ARCH}`} />
                 <Skeleton className="mt-3 h-5 w-2/3" />
               </div>
             ))}
@@ -105,7 +108,7 @@ const CategoryTiles = () => {
                 className={TILE}
               >
                 <Link to={getCategoryLink(showcase.subtitle)} className="group block rounded-card">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-card bg-muted">
+                  <div className={`relative aspect-[4/5] overflow-hidden bg-muted ${ARCH}`}>
                     <SmartImage
                       src={showcase.imageUrl}
                       alt=""

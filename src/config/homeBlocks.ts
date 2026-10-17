@@ -12,17 +12,17 @@
  */
 export const HOME_BLOCKS = {
   /** "Top deals" panel: products flagged as a top deal in the admin product form. */
-  topDeals: true,
+  topDeals: false, // ICONOIQ mockup (2026-10-17)
   /** "Most loved right now": products flagged as best sellers (admin product form). */
   bestSellers: true,
   /** "Editor's picks": a dark photo band of featured products. */
-  featured: true,
+  featured: false, // ICONOIQ mockup (2026-10-17)
   /** "New arrivals": products flagged as new arrivals (admin product form). */
   newArrivals: true,
   /** "Trending now": a second product shelf (products flagged as trending). */
   trending: true,
   /** The scrolling word band: always moving, with generic words. Turn it off for a calm, still store. */
-  marquee: true,
+  marquee: false, // ICONOIQ mockup (2026-10-17)
   /** Category tiles (or the other category display picked in src/config/sections.ts). */
   categories: true,
   /** Four generic promise cards ("Crafted around you"). The facts strip says the same with real numbers. */
@@ -30,11 +30,11 @@ export const HOME_BLOCKS = {
   /** "Our collections": one photo and a line of copy per collection (Admin > Home collections). */
   collections: true,
   /** A thin band of generic phrases ("Delivery across India"). */
-  serviceBand: true,
+  serviceBand: false, // ICONOIQ mockup (2026-10-17)
   /** The wide banner near the foot (admin: home banner "collection-wide"). Shows only once the admin sets one. */
   banner: true,
   /** Delivery charge, delivery time and reply time under the hero, read from the delivery and support settings and BRAND. Off until a store wants it. */
-  facts: false,
+  facts: true, // ICONOIQ mockup (2026-10-17)
 } as const;
 
 export type HomeBlock = keyof typeof HOME_BLOCKS;

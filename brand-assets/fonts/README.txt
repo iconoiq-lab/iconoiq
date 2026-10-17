@@ -6,7 +6,9 @@ build. (The fonts the site itself shows are linked in index.html.)
   monogram.ttf   optional: the monogram letter in the tile. A display cut of the same family looks best;
                  without this file wordmark.ttf is used.
 
-This template's own pair is Fraunces, the heading font of the demo look:
+ICONOIQ (Phase 3): both files are now Marcellus (c) The Marcellus Project Authors, SIL Open Font License 1.1,
+https://fonts.google.com/specimen/Marcellus. They drew only the IQ monogram (mark.svg); the wordmark is the client's
+picture logo (brand-assets/logo.png and logo-light.png). The template's own pair was Fraunces:
   Fraunces (c) The Fraunces Project Authors, SIL Open Font License 1.1
   https://fonts.google.com/specimen/Fraunces  /  https://openfontlicense.org
   wordmark.ttf   Fraunces optical size 24, weight 500 (the cut the headings use at about 24 px)
