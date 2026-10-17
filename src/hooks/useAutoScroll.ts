@@ -18,7 +18,19 @@ export interface UseAutoScrollOptions {
   pageStep?: number;
   /** Disable the loop entirely. Reduced motion, an off-screen row and a hidden tab also stop it. */
   enabled?: boolean;
+  /**
+   * Card by card (default): the row rests with a card flush at its start edge, then glides one
+   * card on, so a shopper never sees a card cut in half at the edge. false: the old continuous
+   * drift at `speed`, which always left a part-card showing.
+   */
+  step?: boolean;
+  /** Step mode: how long the row rests on each card before gliding on, in ms. */
+  stepDwell?: number;
 }
+
+/** Step mode: one glide's length, and its ease (the same in-out curve as a smooth scroll). */
+const STEP_GLIDE_MS = 700;
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 /** Resume soon after the mouse leaves or keyboard focus moves out. */
 const HOVER_RESUME_MS = 350;
@@ -55,6 +67,8 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
     loopItemCount = 0,
     pageStep,
     enabled = true,
+    step = true,
+    stepDwell = 3000,
   } = opts;
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -70,7 +84,7 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
   /** Last value we wrote, so a change we did not make is the user scrolling. */
   const appliedRef = useRef(0);
   /** Layout metrics, refreshed on resize/mutation instead of every frame. */
-  const metricsRef = useRef({ hasLoopCopies: false, logicalMax: 0, max: 0, resetPoint: 0 });
+  const metricsRef = useRef({ hasLoopCopies: false, logicalMax: 0, max: 0, resetPoint: 0, starts: [0] as number[] });
   const [isPaused, setIsPaused] = useState(false);
   const dirRef = useRef<1 | -1>(direction);
   const rafRef = useRef<number | null>(null);
@@ -93,17 +107,27 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
 
   const getScrollMetrics = useCallback(
     (el: HTMLDivElement) => {
-      const hasLoopCopies = loop && loopItemCount > 0 && el.children.length > loopItemCount;
+      // The cards: the row's own children, or the children of its one inner track (Most loved, New arrivals).
+      const track = el.children.length === 1 && el.children[0].children.length > 1 ? el.children[0] : el;
+      const hasLoopCopies = loop && loopItemCount > 0 && track.children.length > loopItemCount;
       const logicalScrollWidth = hasLoopCopies ? el.scrollWidth / 2 : el.scrollWidth;
       const max = Math.max(0, el.scrollWidth - el.clientWidth);
       const logicalMax = Math.max(0, logicalScrollWidth - el.clientWidth);
       // One full set of cards, gap included: where the first copy starts.
       // Half of scrollWidth is off by half a gap plus padding, a visible hop.
-      const first = el.children[0] as HTMLElement | undefined;
-      const firstCopy = el.children[loopItemCount] as HTMLElement | undefined;
+      const first = track.children[0] as HTMLElement | undefined;
+      const firstCopy = track.children[loopItemCount] as HTMLElement | undefined;
       const period = hasLoopCopies && first && firstCopy ? firstCopy.offsetLeft - first.offsetLeft : 0;
+      // Where each card of one set starts, from the first card: the positions step mode rests on.
+      const count = hasLoopCopies ? loopItemCount : track.children.length;
+      const starts: number[] = [];
+      for (let i = 0; i < count; i++) {
+        const child = track.children[i] as HTMLElement | undefined;
+        if (child && first) starts.push(child.offsetLeft - first.offsetLeft);
+      }
 
       return {
+        starts: starts.length ? starts : [0],
         hasLoopCopies,
         logicalMax,
         max,
@@ -372,8 +396,99 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
     };
   }, [enabled, pause, scrollerEl]);
 
+  /**
+   * Step mode: rest, then glide one card, landing with a card flush at the start edge.
+   * A looped row wraps at the copy's first card (it looks the same as the first set),
+   * so it runs on for ever without a jump; a row without copies turns round at its end.
+   */
   useEffect(() => {
-    if (!autoplay || !scrollerEl) return;
+    if (!autoplay || !scrollerEl || !step) return;
+    const el = scrollerEl;
+    let phase: "rest" | "glide" = "rest";
+    let phaseStart = performance.now();
+    let from = 0;
+    let to = 0;
+    needsSyncRef.current = true;
+
+    const write = (left: number) => {
+      posRef.current = left;
+      el.scrollTo({ left, behavior: "instant" as ScrollBehavior });
+      appliedRef.current = left;
+    };
+
+    /** The next resting place from `pos` in the current direction, or null when there is none. */
+    const nextStop = (pos: number): number | null => {
+      const { hasLoopCopies, max, resetPoint, starts } = metricsRef.current;
+      const looped = loop && hasLoopCopies && resetPoint > 0;
+      const stops = looped ? [...starts, resetPoint] : starts.map((x) => Math.min(x, max)).concat(max);
+      if (dirRef.current >= 0) {
+        const ahead = stops.find((x) => x > pos + 1);
+        if (ahead !== undefined) return ahead;
+        if (looped) return null;
+        if (pingPong) {
+          dirRef.current = -1;
+          return nextStop(pos);
+        }
+        return 0;
+      }
+      if (looped && pos <= 1) {
+        // Hop to the same picture in the copy, then step back from there.
+        write(pos + resetPoint);
+        pos = posRef.current;
+      }
+      const behind = [...stops].reverse().find((x) => x < pos - 1);
+      if (behind !== undefined) return behind;
+      if (pingPong && !looped) {
+        dirRef.current = 1;
+        return nextStop(pos);
+      }
+      return looped ? null : max;
+    };
+
+    const tick = (ts: number) => {
+      if (pausedRef.current || !canScrollRef.current) {
+        phase = "rest";
+        phaseStart = ts;
+      } else {
+        if (needsSyncRef.current) {
+          // Someone moved the row: rest where they left it, then carry on from there.
+          posRef.current = el.scrollLeft;
+          needsSyncRef.current = false;
+          phase = "rest";
+          phaseStart = ts;
+        }
+        if (phase === "rest" && ts - phaseStart >= stepDwell) {
+          const target = nextStop(posRef.current);
+          if (target !== null && Math.abs(target - posRef.current) > 1) {
+            from = posRef.current;
+            to = target;
+            phase = "glide";
+          }
+          phaseStart = ts;
+        }
+        if (phase === "glide") {
+          const t = Math.min(1, (ts - phaseStart) / STEP_GLIDE_MS);
+          write(from + (to - from) * easeInOut(t));
+          if (t === 1) {
+            const { hasLoopCopies, resetPoint } = metricsRef.current;
+            if (loop && hasLoopCopies && resetPoint > 0 && posRef.current >= resetPoint - 0.5) write(posRef.current - resetPoint);
+            phase = "rest";
+            phaseStart = ts;
+          }
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [autoplay, loop, scrollerEl, step, stepDwell, pingPong]);
+
+  useEffect(() => {
+    if (!autoplay || !scrollerEl || step) return;
 
     /**
      * Re-measure only when the layout could actually have changed.
@@ -444,7 +559,7 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [autoplay, loop, scrollerEl, speed, pingPong]);
+  }, [autoplay, loop, scrollerEl, speed, pingPong, step]);
 
   // Direction resets only when the caller changes it, not every time the loop restarts.
   useEffect(() => {

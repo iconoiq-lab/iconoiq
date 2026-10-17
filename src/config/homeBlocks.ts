@@ -12,7 +12,7 @@
  */
 export const HOME_BLOCKS = {
   /** "Top deals" panel: products flagged as a top deal in the admin product form. */
-  topDeals: false, // ICONOIQ mockup (2026-10-17)
+  topDeals: true, // owner 2026-10-18: on, worded "Handpicked for you" / "Top pick" (no saving or deadline claimed); a % off shows only on a real discount
   /** "Most loved right now": products flagged as best sellers (admin product form). */
   bestSellers: true,
   /** "Shop for": one photo card per kind of buyer (src/config/shopFor.ts). ICONOIQ, 2026-10-17. */

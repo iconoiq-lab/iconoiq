@@ -35,7 +35,7 @@ const Header = ({ children }: { children?: React.ReactNode }) => (
         className="text-xl font-semibold text-foreground [text-wrap:balance] md:text-3xl lg:text-4xl"
         style={HEADING_FONT}
       >
-        Savings on selected products
+        Handpicked for you
       </h2>
     </div>
     {children}
@@ -205,7 +205,7 @@ const TopDeals = () => {
               preset="detail"
             />
             <div aria-hidden="true" className="photo-scrim absolute inset-0 -z-10" />
-            <span className="tag-dark absolute left-5 top-5">Deal of the week</span>
+            <span className="tag-dark absolute left-5 top-5">Top pick</span>
             <div className="p-8 text-charcoal-foreground">
               <h3 className="on-photo mb-2 text-2xl font-semibold [text-wrap:balance]" style={HEADING_FONT}>
                 {featuredProduct.title}

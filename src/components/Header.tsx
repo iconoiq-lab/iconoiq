@@ -477,7 +477,7 @@ const Header = () => {
                   width={LOGO.width}
                   height={LOGO.height}
                   decoding="async"
-                  className="h-10 w-auto"
+                  className="h-12 w-auto"
                 />
               </Link>
 

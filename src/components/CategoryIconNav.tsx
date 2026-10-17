@@ -202,12 +202,13 @@ const CategoryIconNav = () => {
             : "bg-background border-border",
         )}
       >
-        <div className="max-w-[1440px] mx-auto px-8 lg:px-12">
+        <div className="max-w-[1440px] mx-auto px-6 xl:px-12">
           {/* No overflow here: an overflow-x scroller also clips vertically, which hid
-              the subcategory dropdown. Extra categories wrap to a second row instead. */}
+              the subcategory dropdown. ICONOIQ (owner 2026-10-18: "only one row"): the six
+              categories stay on one row; below 1280px the links tighten their spacing to fit. */}
           <div
             ref={desktopScrollRef}
-            className="flex min-h-[46px] flex-wrap items-center justify-center gap-x-1"
+            className="flex min-h-[46px] flex-nowrap items-center justify-center gap-x-0 xl:gap-x-1"
           >
             {!loaded &&
               Array.from({ length: 5 }, (_, i) => (
@@ -262,7 +263,7 @@ const CategoryIconNav = () => {
                       handleCategoryClick(category.href);
                     }}
                     className={cn(
-                      "focus-inset group relative flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.16em] transition-[color,border-color] duration-hover ease-out",
+                      "focus-inset group relative flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2 py-3.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.08em] transition-[color,border-color] duration-hover ease-out xl:gap-2 xl:px-4 xl:tracking-[0.16em]",
                       isActive
                         ? "border-primary text-primary"
                         : "border-transparent text-foreground/70 hover:border-primary/40 hover:text-foreground",
