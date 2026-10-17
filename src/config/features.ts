@@ -49,7 +49,7 @@ export const FEATURE_INFO: Record<FeatureKey, FeatureInfo> = {
   newsletter: { label: 'Newsletter', description: 'Footer sign-up form and Admin > Newsletter subscriber list.' },
   whatsappInbox: { label: 'WhatsApp inbox', description: 'Two-way WhatsApp messages and templates in Admin > WhatsApp (needs a WhatsApp Business API account).' },
   whatsappOtp: { label: 'WhatsApp number check', description: 'Sign-up and profile verify a phone number with a WhatsApp code before order updates go to WhatsApp (needs a WhatsApp Business API account). Off = a phone is just saved, no code.' },
-  whatsappEnquiry: { label: 'WhatsApp enquiry button', description: 'The "Enquire on WhatsApp" button on product pages and support (needs BRAND.whatsapp).' },
+  whatsappEnquiry: { label: 'WhatsApp enquiry button', description: 'The "Enquire on WhatsApp" button on product pages and support (needs a WhatsApp number, set in Admin > Commerce > Support).' },
   aiImagePrompts: { label: 'AI image prompts', description: 'Admin > AI prompts: writes banner image prompts with Gemini (needs GEMINI_API_KEY).' },
   testimonials: { label: 'Testimonials', description: 'Home-page testimonials section and Admin > Testimonials. Real testimonials only; the section hides when there are none.' },
   videoStories: { label: 'Video stories', description: 'Home-page YouTube showcase and Admin > Video stories.' },

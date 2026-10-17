@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { DEFAULT_SUPPORT, getCustomerSupportSettings } from "@/services/siteSettingsService";
+import { useCustomerSupport } from "@/hooks/useCustomerSupport";
 import { formatINR } from "@/lib/format";
 import { BRAND } from "@/config/brand";
 
@@ -8,7 +7,7 @@ import { BRAND } from "@/config/brand";
  * "Enquire on WhatsApp" for a product.
  *
  * Opens a chat with the store's WhatsApp number (Admin > Commerce settings >
- * Customer support; defaults to BRAND.whatsapp) with a message naming the product
+ * Customer support; starts from BRAND.whatsapp) with a message naming the product
  * and linking to its page. WhatsApp turns that link into a preview card with the
  * product photo because /product/:id serves real Open Graph tags to link-preview
  * crawlers - see the `og` handler in api/media.ts and the rewrite in vercel.json.
@@ -19,11 +18,6 @@ interface EnquiryProduct {
   title: string;
   price: number;
 }
-
-/** The number is admin-editable; read it once per visit, not once per product page. */
-let storeNumber: Promise<string> | null = null;
-const loadStoreNumber = () =>
-  (storeNumber ??= getCustomerSupportSettings().then((s) => s.whatsapp || DEFAULT_SUPPORT.whatsapp));
 
 /** wa.me needs the full international number as digits; Indian numbers are often saved without 91. */
 const toWhatsAppDigits = (phone: string) => {
@@ -59,19 +53,8 @@ interface Props {
 }
 
 const WhatsAppEnquiryButton = ({ product, className = "" }: Props) => {
-  const [phone, setPhone] = useState(DEFAULT_SUPPORT.whatsapp);
-
-  useEffect(() => {
-    let active = true;
-    loadStoreNumber()
-      .then((n) => active && setPhone(n))
-      .catch(() => {
-        /* keep the default number */
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // The admin's number (Admin > Commerce > Support); one listener is shared with the rest of the page.
+  const { whatsapp: phone } = useCustomerSupport();
 
   // No number yet (BRAND.whatsapp and the admin's support setting are both empty): no button, never a bare wa.me/ link.
   if (!toWhatsAppDigits(phone)) return null;

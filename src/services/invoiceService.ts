@@ -14,20 +14,20 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Order } from '@/services/orderService';
 import { BRAND } from '@/config/brand';
+import { getCustomerSupportSettings } from '@/services/siteSettingsService';
 import { fitInBox } from '@/lib/fitInBox';
 
 // ---------------------------------------------------------------------------
 // Seller details — single source of truth for the invoice header.
 // ---------------------------------------------------------------------------
 // Values live in src/config/brand.ts; blanks are left off the invoice rather
-// than printed as placeholders.
+// than printed as placeholders. The phone and email are the admin's (Admin > Commerce >
+// Support), read when the invoice is made: see generateInvoicePDF.
 const SELLER = {
   name: BRAND.legalName || BRAND.name,
   addressLines: BRAND.addressLines,
   state: BRAND.state,
   stateCode: BRAND.stateCode,
-  phone: BRAND.phones[0] || '',
-  email: BRAND.email,
   gstin: BRAND.gstin,
 } as const;
 
@@ -216,7 +216,9 @@ export const generateInvoicePDF = async (order: Order): Promise<void> => {
   const margin = 15;
   let y = margin;
 
-  const logo = await loadLogo();
+  const [logo, support] = await Promise.all([loadLogo(), getCustomerSupportSettings()]);
+  const sellerPhone = support.phone?.trim() || '';
+  const sellerEmail = support.email?.trim() || '';
 
   // ---------------- Header band -------------------------------------------
   doc.setFillColor(255, 255, 255);
@@ -267,8 +269,8 @@ export const generateInvoicePDF = async (order: Order): Promise<void> => {
   const sellerLines = [
     SELLER.name,
     ...SELLER.addressLines,
-    ...(SELLER.phone ? [`Phone: ${SELLER.phone}`] : []),
-    ...(SELLER.email ? [`Email: ${SELLER.email}`] : []),
+    ...(sellerPhone ? [`Phone: ${sellerPhone}`] : []),
+    ...(sellerEmail ? [`Email: ${sellerEmail}`] : []),
     ...(SELLER.stateCode ? [`State Code: ${SELLER.stateCode}`] : []),
     ...(SELLER.gstin ? [`GSTIN: ${SELLER.gstin}`] : []),
   ];
@@ -479,7 +481,7 @@ export const generateInvoicePDF = async (order: Order): Promise<void> => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(120, 120, 120);
-  const queryContact = [SELLER.phone, SELLER.email].filter(Boolean).join(' or ');
+  const queryContact = [sellerPhone, sellerEmail].filter(Boolean).join(' or ');
   const footer = `This is a computer-generated invoice and does not require a physical signature.${queryContact ? ` For queries, contact ${queryContact}.` : ''} Whether tax is payable under reverse charge: No.`;
   doc.text(footer, pageWidth / 2, pageHeight - 12, {
     align: 'center',

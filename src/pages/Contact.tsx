@@ -12,6 +12,7 @@ import { BRAND } from "@/config/brand";
 import { SITE_HOST } from "@/lib/siteUrl";
 import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useCustomerSupport } from "@/hooks/useCustomerSupport";
 import { cn } from "@/lib/utils";
 
 type ContactField = "name" | "email" | "subject" | "message";
@@ -37,6 +38,8 @@ const Contact = () => {
   const [opened, setOpened] = useState(false);
   const [cooldown, setCooldown] = useState(false);
   const cooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The store's phone, email and hours are the admin's (Admin > Commerce > Support), not BRAND.
+  const { email: storeEmail, phone, hours } = useCustomerSupport();
 
   usePageMeta({
     title: "Contact",
@@ -68,7 +71,7 @@ const Contact = () => {
       return;
     }
     const body = `${formData.message.trim()}\n\n${formData.name.trim()} <${formData.email.trim()}>`;
-    const mailto = `mailto:${BRAND.email}?subject=${encodeURIComponent(formData.subject.trim())}&body=${encodeURIComponent(body)}`;
+    const mailto = `mailto:${storeEmail}?subject=${encodeURIComponent(formData.subject.trim())}&body=${encodeURIComponent(body)}`;
     window.location.href = mailto;
     setOpened(true);
     setCooldown(true);
@@ -84,8 +87,6 @@ const Contact = () => {
     });
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
-
-  const phone = BRAND.phones[0];
 
   return (
     <>
@@ -133,7 +134,7 @@ const Contact = () => {
               Get in touch
             </h2>
             <p className="text-base leading-relaxed text-muted-foreground [text-wrap:pretty] md:text-lg">
-              {BRAND.email
+              {storeEmail
                 ? "Questions about a product or your order? Write to us and we\u2019ll reply by email."
                 : "Questions about a product or your order? Here is how to reach us."}
             </p>
@@ -174,15 +175,15 @@ const Contact = () => {
                     </dd>
                   </>
                 )}
-                {BRAND.email && (
+                {storeEmail && (
                   <>
                     <dt className="text-muted-foreground">Email</dt>
                     <dd className="min-w-0 break-words">
                       <a
-                        href={`mailto:${BRAND.email}`}
+                        href={`mailto:${storeEmail}`}
                         className="text-foreground underline-offset-4 transition-colors duration-hover hover:text-primary hover:underline"
                       >
-                        {BRAND.email}
+                        {storeEmail}
                       </a>
                     </dd>
                   </>
@@ -199,8 +200,8 @@ const Contact = () => {
               </div>
               <div className="pl-8 text-sm leading-relaxed text-muted-foreground md:text-base">
                 {/* Keep "7 pm" together so a time never ends on a lone "pm" */}
-                {BRAND.hours && (
-                  <p className="[text-wrap:balance]">{BRAND.hours.replace(/(\d)\s+(am|pm)\b/gi, "$1\u00a0$2")}</p>
+                {hours && (
+                  <p className="[text-wrap:balance]">{hours.replace(/(\d)\s+(am|pm)\b/gi, "$1\u00a0$2")}</p>
                 )}
                 <p>Online orders: any time</p>
               </div>
@@ -208,17 +209,17 @@ const Contact = () => {
           </div>
 
           {/* Form and map: on the same container edges as the details above */}
-          {(BRAND.email || BRAND.mapEmbedUrl) && (
+          {(storeEmail || BRAND.mapEmbedUrl) && (
             <div>
               {/* Without a store email there is nowhere to send the message, so the form is not shown. */}
-              {BRAND.email && (
+              {storeEmail && (
                 <h2 className="mb-8 text-center font-heading text-3xl font-semibold tracking-tight text-foreground [text-wrap:balance] md:mb-12 md:text-5xl">
                   Send a message
                 </h2>
               )}
 
-              <div className={cn("grid items-start gap-8 lg:gap-10", BRAND.email && "lg:grid-cols-2")}>
-                {BRAND.email && (
+              <div className={cn("grid items-start gap-8 lg:gap-10", storeEmail && "lg:grid-cols-2")}>
+                {storeEmail && (
                   <motion.div {...inView()}>
                     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
                       <div className="grid gap-5 sm:grid-cols-2">
@@ -300,8 +301,8 @@ const Contact = () => {
                         >
                           <Notice tone="info" title="Your email app should open with this message">
                             If it didn&rsquo;t, write to us at{" "}
-                            <a href={`mailto:${BRAND.email}`} className="font-medium text-primary underline-offset-4 hover:underline">
-                              {BRAND.email}
+                            <a href={`mailto:${storeEmail}`} className="font-medium text-primary underline-offset-4 hover:underline">
+                              {storeEmail}
                             </a>
                             .
                           </Notice>

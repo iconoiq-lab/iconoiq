@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { subscribeCustomerSupportSettings, DEFAULT_SUPPORT, CustomerSupportSettings } from '@/services/siteSettingsService';
+import { useCustomerSupport } from '@/hooks/useCustomerSupport';
 import { EASE_OUT, staggerDelay, tap } from '@/lib/motion';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { isOn } from '@/config/features';
@@ -45,9 +45,7 @@ const LINK = 'text-foreground underline-offset-4 transition-colors duration-hove
 const CustomerSupport = () => {
   const navigate = useNavigate();
   const [selectedOption, setSelectedOption] = useState<'email' | 'phone' | 'message' | null>(null);
-  const [support, setSupport] = useState<CustomerSupportSettings>(DEFAULT_SUPPORT);
-
-  useEffect(() => subscribeCustomerSupportSettings(setSupport), []);
+  const support = useCustomerSupport();
 
   // Keep keyboard and screen-reader users in place: the sub-view's heading takes focus when it
   // mounts (after the exit animation), and going back returns focus to the option that opened it.

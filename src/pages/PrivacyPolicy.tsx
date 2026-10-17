@@ -10,10 +10,12 @@ import {
 import PolicyPageLayout from "@/components/PolicyPageLayout";
 import { Link } from "react-router-dom";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useCustomerSupport } from "@/hooks/useCustomerSupport";
 import { SITE_HOST, SITE_URL } from "@/lib/siteUrl";
 import { BRAND } from "@/config/brand";
 
 const PrivacyPolicy = () => {
+  const { email, phone } = useCustomerSupport();
   usePageMeta({ title: "Privacy policy", description: `What ${BRAND.name} collects, how it is used and who it is shared with.` });
 
   return (
@@ -93,20 +95,20 @@ const PrivacyPolicy = () => {
             {/* Contact Information */}
             <section className={policySectionClassName}>
               <h2 className={policyHeadingClassName}>6. Contact us</h2>
-              {BRAND.email || BRAND.phones[0] || BRAND.addressLines.length > 0 ? (
+              {email || phone || BRAND.addressLines.length > 0 ? (
                 <>
                   <p className={`${policyBodyClassName} mb-4`}>
                     For any privacy-related concerns, contact:
                   </p>
                   <div className={policyCardClassName}>
-                    {BRAND.email && (
-                      <p className={policyBodyClassName}><strong className="text-foreground">Email:</strong> <a href={`mailto:${BRAND.email}`} className={policyLinkClassName}>{BRAND.email}</a></p>
+                    {email && (
+                      <p className={policyBodyClassName}><strong className="text-foreground">Email:</strong> <a href={`mailto:${email}`} className={policyLinkClassName}>{email}</a></p>
                     )}
-                    {BRAND.phones[0] && (
-                      <p className={`${policyBodyClassName} ${BRAND.email ? "mt-2" : ""}`}><strong className="text-foreground">Phone:</strong> {BRAND.phones[0]}</p>
+                    {phone && (
+                      <p className={`${policyBodyClassName} ${email ? "mt-2" : ""}`}><strong className="text-foreground">Phone:</strong> {phone}</p>
                     )}
                     {BRAND.addressLines.length > 0 && (
-                      <div className={BRAND.email || BRAND.phones[0] ? "mt-4" : ""}>
+                      <div className={email || phone ? "mt-4" : ""}>
                         <p className="font-semibold text-foreground">Address</p>
                         <p className={policyBodyClassName}>{BRAND.legalName || BRAND.name}</p>
                         {BRAND.addressLines.map((line) => (

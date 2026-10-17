@@ -12,7 +12,7 @@ import { Notice } from '@/components/ui/notice';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { createVideoCallRequest } from '@/services/videoCallRequestService';
-import { getCustomerSupportSettings } from '@/services/siteSettingsService';
+import { useCustomerSupport } from '@/hooks/useCustomerSupport';
 import { SmartImage } from "@/components/ui/smart-image";
 import { fadeUp } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -56,13 +56,8 @@ const VideoCallRequestModal = ({
   const [scheduledTime, setScheduledTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [adminWhatsapp, setAdminWhatsapp] = useState('');
-
-  useEffect(() => {
-    if (open) {
-      getCustomerSupportSettings().then((s) => setAdminWhatsapp(s.whatsapp || ''));
-    }
-  }, [open]);
+  // The WhatsApp number and hours the admin set in Admin > Commerce > Support.
+  const { whatsapp: adminWhatsapp, hours } = useCustomerSupport();
 
   // Start each visit on the first tab with a fresh form, and fill in the
   // shopper's name and phone once their profile has loaded (it is often still
@@ -238,7 +233,7 @@ const VideoCallRequestModal = ({
             </p>
             {adminWhatsapp && (
               <p className="text-xs text-muted-foreground">
-                Call number: <span className="font-semibold tabular-nums text-foreground">{adminWhatsapp}</span>
+                Call number: <span className="font-semibold tabular-nums text-foreground">+{adminWhatsapp.replace(/\D/g, '')}</span>
               </p>
             )}
           </div>
@@ -327,7 +322,7 @@ const VideoCallRequestModal = ({
 
           {tab === 'instant' && (
             <Notice tone="neutral" icon={Clock} compact role="note">
-              We'll call you back as soon as we can during business hours{BRAND.hours ? ` (${BRAND.hours})` : ''}.
+              We'll call you back as soon as we can during business hours{hours ? ` (${hours})` : ''}.
             </Notice>
           )}
 

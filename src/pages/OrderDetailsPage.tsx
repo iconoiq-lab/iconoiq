@@ -58,6 +58,7 @@ import { SmartImage } from "@/components/ui/smart-image";
 import { ScratchCardOrderNote } from "@/components/scratch/ScratchCardOrderNote";
 import { getScratchCard, type ScratchCard } from "@/services/scratchWinService";
 import { BRAND } from "@/config/brand";
+import { useCustomerSupport } from "@/hooks/useCustomerSupport";
 import { isOn } from "@/config/features";
 import { SITE_HOST } from "@/lib/siteUrl";
 import { isWithinReturnWindow } from "@/lib/returnWindow";
@@ -232,6 +233,8 @@ const OrderStatusStepper = ({ status, isReturnPickedState = false }: { status: s
 
 const OrderDetailsPage = () => {
   const navigate = useNavigate();
+  // The support phone and email the admin set (Admin > Commerce > Support), for the shared receipt.
+  const support = useCustomerSupport();
   const { orderId } = useParams<{ orderId: string }>();
   const { user } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
@@ -1479,8 +1482,8 @@ const OrderDetailsPage = () => {
             {/* Footer */}
             <div style={{ textAlign: 'center', borderTop: `1px solid ${receipt.rule}`, paddingTop: '16px' }}>
               <p style={{ fontSize: '12px', fontWeight: '500', color: receipt.text, margin: '0 0 4px 0' }}>Thank you for shopping with {BRAND.shortName}.</p>
-              {(BRAND.phones[0] || BRAND.email) && (
-                <p style={{ fontSize: '11px', color: receipt.muted, margin: '0 0 8px 0' }}>For support: {BRAND.phones[0] || BRAND.email}</p>
+              {(support.phone || support.email) && (
+                <p style={{ fontSize: '11px', color: receipt.muted, margin: '0 0 8px 0' }}>For support: {support.phone || support.email}</p>
               )}
               <p style={{ fontSize: '10px', color: receipt.muted, margin: 0 }}>{SITE_HOST}</p>
             </div>

@@ -40,9 +40,11 @@ const SETTINGS_DOC = doc(db, 'siteSettings', 'footer');
 export const DEFAULT_FOOTER: FooterSettings = {
   brandTagline: BRAND.description,
   addressLines: [...BRAND.addressLines],
-  phones: [...BRAND.phones],
-  emails: BRAND.email ? [BRAND.email] : [],
-  businessHours: BRAND.hours,
+  // Empty on purpose: the footer shows the support settings (Admin > Commerce > Support) unless the footer
+  // editor saves its own phone, email or hours (src/lib/footerContact.ts), so contact details are edited once.
+  phones: [],
+  emails: [],
+  businessHours: '',
   mapEmbedUrl: BRAND.mapEmbedUrl,
   shopLinks: ['Shop all', 'New arrivals', 'Best sellers'],
   categoryLinks: DEFAULT_CATEGORIES.map((c) => c.name),

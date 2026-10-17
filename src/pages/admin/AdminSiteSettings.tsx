@@ -316,7 +316,7 @@ const AdminSiteSettings = () => {
             itemLabel="Address line"
           />
         </Card>
-        <Card title="Phone numbers" subtitle="First number is shown in the footer." icon={Phone}>
+        <Card title="Phone numbers" subtitle="Optional. Leave empty to show the phone number from Commerce > Support. The first number is shown in the footer." icon={Phone}>
           <ListInput
             values={settings.phones || []}
             onChange={(v) => update('phones', v)}
@@ -324,7 +324,7 @@ const AdminSiteSettings = () => {
             itemLabel="Phone number"
           />
         </Card>
-        <Card title="Email addresses" subtitle="First email is shown in the footer." icon={Mail}>
+        <Card title="Email addresses" subtitle="Optional. Leave empty to show the email from Commerce > Support. The first email is shown in the footer." icon={Mail}>
           <ListInput
             values={settings.emails || []}
             onChange={(v) => update('emails', v)}
@@ -332,7 +332,7 @@ const AdminSiteSettings = () => {
             itemLabel="Email address"
           />
         </Card>
-        <Card title="Business hours" icon={Clock}>
+        <Card title="Business hours" subtitle="Optional. Leave empty to show the hours from Commerce > Support." icon={Clock}>
           <Input
             value={settings.businessHours || ''}
             onChange={(e) => update('businessHours', e.target.value)}

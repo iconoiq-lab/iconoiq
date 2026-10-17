@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { subscribeEmail } from "@/services/newsletterService";
@@ -25,6 +25,8 @@ import {
   type Category,
 } from "@/services/categoryService";
 import { BRAND } from "@/config/brand";
+import { useCustomerSupport } from "@/hooks/useCustomerSupport";
+import { withSupportContact } from "@/lib/footerContact";
 import { LOGO } from "@/config/logoSize";
 import CompactFooter from "@/components/footer/CompactFooter";
 import { INFORMATION_LINKS } from "@/components/footer/footerLinks";
@@ -140,14 +142,17 @@ const NewsletterStrip = () => {
 
 const Footer = () => {
   const darkModeLogo = "/white_logo.png";
-  const [settings, setSettings] = useState<FooterSettings>(DEFAULT_FOOTER);
+  const [footerSettings, setFooterSettings] = useState<FooterSettings>(DEFAULT_FOOTER);
+  // Phone, email and hours come from Admin > Commerce > Support unless the footer editor saves its own.
+  const support = useCustomerSupport();
+  const settings = useMemo(() => withSupportContact(footerSettings, support), [footerSettings, support]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES as Category[]);
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapTimer = useRef<number>();
   useEffect(() => () => window.clearTimeout(mapTimer.current), []);
 
   useEffect(() => {
-    const unsub = subscribeFooterSettings(setSettings);
+    const unsub = subscribeFooterSettings(setFooterSettings);
     return unsub;
   }, []);
 

@@ -90,7 +90,7 @@ export function storeFacts(input: {
   responseTime?: string;
   /** BRAND.shipsTo, e.g. "Shipped across India". */
   shipsTo?: string;
-  /** BRAND.hours. */
+  /** The support settings' opening hours. */
   hours?: string;
 }): StoreFact[] {
   const d = input.delivery;

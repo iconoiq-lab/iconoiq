@@ -8,10 +8,12 @@ import {
 import PolicyPageLayout from "@/components/PolicyPageLayout";
 import { Link } from "react-router-dom";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useCustomerSupport } from "@/hooks/useCustomerSupport";
 import { BRAND } from "@/config/brand";
 import { RETURN_WINDOW_DAYS } from "@/lib/returnWindow";
 
 const CancellationRefundPolicy = () => {
+  const { email, phone } = useCustomerSupport();
   usePageMeta({ title: "Cancellation and refund policy", description: `How to cancel an order, return a product and get a refund from ${BRAND.name}.` });
 
   return (
@@ -81,15 +83,15 @@ const CancellationRefundPolicy = () => {
 
             {/* Contact for Refund Assistance */}
             <section className={policySectionClassName}>
-              {BRAND.email || BRAND.phones[0] ? (
+              {email || phone ? (
                 <>
                   <p className={`${policyBodyClassName} mb-2`}>
                     <strong className="text-foreground">For refund assistance:</strong>
                   </p>
-                  {BRAND.email && (
-                    <p className={policyBodyClassName}>Email: <a href={`mailto:${BRAND.email}`} className={policyLinkClassName}>{BRAND.email}</a></p>
+                  {email && (
+                    <p className={policyBodyClassName}>Email: <a href={`mailto:${email}`} className={policyLinkClassName}>{email}</a></p>
                   )}
-                  {BRAND.phones[0] && <p className={policyBodyClassName}>Phone: {BRAND.phones[0]}</p>}
+                  {phone && <p className={policyBodyClassName}>Phone: {phone}</p>}
                 </>
               ) : (
                 <p className={policyBodyClassName}>
