@@ -1,0 +1,1020 @@
+/* Fonts: Fraunces (headings) + Inter (body).
+   Loaded by a <link rel="stylesheet"> in index.html, after the preconnects. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Store design system (template defaults; each client gets their own values).
+ * Near-black ink is the signature colour (primary), blue is the highlight, and
+ * surfaces are stone white (light) or near-black stone (dark).
+ * Every colour below is HSL without hsl(), so Tailwind opacity modifiers work.
+ * docs/ui-system.md is the practical guide to these tokens.
+ */
+@layer base {
+  :root {
+    --background: 60 8% 98%;
+    --foreground: 24 8% 10%;
+
+    --cream: 60 8% 98%;
+    --cream-dark: 60 3% 96%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 24 8% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 8% 10%;
+
+    /* Ink - signature colour. Hover is a step darker (--primary-dark). */
+    --primary: 24 8% 10%;
+    --primary-foreground: 60 8% 98%;
+    --primary-light: 30 6% 25%;
+    --primary-dark: 20 13% 4%;
+
+    --secondary: 60 3% 96%;
+    --secondary-foreground: 24 8% 10%;
+
+    --muted: 60 3% 96%;
+    --muted-foreground: 33 5% 32%;
+
+    /* Soft stone tone for menu highlights and ghost hovers. The brand colour lives only on --primary. */
+    --accent: 60 3% 96%;
+    --accent-foreground: 24 8% 10%;
+
+    /* Blue highlight for small emphasis text. Deep enough for small text on the page. */
+    --highlight: 221 83% 53%;
+    --highlight-foreground: 0 0% 100%;
+    /* Light blue in both modes: for accent-on-dark text (footer, bands, image overlays) */
+    --highlight-soft: 213 94% 68%;
+
+    /* Charcoal bands (testimonials, footer, offer ribbon) in both modes */
+    --charcoal: 24 8% 10%;
+    --charcoal-foreground: 60 8% 98%;
+
+    /* #A9271E: 6.7:1 on the page, 6.7:1 under its foreground */
+    --destructive: 4 70% 39%;
+    --destructive-foreground: 60 8% 98%;
+
+    --border: 20 4% 90%;
+    /* Form control borders: 3.4:1 or better on the page, card and muted (WCAG 1.4.11 non-text contrast) */
+    --input: 24 4% 52%;
+    --ring: 24 8% 10%;
+
+    --radius: 0.75rem;
+
+    /* Typography */
+    --font-heading: 'Fraunces', Georgia, serif;
+    --font-heading-stretch: 100%;
+    --font-body: 'Inter', system-ui, sans-serif;
+
+    /* Shadows (names kept from the original theme). Their ink is --charcoal, so a re-skin recolours them with it. */
+    --shadow-sm: 0 1px 3px hsl(var(--charcoal) / 0.05), 0 1px 2px hsl(var(--charcoal) / 0.04);
+    --shadow-md: 0 4px 12px hsl(var(--charcoal) / 0.06);
+    --shadow-lg: 0 8px 24px hsl(var(--charcoal) / 0.08);
+    --shadow-xl: 0 16px 40px hsl(var(--charcoal) / 0.1);
+    --shadow-gold: 0 4px 16px hsl(var(--primary) / 0.14);
+
+    /* Primary sheen (name kept from the original theme): the primary's three steps, in light and in dark.
+       Set it to a flat colour, linear-gradient(hsl(var(--primary)), hsl(var(--primary))), for a matte store. */
+    --gradient-gold: linear-gradient(135deg, hsl(var(--primary-dark)) 0%, hsl(var(--primary)) 50%, hsl(var(--primary-light)) 100%);
+    --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.14) 50%, transparent 100%);
+
+    /* Film grain overlay strength (see body::after) */
+    --grain-opacity: 0.045;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 30 6% 25%;
+    --sidebar-primary: 24 8% 10%;
+    --sidebar-primary-foreground: 60 8% 98%;
+    --sidebar-accent: 60 3% 96%;
+    --sidebar-accent-foreground: 24 8% 10%;
+    --sidebar-border: 20 4% 90%;
+    --sidebar-ring: 24 8% 10%;
+  }
+
+  .dark {
+    --background: 20 13% 4%;
+    --foreground: 60 8% 98%;
+
+    --cream: 24 8% 10%;
+    --cream-dark: 12 6% 15%;
+
+    --card: 24 8% 10%;
+    --card-foreground: 60 8% 98%;
+
+    --popover: 24 8% 10%;
+    --popover-foreground: 60 8% 98%;
+
+    /* The dark primary is near white, so there is no lighter step: --primary-light is the dimmer hover shade
+       (used by .btn-copper:hover) and --primary-dark is a dark chip colour (ProductOfferTag). */
+    --primary: 60 8% 98%;
+    --primary-foreground: 20 13% 4%;
+    --primary-light: 24 5% 83%;
+    --primary-dark: 30 6% 25%;
+
+    --secondary: 12 6% 15%;
+    --secondary-foreground: 60 8% 98%;
+
+    --muted: 12 6% 15%;
+    --muted-foreground: 24 5% 64%;
+
+    --accent: 12 6% 15%;
+    --accent-foreground: 60 8% 98%;
+
+    --highlight: 213 94% 68%;
+    --highlight-foreground: 20 13% 4%;
+    --highlight-soft: 213 94% 68%;
+
+    --charcoal: 24 8% 10%;
+    --charcoal-foreground: 60 8% 98%;
+
+    /* 5.5:1 on the dark page, 5.5:1 under its dark foreground */
+    --destructive: 0 70% 62%;
+    --destructive-foreground: 20 13% 4%;
+
+    --border: 12 6% 15%;
+    --input: 23 5% 45%;
+    --ring: 60 8% 98%;
+
+    --shadow-gold: 0 4px 18px hsl(var(--primary) / 0.1);
+
+    --grain-opacity: 0.06;
+
+    --sidebar-background: 20 13% 4%;
+    --sidebar-foreground: 20 4% 90%;
+    --sidebar-primary: 60 8% 98%;
+    --sidebar-primary-foreground: 20 13% 4%;
+    --sidebar-accent: 12 6% 15%;
+    --sidebar-accent-foreground: 60 8% 98%;
+    --sidebar-border: 12 6% 15%;
+    --sidebar-ring: 60 8% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* Native controls, scrollbars and form autofill follow the theme. */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+
+  /*
+   * Smooth scrolling across the whole site.
+   *
+   * `html` alone is not enough: which element actually scrolls varies (some
+   * pages scroll `body`, drawers and filter sheets scroll their own container),
+   * and a container without `scroll-behavior` jumps instantly. Declaring it on
+   * html, body and every scrollable box keeps anchor links, "back to top",
+   * `scrollIntoView` and carousel/scroll-into-view calls animated everywhere.
+   *
+   * Route changes deliberately opt out with `behavior: 'instant'` in
+   * ScrollToTop.tsx - restoring a saved position must be instant, not a visible
+   * animated sweep down the page. ('auto' would inherit the smooth value below.)
+   *
+   * scroll-padding-top keeps anything scrolled into view (Tab focus, anchors,
+   * scrollIntoView) clear of the sticky header and category bar (WCAG 2.4.11).
+   */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 7.5rem;
+    overflow-x: clip;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  body {
+    scroll-behavior: smooth;
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      scroll-padding-top: 8rem;
+    }
+  }
+
+  /* Inner scroll areas: smooth programmatic scrolling + iOS momentum. */
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto,
+  .overflow-y-scroll,
+  [data-scroll-container] {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Respect the OS "reduce motion" setting. */
+  @media (prefers-reduced-motion: reduce) {
+    html,
+    body,
+    .overflow-y-auto,
+    .overflow-x-auto,
+    .overflow-auto,
+    .overflow-y-scroll,
+    [data-scroll-container] {
+      scroll-behavior: auto;
+    }
+  }
+
+  html::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  html::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  html::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    overflow-x: clip;
+    width: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-stretch: var(--font-heading-stretch);
+    letter-spacing: -0.02em;
+  }
+
+  /* Soft film grain over the whole site (brief: "soft grain"). Fixed, tiled, never catches clicks. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-grain);
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.2 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+
+  .font-heading, .font-serif {
+    font-stretch: var(--font-heading-stretch);
+  }
+
+  /*
+   * Keyboard focus, everywhere. Ring 2px outside the element
+   * (16.7:1 on the page, 18.9:1 on the dark page). Zero-specificity selector list,
+   * so a component that draws its own ring (inputs) can still opt out with
+   * focus-visible:outline-none - never remove it without a replacement.
+   */
+  :where(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  /* On charcoal (bands, footer) the ring turns light blue: 6.9:1. */
+  .tx-slate :where(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible,
+  .bg-charcoal :where(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible,
+  footer :where(a, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline-color: hsl(var(--highlight-soft));
+  }
+  /* Rows inside overflow-hidden panels: draw the ring inside so it is not clipped. */
+  .focus-inset:focus-visible {
+    outline-offset: -2px;
+  }
+  /* Programmatic focus targets (<main id="main" tabIndex={-1}>, dialog content) are
+     not in the list above, so they never show a ring. */
+
+  /* One icon stroke everywhere (lucide). Zero specificity: [stroke-width:2.5] still overrides. */
+  :where(svg.lucide) {
+    stroke-width: 1.5;
+  }
+}
+
+@layer components {
+  /* Section Styles */
+  .section-padding {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+
+  .container-custom {
+    @apply max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16;
+  }
+
+  /* Text Styles */
+  .eyebrow {
+    @apply text-xs font-semibold tracking-[0.2em] uppercase text-primary;
+  }
+
+  .heading-xl {
+    @apply text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-medium leading-[1.02] tracking-tight;
+  }
+
+  .heading-lg {
+    @apply text-3xl md:text-4xl lg:text-5xl font-heading font-medium leading-tight;
+  }
+
+  .heading-md {
+    @apply text-2xl md:text-3xl lg:text-4xl font-heading font-medium leading-tight;
+  }
+
+  .heading-sm {
+    @apply text-xl md:text-2xl font-heading font-medium leading-snug;
+  }
+
+  .body-lg {
+    @apply text-base md:text-lg text-muted-foreground leading-relaxed;
+  }
+
+  .body-md {
+    @apply text-sm md:text-base text-muted-foreground leading-relaxed;
+  }
+
+  /* Gold Text Gradient */
+  .text-gold-gradient {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Marquee Animation */
+  .marquee {
+    animation: marquee 30s linear infinite;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+@layer utilities {
+  /* Hide Scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Parallax Helper */
+  .parallax-slow {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Native range inputs (price filter, image crop zoom): one style, on tokens. */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: hsl(var(--muted));
+  }
+  input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: hsl(var(--muted));
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -7px;
+    border-radius: 50%;
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--primary));
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--primary));
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+  }
+  input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(1.1);
+  }
+}
+
+/*
+ * Reduced motion. Outside every @layer so it wins over components and
+ * utilities. Movement stops; colour, opacity and focus feedback stay.
+ * Radix/tailwindcss-animate enter and exit keep their fade but lose the
+ * slide and zoom.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-property: color, background-color, border-color, outline-color, opacity, box-shadow !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-in,
+  .animate-out {
+    --tw-enter-translate-x: 0 !important;
+    --tw-enter-translate-y: 0 !important;
+    --tw-enter-scale: 1 !important;
+    --tw-enter-rotate: 0 !important;
+    --tw-exit-translate-x: 0 !important;
+    --tw-exit-translate-y: 0 !important;
+    --tw-exit-scale: 1 !important;
+    --tw-exit-rotate: 0 !important;
+  }
+  .marquee,
+  .btn-copper::after,
+  .offer-ticket__foil,
+  .animate-ping,
+  .animate-pulse,
+  .animate-bounce {
+    animation: none !important;
+  }
+  .animate-spin {
+    animation-duration: 1.4s !important;
+  }
+}
+
+/* Admin, dark mode: raised surfaces keep one soft brand shadow. (The interim
+   class remapping that lived here was removed once every admin page used tokens.) */
+.dark .admin-panel .shadow-sm,
+.dark .admin-panel .shadow,
+.dark .admin-panel .shadow-md,
+.dark .admin-panel .shadow-lg { box-shadow: var(--shadow-panel); }
+
+
+/* ── Offer ribbon (src/components/offers/OfferRibbon.tsx) ─────────────────────
+   Charcoal with a soft lighter glow at the centre and a deeper edge (both mixed from --charcoal, so a re-skin
+   recolours the ribbon with it). The engraving is a fine diagonal in --highlight-soft, kept faint enough to be
+   felt rather than seen. */
+.offer-ribbon {
+  background:
+    radial-gradient(120% 180% at 50% 50%,
+      color-mix(in srgb, hsl(var(--charcoal)), hsl(var(--charcoal-foreground)) 5.7%) 0%,
+      hsl(var(--charcoal)) 48%,
+      color-mix(in srgb, hsl(var(--charcoal)), black 60%) 100%);
+}
+.offer-ribbon__engraving {
+  background-image: repeating-linear-gradient(
+    115deg,
+    hsl(var(--highlight-soft) / 0.08) 0 1px,
+    transparent 1px 7px
+  );
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+/* A slow sweep of light across the code, like foil catching it. Once every few
+   seconds - enough to draw the eye to the one thing worth tapping. --sheen: 0 makes the light invisible
+   (a matte store), 1 is the template's. */
+.offer-ticket__foil {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgb(255 255 255 / calc(0.5 * var(--sheen))) 48%,
+    transparent 66%
+  );
+  transform: translateX(-120%);
+  animation: offer-foil 4.2s ease-in-out 1.2s infinite;
+}
+@keyframes offer-foil {
+  0%, 62% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .offer-ticket__foil { animation: none; opacity: 0; }
+}
+
+/* ── Scratch & Win (src/components/scratch/) ───────────────────────────────── */
+/* Silver foil on the wallet tiles; the canvas in ScratchFoil.tsx paints the same stops. */
+.scratch-foil {
+  background-image: linear-gradient(125deg, #a8a29e 0%, #e7e5e4 22%, #d6d3d1 42%, #f5f5f4 62%, #d6d3d1 82%, #a8a29e 100%);
+}
+/* The reveal, once per card: the prize pops, one sheen sweeps the number. */
+@keyframes sw-pop {
+  from { transform: scale(0.96); opacity: 0.5; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes sw-sheen {
+  from { transform: translateX(-130%) skewX(-18deg); }
+  to { transform: translateX(260%) skewX(-18deg); }
+}
+@keyframes sw-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.sw-pop { animation: sw-pop var(--dur-reveal) var(--ease-out) both; }
+.sw-sheen { animation: sw-sheen 900ms var(--ease-out) 160ms 1 both; }
+@media (prefers-reduced-motion: reduce) {
+  .sw-pop { animation: sw-fade var(--dur-dropdown) var(--ease-out) both; }
+  .sw-sheen { display: none; }
+}
+
+/* ── Product offer ticket (src/components/offers/ProductOfferTag.tsx) ──────── */
+.product-offer {
+  background: linear-gradient(100deg, hsl(var(--muted)) 0%, hsl(var(--cream)) 55%, hsl(var(--card)) 100%);
+}
+.dark .product-offer {
+  background: linear-gradient(100deg, hsl(var(--muted)) 0%, hsl(var(--cream)) 60%, hsl(var(--card)) 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Surfaces and textures
+   Paper for light surfaces, slate for charcoal bands, fine topographic rings
+   as terrain, foil for accents.
+   Every texture is an inline SVG / gradient: no image requests.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --radius-panel: 18px;
+  --radius-card: 12px;
+  --radius-control: 6px;
+  --radius-chip: 4px;
+  /* Strength of the page textures (tx-paper, tx-sheet, tx-slate and the tx-contour rings): 1 is the template's look,
+     0 turns them off for a flat, matte store. Each texture rule lays a veil of its own surface colour over the
+     texture, so one number scales them all. The film grain has its own --grain-opacity. */
+  --texture-opacity: 1;
+  /* Shine: 1 is the template's look; 0 turns off the foil sweep on .btn-copper, the topographic rings (.tx-contour)
+     and the foil loop on the offer ticket, for a matte store. Between 0 and 1 they are fainter. */
+  --sheen: 1;
+  /* How far a card or tile rises on hover: .card-product, the rank tag on a best seller, and the lifting cards
+     on About, Customer support, the promise cards and Video stories (the last two lift a little more and
+     the support cards a little less, in proportion). 0px = no lift for a calm store. Write the unit: 0px, not 0. */
+  --hover-lift: 3px;
+  --hover-lift-sm: calc(var(--hover-lift) * 2 / 3);
+  --hover-lift-lg: calc(var(--hover-lift) * 4 / 3);
+  /* Heading weights, used only when <html data-heading-weight="light"> is set (see the rule after this block).
+     h1 and h2 take -lg; h3 to h6 and other heading-font text take -sm. Components ask for 600 to 700. */
+  --heading-weight-lg: 400;
+  --heading-weight-sm: 500;
+  --tx-veil-cream: linear-gradient(hsl(var(--cream) / calc(1 - var(--texture-opacity))), hsl(var(--cream) / calc(1 - var(--texture-opacity))));
+  --tx-veil-card: linear-gradient(hsl(var(--card) / calc(1 - var(--texture-opacity))), hsl(var(--card) / calc(1 - var(--texture-opacity))));
+  --tx-veil-charcoal: linear-gradient(hsl(var(--charcoal) / calc(1 - var(--texture-opacity))), hsl(var(--charcoal) / calc(1 - var(--texture-opacity))));
+  --shadow-panel: 0 1px 0 hsl(var(--foreground) / 0.03), 0 28px 56px -44px hsl(var(--charcoal) / 0.42);
+  --shadow-card-hover: 0 22px 40px -28px hsl(var(--charcoal) / 0.5);
+  /* Tonal mottling + horizontal fibres, mid-stone ink at very low alpha */
+  --tx-paper-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cfilter id='p' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.011 0.02' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.34 0 0 0 0 0.32 0 0 0 0.22 -0.07'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  --tx-paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.6' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.28 0 0 0 0 0.27 0 0 0 0.12 -0.055'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  /* Stone: large soft mottling + fine grit, light ink on dark */
+  --tx-slate-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640'%3E%3Cfilter id='s' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0065' numOctaves='4' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.98 0 0 0 0 0.98 0 0 0 0 0.97 0 0 0 0.16 -0.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+  --tx-slate-grit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 -0.03'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --contour-ink: hsl(var(--primary) / calc(0.14 * var(--texture-opacity) * var(--sheen)));
+
+  /* Motion. Tailwind: ease-out / ease-in-out / ease-drawer, duration-press ... duration-reveal.
+     JS twins live in src/lib/motion.ts. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 140ms;
+  --dur-hover: 150ms;
+  --dur-tooltip: 160ms;
+  --dur-dropdown: 200ms;
+  --dur-modal: 240ms;
+  --dur-drawer: 300ms;
+  --dur-exit: 180ms;
+  --dur-reveal: 320ms;
+  --stagger: 40ms;
+
+  /* Layers. Tailwind: z-raised ... z-grain. */
+  --z-raised: 10;
+  --z-sticky: 30;
+  --z-header: 40;
+  --z-overlay: 50;
+  --z-drawer: 60;
+  --z-popover: 70;
+  --z-toast: 80;
+  --z-loader: 90;
+  --z-grain: 100;
+
+  /* Sticky sidebars sit under the header: top-[var(--sticky-top)] */
+  --sticky-top: 80px;
+
+  /* Status tones (fg on bg measures 5.1 to 7.2:1). Tailwind: text-status-success-fg,
+     bg-status-success-bg, border-status-success-line. Order map: src/lib/orderStatus.ts */
+  --status-success-fg: 136 39% 30%;
+  --status-success-bg: 109 24% 91%;
+  --status-success-line: 112 21% 78%;
+  --status-danger-fg: 4 70% 39%;
+  --status-danger-bg: 10 60% 92%;
+  --status-danger-line: 8 52% 81%;
+  --status-warning-fg: 39 86% 28%;
+  --status-warning-bg: 41 64% 90%;
+  --status-warning-line: 41 53% 76%;
+  --status-info-fg: 206 45% 32%;
+  --status-info-bg: 204 37% 92%;
+  --status-info-line: 205 34% 80%;
+  --status-returns-fg: 304 30% 32%;
+  --status-returns-bg: 311 28% 92%;
+  --status-returns-line: 310 24% 80%;
+  --status-neutral-fg: 33 5% 32%;
+  --status-neutral-bg: 60 3% 96%;
+  --status-neutral-line: 20 4% 90%;
+}
+@media (min-width: 1024px) {
+  :root {
+    --sticky-top: 136px;
+  }
+}
+.dark {
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03), 0 30px 60px -42px rgba(0, 0, 0, 0.8);
+  --shadow-card-hover: 0 24px 44px -26px rgba(0, 0, 0, 0.85);
+  --contour-ink: hsl(var(--primary) / calc(0.1 * var(--texture-opacity) * var(--sheen)));
+
+  /* Status tones, dark (fg on bg measures 7.3 to 8.6:1) */
+  --status-success-fg: 134 38% 67%;
+  --status-success-bg: 138 23% 11%;
+  --status-success-line: 136 24% 22%;
+  --status-danger-fg: 9 82% 72%;
+  --status-danger-bg: 8 40% 12%;
+  --status-danger-line: 8 44% 25%;
+  --status-warning-fg: 39 73% 64%;
+  --status-warning-bg: 38 40% 12%;
+  --status-warning-line: 37 45% 24%;
+  --status-info-fg: 207 52% 72%;
+  --status-info-bg: 207 35% 12%;
+  --status-info-line: 207 35% 25%;
+  --status-returns-fg: 305 34% 74%;
+  --status-returns-bg: 304 23% 12%;
+  --status-returns-line: 309 22% 25%;
+  --status-neutral-fg: 24 5% 74%;
+  --status-neutral-bg: 12 6% 15%;
+  --status-neutral-line: 30 6% 25%;
+}
+
+/* Heading weights, opt-in: with <html data-heading-weight="light"> the h1/h2 and the h3-h6/.font-heading elements
+   that ask for a weight class (font-medium, font-semibold, font-bold, font-extrabold) take --heading-weight-lg and
+   --heading-weight-sm instead, so a light serif needs no edit to the ~200 classes. Outside every @layer, so it comes
+   after Tailwind's utilities and wins. The :not(h1, h2) keeps an h1.font-heading on the -lg weight (:is(.font-heading)
+   alone would out-rank the h1/h2 rule). Without the attribute nothing here applies. */
+html[data-heading-weight="light"] :is(h1, h2):is(.font-medium, .font-semibold, .font-bold, .font-extrabold) {
+  font-weight: var(--heading-weight-lg);
+}
+html[data-heading-weight="light"] :is(h3, h4, h5, h6, .font-heading, .font-serif):not(h1, h2):is(.font-semibold, .font-bold, .font-extrabold) {
+  font-weight: var(--heading-weight-sm);
+}
+
+/* Page entry: opacity only. A transform here would become the containing block
+   for every position:fixed header, drawer and sticky bar inside the page. */
+.route-enter {
+  animation: route-in 200ms var(--ease-out);
+}
+@keyframes route-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Route skeleton: appears only if the chunk takes longer than 150ms. */
+.route-skeleton {
+  animation: route-in 200ms var(--ease-out) 150ms both;
+}
+
+/* Theme swap: every transition off for one frame so the page snaps, not smears. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Google Maps embed in dark mode: inverted and calmed to sit on slate. */
+.dark .map-embed {
+  filter: invert(0.92) hue-rotate(180deg) saturate(0.55) brightness(0.92);
+}
+
+@layer components {
+  /* Light paper: tonal mottling + fibres. Turns into soft slate in dark mode. */
+  .tx-paper {
+    background-color: hsl(var(--cream));
+    background-image: var(--tx-veil-cream), var(--tx-paper-mottle), var(--tx-paper-fibre);
+    background-size: 100% 100%, 520px 520px, 300px 300px;
+  }
+  .dark .tx-paper {
+    background-color: hsl(var(--card));
+    background-image: var(--tx-veil-card), var(--tx-slate-mottle), var(--tx-slate-grit);
+    background-size: 100% 100%, 640px 640px, 220px 220px;
+  }
+
+  /* Lighter sheet of the same paper, for panels and cards that sit on .tx-paper. */
+  .tx-sheet {
+    background-color: hsl(var(--card));
+    background-image: var(--tx-veil-card), var(--tx-paper-fibre);
+    background-size: 100% 100%, 300px 300px;
+  }
+  .dark .tx-sheet {
+    background-color: hsl(var(--card));
+    background-image: var(--tx-veil-card), var(--tx-slate-grit);
+    background-size: 100% 100%, 220px 220px;
+  }
+
+  /* Charcoal stone, in both modes (testimonials, footer, bands). */
+  .tx-slate {
+    background-color: hsl(var(--charcoal));
+    background-image:
+      radial-gradient(120% 90% at 20% 0%, hsl(var(--charcoal-foreground) / calc(0.07 * var(--texture-opacity))), transparent 55%),
+      var(--tx-veil-charcoal),
+      var(--tx-slate-mottle),
+      var(--tx-slate-grit);
+    background-size: 100% 100%, 100% 100%, 640px 640px, 220px 220px;
+  }
+
+  /* Topographic rings behind a section, masked to fade at the edges. */
+  .tx-contour {
+    position: relative;
+    isolation: isolate;
+  }
+  .tx-contour::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      repeating-radial-gradient(ellipse 60% 48% at 88% 12%, transparent 0 26px, var(--contour-ink) 26px 27px),
+      repeating-radial-gradient(ellipse 46% 56% at 8% 92%, transparent 0 30px, var(--contour-ink) 30px 31px);
+    -webkit-mask-image: radial-gradient(ellipse 75% 70% at 60% 45%, #000 20%, transparent 78%);
+    mask-image: radial-gradient(ellipse 75% 70% at 60% 45%, #000 20%, transparent 78%);
+  }
+
+  /* Section container */
+  .panel {
+    border-radius: var(--radius-panel);
+    border: 1px solid hsl(var(--foreground) / 0.08);
+    box-shadow: var(--shadow-panel);
+  }
+
+  /* Product card: lifts and gains a primary-colour edge on hover (pointer devices only). */
+  .card-product {
+    border-radius: var(--radius-card);
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--foreground) / 0.07);
+    transition:
+      transform 220ms var(--ease-out),
+      box-shadow 220ms var(--ease-out),
+      border-color var(--dur-hover) ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .card-product:hover {
+      transform: translateY(calc(var(--hover-lift) * -1));
+      border-color: hsl(var(--primary) / 0.35);
+      box-shadow: var(--shadow-card-hover);
+    }
+  }
+
+  /* Image well inside cards: a lit stone plinth so mixed photo backgrounds sit together. */
+  .tile-img {
+    border-radius: calc(var(--radius-card) - 4px);
+    background: radial-gradient(120% 90% at 50% 18%, hsl(var(--cream)) 0%, hsl(var(--cream-dark)) 100%);
+    box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.05);
+  }
+
+  /* Eyebrow: words only ("Top deals"). Numbers were removed from every eyebrow. */
+  .eyebrow-no {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  .eyebrow-no b {
+    font-weight: 700;
+    color: hsl(var(--primary));
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.18em;
+  }
+  .eyebrow-no::after {
+    content: '';
+    width: 2.25rem;
+    height: 1px;
+    background: linear-gradient(90deg, hsl(var(--primary) / 0.7), transparent);
+  }
+
+  /* Round arrow button */
+  .btn-round {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid hsl(var(--foreground) / 0.14);
+    background: hsl(var(--card) / 0.7);
+    color: hsl(var(--foreground) / 0.75);
+    backdrop-filter: blur(6px);
+    transition:
+      border-color var(--dur-hover) ease,
+      color var(--dur-hover) ease,
+      background-color var(--dur-hover) ease,
+      transform var(--dur-press) var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-round:hover:not(:disabled) {
+      border-color: hsl(var(--primary));
+      color: hsl(var(--primary));
+    }
+  }
+  .btn-round:active:not(:disabled) { transform: scale(0.97); }
+  .btn-round:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Primary CTA: primary colour, squared-off, tracked caps, foil sweep on hover */
+  .btn-copper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    overflow: hidden;
+    border-radius: 6px;
+    padding: 0.8rem 1.6rem;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition:
+      background-color var(--dur-hover) ease,
+      transform var(--dur-press) var(--ease-out);
+  }
+  .btn-copper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / calc(0.35 * var(--sheen))) 50%, transparent 65%);
+    transform: translateX(-120%);
+    transition: transform 450ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-copper:hover:not(:disabled) { background: hsl(var(--primary-dark)); }
+    .dark .btn-copper:hover:not(:disabled) { background: hsl(var(--primary-light)); }
+    .btn-copper:hover:not(:disabled)::after { transform: translateX(120%); }
+  }
+  .btn-copper:active:not(:disabled) { transform: scale(0.97); }
+  .btn-copper:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  .btn-copper:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Outline twin of btn-copper, for light-on-image and secondary actions */
+  .btn-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 6px;
+    padding: 0.75rem 1.5rem;
+    border: 1px solid currentColor;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition:
+      background-color var(--dur-hover) ease,
+      color var(--dur-hover) ease,
+      transform var(--dur-press) var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-line:hover:not(:disabled) { background-color: color-mix(in srgb, currentColor 8%, transparent); }
+  }
+  .btn-line:active:not(:disabled) { transform: scale(0.97); }
+  .btn-line:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* "View all" style link with a travelling arrow */
+  .link-arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: hsl(var(--foreground));
+    border-bottom: 1px solid hsl(var(--primary) / 0.5);
+    padding-bottom: 2px;
+    white-space: nowrap;
+    transition: color var(--dur-hover) ease, border-color var(--dur-hover) ease;
+  }
+  .link-arrow svg {
+    transition: transform var(--dur-hover) var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .link-arrow:hover { color: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+    .link-arrow:hover svg { transform: translateX(3px); }
+  }
+
+  /* Prices */
+  .price-now { font-weight: 700; color: hsl(var(--foreground)); font-variant-numeric: tabular-nums; }
+  .price-was { color: hsl(var(--muted-foreground)); text-decoration: line-through; text-decoration-color: hsl(var(--primary) / 0.6); font-variant-numeric: tabular-nums; }
+  .chip-off {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid hsl(var(--primary) / 0.45);
+    color: hsl(var(--primary));
+    border-radius: 4px;
+    padding: 0 0.45rem;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Text on photos: a charcoal scrim from the bottom plus a soft text shadow. */
+  .photo-scrim {
+    background-image: linear-gradient(to top, hsl(var(--charcoal) / 0.9), hsl(var(--charcoal) / 0.5) 45%, transparent);
+  }
+  .photo-scrim-side {
+    background-image: linear-gradient(to right, hsl(var(--charcoal) / 0.8), hsl(var(--charcoal) / 0.35) 50%, transparent);
+  }
+  .on-photo {
+    text-shadow: 0 1px 12px hsl(var(--charcoal) / 0.45);
+  }
+}
+
+/* Surfaces, part 2: centred eyebrows, bands, tags on imagery. */
+@layer components {
+  /* Centred eyebrow gets a mirrored hairline on the left. */
+  .eyebrow-center::before {
+    content: '';
+    width: 2.25rem;
+    height: 1px;
+    background: linear-gradient(270deg, hsl(var(--primary) / 0.7), transparent);
+  }
+
+  /* Eyebrow on charcoal or on a photo. */
+  .eyebrow-no.on-dark { color: hsl(var(--charcoal-foreground) / 0.75); }
+  .eyebrow-no.on-dark b { color: hsl(var(--highlight-soft)); }
+  .eyebrow-no.on-dark::after,
+  .eyebrow-no.on-dark::before { background: linear-gradient(90deg, hsl(var(--highlight-soft) / 0.8), transparent); }
+
+  /* Small rotated-square separator for marquee bands. */
+  .sep-diamond {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    flex-shrink: 0;
+    transform: rotate(45deg);
+    background: hsl(var(--highlight-soft));
+  }
+
+  /* Hollow lettering, alternated with solid in the marquee. */
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1px hsl(var(--highlight-soft) / 0.9);
+  }
+
+  /* Square label sitting on a photo: "New", "Featured", a rank. One per card. */
+  .tag-dark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 4px;
+    background: hsl(var(--charcoal) / 0.9);
+    padding: 0.25rem 0.5rem;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: hsl(var(--highlight-soft));
+    backdrop-filter: blur(6px);
+  }
+}

@@ -1,0 +1,12 @@
+# Demo Store
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /checkout
+Disallow: /wallet
+Disallow: /delivery
+Disallow: /api/
+
+# [NEED: live domain] Confirm it, then generate sitemap.xml for it.
+Sitemap: https://example.com/sitemap.xml

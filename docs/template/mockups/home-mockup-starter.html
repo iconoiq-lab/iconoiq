@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>Demo Store home mockup (starter)</title>
+<!--
+  STARTER for the Phase 2 (Look) homepage mockup. Standalone: open it from disk, no build.
+
+  How a store uses it
+  1. Copy this file to docs/look/home-mockup.html (that is the standard path).
+  2. Re-skin it by editing ONE place: the :root and .dark token block below. Names are the template's role
+     names (src/index.css) and values are HSL triplets without hsl(), so Phase 3 pastes the same block into
+     src/index.css. The shapes in the "photos" take their colours from the tokens, so they re-skin too.
+  3. Swap the fonts link and the two font tokens, replace "Demo Store" with the client's name and the draft
+     copy with the client's own words. Anything that is a fact (prices, delivery days, contact details) stays
+     a [NEED: ...] marker until the client has answered it. No stars, ratings, reviews, badges, stock or
+     deadlines here: they would be invented.
+  4. Change the layout only as far as the client's section picks (docs/template/SECTIONS.md): this page shows
+     the Classic header, a split hero, category tiles, a product row, one banner, newsletter and footer.
+  5. Measure the palette:   node scripts/qa/contrast.mjs docs/look/home-mockup.html
+  6. Screenshots, 390 and 1440 px, light and dark, into docs/look/shots/:
+     home-390-light.png, home-390-dark.png, home-1440-light.png, home-1440-dark.png (?theme=dark for dark).
+
+  Photos are drawn placeholders, each marked "Photo placeholder". The preview of the real store shows demo data
+  until Phase 5, so the client judges the look from this page.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400..700&display=swap">
+<style>
+/* ===== THE TOKEN BLOCK: the one place a store re-skins. Values are the template's own (src/index.css). ===== */
+:root {
+  color-scheme: light;
+  --background: 60 8% 98%;
+  --foreground: 24 8% 10%;
+  --cream: 60 8% 98%;
+  --card: 0 0% 100%;
+  --card-foreground: 24 8% 10%;
+  --primary: 24 8% 10%;
+  --primary-foreground: 60 8% 98%;
+  --primary-dark: 20 13% 4%;
+  --muted: 60 3% 96%;
+  --muted-foreground: 33 5% 32%;
+  --highlight: 221 83% 53%;
+  --highlight-foreground: 0 0% 100%;
+  --highlight-soft: 213 94% 68%;
+  --charcoal: 24 8% 10%;
+  --charcoal-foreground: 60 8% 98%;
+  --border: 20 4% 90%;
+  --input: 24 4% 52%;
+  --ring: 24 8% 10%;
+  --radius-panel: 18px;
+  --radius-card: 12px;
+  --radius-control: 6px;
+  --radius-chip: 4px;
+  --font-heading: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --grain-opacity: 0.045;
+}
+.dark {
+  color-scheme: dark;
+  --background: 20 13% 4%;
+  --foreground: 60 8% 98%;
+  --cream: 24 8% 10%;
+  --card: 24 8% 10%;
+  --card-foreground: 60 8% 98%;
+  --primary: 60 8% 98%;
+  --primary-foreground: 20 13% 4%;
+  --primary-dark: 30 6% 25%;
+  --muted: 12 6% 15%;
+  --muted-foreground: 24 5% 64%;
+  --highlight: 213 94% 68%;
+  --highlight-foreground: 20 13% 4%;
+  --highlight-soft: 213 94% 68%;
+  --charcoal: 24 8% 10%;
+  --charcoal-foreground: 60 8% 98%;
+  --border: 12 6% 15%;
+  --input: 23 5% 45%;
+  --ring: 60 8% 98%;
+  --grain-opacity: 0.06;
+}
+/* ===== end of the token block ===== */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0; overflow-x: clip;
+  background: hsl(var(--background)); color: hsl(var(--foreground));
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+/* Film grain, as in the store (body::after, --grain-opacity). Set --grain-opacity to 0 for a flat, matte look. */
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 100; pointer-events: none; opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.2 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 160px 160px;
+}
+h1, h2, h3, p, ul { margin: 0; padding: 0; }
+ul { list-style: none; }
+h1, h2, h3 { font-family: var(--font-heading); font-weight: 500; letter-spacing: -0.02em; }
+a { color: inherit; text-decoration: none; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ico.sm { width: 16px; height: 16px; }
+.wrap { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 768px) { .wrap { padding: 0 32px; } }
+@media (min-width: 1024px) { .wrap { padding: 0 64px; } }
+
+/* ---- mockup bar: not part of the store ---- */
+.mock-bar { background: hsl(var(--charcoal)); color: hsl(var(--charcoal-foreground)); font-size: 12px; line-height: 1.4; }
+.mock-bar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; padding-bottom: 8px; }
+.mock-bar b { margin-right: 8px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.seg { display: inline-flex; flex: none; overflow: hidden; border: 1px solid hsl(var(--charcoal-foreground) / 0.45); border-radius: var(--radius-control); }
+.seg button { min-height: 32px; padding: 4px 12px; border: 0; background: none; font-size: 12px; font-weight: 700; color: hsl(var(--charcoal-foreground)); }
+.seg button[aria-pressed="true"] { background: hsl(var(--charcoal-foreground)); color: hsl(var(--charcoal)); }
+
+/* ---- buttons and links ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 28px;
+  border: 1px solid hsl(var(--primary)); border-radius: var(--radius-control);
+  background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+  font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease;
+}
+.btn:active { transform: scale(0.97); }
+@media (hover: hover) { .btn:hover { background: hsl(var(--primary-dark)); } }
+.btn.small { min-height: 44px; padding: 0 8px; flex: 1; min-width: 0; font-size: 11px; letter-spacing: 0.08em; white-space: nowrap; }
+.link-arrow { display: inline-flex; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid hsl(var(--foreground)); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.eyebrow { display: block; margin-bottom: 12px; color: hsl(var(--highlight)); font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+
+/* ---- header: Classic (logo left, search, icons right) ---- */
+.site-header { position: sticky; top: 0; z-index: 40; background: hsl(var(--background)); border-bottom: 1px solid hsl(var(--border)); }
+.hdr-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; }
+.wordmark { font-family: var(--font-heading); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
+.search { display: none; align-items: center; gap: 10px; flex: 1; max-width: 560px; min-height: 44px; padding: 0 14px; border-radius: var(--radius-control); background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-size: 14px; }
+.hdr-icons { display: flex; gap: 2px; }
+.ibtn { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 999px; background: none; color: hsl(var(--foreground)); transition: background-color 150ms ease, transform 140ms ease; }
+.ibtn:active { transform: scale(0.97); }
+@media (hover: hover) { .ibtn:hover { background: hsl(var(--muted)); } }
+.m-search { display: flex; padding-bottom: 12px; }
+.m-search .search { display: flex; max-width: none; }
+.cat-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
+.cat-nav a { flex: none; padding: 10px 16px; border: 1px solid hsl(var(--border)); border-radius: 999px; background: hsl(var(--card)); font-size: 14px; }
+@media (min-width: 1024px) {
+  .hdr-row { min-height: 76px; }
+  .wordmark { font-size: 26px; }
+  .search { display: flex; }
+  .m-search { display: none; }
+  .cat-nav { justify-content: center; gap: 40px; padding-bottom: 14px; }
+  .cat-nav a { padding: 6px 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: none; font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; }
+  .cat-nav a:hover { border-bottom-color: hsl(var(--foreground)); }
+}
+
+/* ---- placeholder photos: drawn shapes in the theme colours, always labelled ---- */
+.ph { position: relative; overflow: hidden; background: hsl(var(--muted)); }
+.ph svg { display: block; width: 100%; height: 100%; }
+.ph::after {
+  content: 'Photo placeholder'; position: absolute; left: 8px; bottom: 8px; padding: 2px 6px;
+  border-radius: var(--radius-chip); background: hsl(var(--background) / 0.9); color: hsl(var(--foreground));
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+}
+.s1 { fill: hsl(var(--primary) / 0.14); } .s2 { fill: hsl(var(--highlight) / 0.2); } .s3 { fill: hsl(var(--foreground) / 0.08); }
+.ph-zoom { transition: transform 520ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (hover: hover) { .zoom:hover .ph-zoom { transform: scale(1.03); } }
+
+/* ---- hero: split (copy left, photo right) ---- */
+.hero { display: grid; grid-template-columns: 1fr; }
+.hero-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding: 36px 16px 48px; }
+.hero h1 { max-width: 13ch; font-size: clamp(40px, 11vw, 52px); line-height: 1.05; }
+.lede { max-width: 36ch; color: hsl(var(--muted-foreground)); font-size: 17px; }
+.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; margin-top: 8px; }
+.hero .ph { aspect-ratio: 4 / 3.4; order: -1; }
+@media (min-width: 900px) {
+  .hero { grid-template-columns: 1fr 1fr; min-height: 620px; }
+  .hero .ph { order: 0; aspect-ratio: auto; }
+  .hero-copy { justify-content: center; gap: 24px; padding: 72px 64px 72px max(64px, calc((100vw - 1440px) / 2 + 64px)); }
+  .hero h1 { font-size: clamp(52px, 5.4vw, 80px); }
+}
+
+/* ---- sections ---- */
+section.block { padding: 56px 0; }
+section.block.flush { padding-top: 0; }
+@media (min-width: 1024px) { section.block { padding: 96px 0; } section.block.flush { padding-top: 0; } }
+.sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+h2 { font-size: clamp(28px, 3.2vw, 42px); line-height: 1.1; }
+
+/* ---- category tiles ---- */
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px 12px; }
+.tile .ph { aspect-ratio: 4 / 5; border-radius: var(--radius-card); }
+.tile-name { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-family: var(--font-heading); font-size: 20px; line-height: 1.2; }
+.tile-name .ico { color: hsl(var(--muted-foreground)); transition: transform 150ms ease; }
+@media (hover: hover) { .tile:hover .tile-name .ico { transform: translateX(4px); } }
+@media (min-width: 900px) { .tiles { grid-template-columns: repeat(4, 1fr); gap: 32px 24px; } }
+
+/* ---- product row ---- */
+.grid4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 1024px) { .grid4 { grid-template-columns: repeat(4, 1fr); gap: 24px; } }
+.pcard { display: flex; flex-direction: column; padding: 6px; border: 1px solid hsl(var(--border)); border-radius: var(--radius-card); background: hsl(var(--card)); color: hsl(var(--card-foreground)); }
+.pcard .ph { aspect-ratio: 4 / 5; border-radius: calc(var(--radius-card) - 4px); }
+.p-body { display: flex; flex: 1; flex-direction: column; gap: 4px; padding: 14px 6px 6px; }
+.p-cat { color: hsl(var(--highlight)); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+.p-name { font-family: var(--font-body); font-size: 15px; font-weight: 600; letter-spacing: 0; line-height: 1.3; }
+.p-price { margin-top: auto; padding-top: 6px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.p-actions { display: flex; gap: 8px; margin-top: 10px; }
+.sq { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border: 1px solid hsl(var(--input)); border-radius: var(--radius-control); background: none; transition: background-color 150ms ease, transform 140ms ease; }
+.sq:active { transform: scale(0.97); }
+@media (hover: hover) { .sq:hover { background: hsl(var(--muted)); } }
+
+/* ---- one banner ---- */
+.banner { display: grid; grid-template-columns: 1fr; overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: var(--radius-panel); background: hsl(var(--card)); color: hsl(var(--card-foreground)); }
+.banner .ph { aspect-ratio: 4 / 3; }
+.banner-copy { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 16px; padding: 32px 24px 36px; }
+@media (min-width: 900px) { .banner { grid-template-columns: 1fr 1.1fr; } .banner .ph { order: 2; aspect-ratio: auto; min-height: 420px; } .banner-copy { padding: 56px 64px; } }
+
+/* ---- newsletter + footer ---- */
+.foot { background: hsl(var(--charcoal)); color: hsl(var(--charcoal-foreground)); }
+.dark .foot { border-top: 1px solid hsl(var(--border)); }
+.news { padding: 48px 0; border-bottom: 1px solid hsl(var(--charcoal-foreground) / 0.18); }
+.news .wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.news .eyebrow { color: hsl(var(--highlight-soft)); }
+.news h2 { max-width: 20ch; }
+.news form { display: flex; gap: 8px; width: 100%; max-width: 520px; }
+.news input { flex: 1; min-width: 0; min-height: 48px; padding: 0 16px; border: 1px solid hsl(var(--charcoal-foreground) / 0.5); border-radius: var(--radius-control); background: transparent; color: hsl(var(--charcoal-foreground)); }
+.news input::placeholder { color: hsl(var(--charcoal-foreground) / 0.7); }
+.news .btn { padding: 0 20px; border-color: hsl(var(--charcoal-foreground)); background: hsl(var(--charcoal-foreground)); color: hsl(var(--charcoal)); }
+@media (min-width: 900px) { .news .wrap { grid-template-columns: 1fr auto; align-items: end; } }
+.foot-main { display: grid; gap: 32px; padding-top: 48px; padding-bottom: 32px; }
+.foot .wordmark { font-size: 26px; }
+.foot .tagline { max-width: 36ch; margin-top: 12px; }
+.foot p, .foot a { color: hsl(var(--charcoal-foreground) / 0.8); font-size: 14px; }
+.foot h3 { margin-bottom: 12px; font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: hsl(var(--highlight-soft)); }
+.foot li a { display: inline-block; padding: 6px 0; }
+@media (hover: hover) { .foot a:hover { color: hsl(var(--charcoal-foreground)); } }
+.foot-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; }
+@media (min-width: 900px) { .foot-main { grid-template-columns: 1fr 2fr; } .foot-cols { grid-template-columns: repeat(3, 1fr); } }
+.foot-legal-wrap { border-top: 1px solid hsl(var(--charcoal-foreground) / 0.18); }
+.foot-legal { padding-top: 20px; padding-bottom: 28px; font-size: 13px; }
+
+/* ---- mockup notes: not part of the store ---- */
+.notes { padding: 40px 0 56px; background: hsl(var(--muted)); color: hsl(var(--foreground)); font-size: 14px; }
+.notes h2 { margin-bottom: 12px; font-size: 22px; }
+.notes .cols { display: grid; gap: 24px; }
+.notes h3 { margin-bottom: 6px; font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.notes li { padding: 2px 0; }
+.notes p { max-width: 70ch; margin-bottom: 16px; color: hsl(var(--muted-foreground)); }
+@media (min-width: 768px) { .notes .cols { grid-template-columns: 1fr 1fr; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+<script>
+  // ?theme=dark opens the dark theme; the buttons in the bar switch it. Mockup only.
+  (function () {
+    var dark = new URLSearchParams(location.search).get('theme') === 'dark';
+    document.documentElement.classList.toggle('dark', dark);
+    document.addEventListener('DOMContentLoaded', function () {
+      var buttons = document.querySelectorAll('.seg button');
+      function set(isDark) {
+        document.documentElement.classList.toggle('dark', isDark);
+        buttons.forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.theme === 'dark') === isDark)); });
+      }
+      buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.dataset.theme === 'dark'); }); });
+      set(dark);
+    });
+  })();
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+</svg>
+
+<div class="mock-bar">
+  <div class="wrap">
+    <span><b>Mockup</b>Photos, names and prices are placeholders. Not the live store.</span>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-theme="light" aria-pressed="true">Light</button>
+      <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</div>
+
+<header class="site-header">
+  <div class="wrap">
+    <div class="hdr-row">
+      <a class="wordmark" href="#top" aria-label="Demo Store home">Demo Store</a>
+      <div class="search" role="search"><svg class="ico sm" aria-hidden="true"><use href="#i-search"/></svg>Search products</div>
+      <div class="hdr-icons">
+        <button class="ibtn" type="button" aria-label="Account"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg></button>
+        <button class="ibtn" type="button" aria-label="Wishlist"><svg class="ico" aria-hidden="true"><use href="#i-heart"/></svg></button>
+        <button class="ibtn" type="button" aria-label="Cart"><svg class="ico" aria-hidden="true"><use href="#i-bag"/></svg></button>
+      </div>
+    </div>
+    <div class="m-search"><div class="search"><svg class="ico sm" aria-hidden="true"><use href="#i-search"/></svg>Search products</div></div>
+    <nav class="cat-nav" aria-label="Categories">
+      <a href="#categories">Category one</a><a href="#categories">Category two</a><a href="#categories">Category three</a><a href="#categories">Category four</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO: split. Photo right on desktop, above the copy on phones. -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <span class="eyebrow">[NEED: eyebrow line]</span>
+      <h1 id="hero-title">Your headline, in a line or two.</h1>
+      <p class="lede">[NEED: one sentence about what the store sells and who it is for]</p>
+      <div class="hero-actions">
+        <a class="btn" href="#products">Shop all</a>
+        <a class="link-arrow" href="#categories">Browse categories <svg class="ico sm" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
+    </div>
+    <div class="ph" role="img" aria-label="Photo placeholder">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><rect class="s3" x="0" y="70" width="100" height="30"/><circle class="s1" cx="62" cy="44" r="26"/><circle class="s2" cx="40" cy="58" r="14"/></svg>
+    </div>
+  </section>
+
+  <!-- CATEGORY TILES: equal tiles, name below the photo. -->
+  <section class="block" id="categories" aria-labelledby="cat-title">
+    <div class="wrap">
+      <div class="sec-head"><div><span class="eyebrow">Shop by category</span><h2 id="cat-title">Find your way in</h2></div></div>
+      <ul class="tiles">
+        <li><a class="tile zoom" href="#products"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><circle class="s1" cx="50" cy="56" r="30"/><rect class="s3" x="0" y="96" width="100" height="29"/></svg></div><span class="tile-name">Category one<svg class="ico sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a></li>
+        <li><a class="tile zoom" href="#products"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><rect class="s2" x="18" y="30" width="44" height="56" rx="8"/><rect class="s1" x="40" y="46" width="42" height="52" rx="8"/></svg></div><span class="tile-name">Category two<svg class="ico sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a></li>
+        <li><a class="tile zoom" href="#products"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><path class="s1" d="M24 98V58a26 26 0 0 1 52 0v40z"/><circle class="s2" cx="50" cy="40" r="9"/></svg></div><span class="tile-name">Category three<svg class="ico sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a></li>
+        <li><a class="tile zoom" href="#products"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><path class="s2" d="M50 28l30 52H20z"/><circle class="s1" cx="66" cy="42" r="14"/><rect class="s3" x="0" y="100" width="100" height="25"/></svg></div><span class="tile-name">Category four<svg class="ico sm" aria-hidden="true"><use href="#i-arrow"/></svg></span></a></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PRODUCT ROW: no stars or ratings until the store has real reviews. -->
+  <section class="block flush" id="products" aria-labelledby="prod-title">
+    <div class="wrap">
+      <div class="sec-head"><div><span class="eyebrow">[NEED: section label]</span><h2 id="prod-title">Featured products</h2></div><a class="link-arrow" href="#products">View all <svg class="ico sm" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+      <ul class="grid4">
+        <li class="pcard zoom"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><circle class="s2" cx="50" cy="60" r="24"/><rect class="s3" x="0" y="100" width="100" height="25"/></svg></div><div class="p-body"><span class="p-cat">Category one</span><h3 class="p-name">Sample product one</h3><span class="p-price">₹000</span><div class="p-actions"><button class="btn small" type="button">Add to cart</button><button class="sq" type="button" aria-label="Save Sample product one to wishlist"><svg class="ico" aria-hidden="true"><use href="#i-heart"/></svg></button></div></div></li>
+        <li class="pcard zoom"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><rect class="s1" x="26" y="36" width="48" height="56" rx="8"/></svg></div><div class="p-body"><span class="p-cat">Category two</span><h3 class="p-name">Sample product two</h3><span class="p-price">₹000</span><div class="p-actions"><button class="btn small" type="button">Add to cart</button><button class="sq" type="button" aria-label="Save Sample product two to wishlist"><svg class="ico" aria-hidden="true"><use href="#i-heart"/></svg></button></div></div></li>
+        <li class="pcard zoom"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><path class="s2" d="M28 96V62a22 22 0 0 1 44 0v34z"/></svg></div><div class="p-body"><span class="p-cat">Category three</span><h3 class="p-name">Sample product three</h3><span class="p-price">₹000</span><div class="p-actions"><button class="btn small" type="button">Add to cart</button><button class="sq" type="button" aria-label="Save Sample product three to wishlist"><svg class="ico" aria-hidden="true"><use href="#i-heart"/></svg></button></div></div></li>
+        <li class="pcard zoom"><div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><path class="s1" d="M50 34l28 50H22z"/><circle class="s2" cx="68" cy="46" r="10"/></svg></div><div class="p-body"><span class="p-cat">Category four</span><h3 class="p-name">Sample product four</h3><span class="p-price">₹000</span><div class="p-actions"><button class="btn small" type="button">Add to cart</button><button class="sq" type="button" aria-label="Save Sample product four to wishlist"><svg class="ico" aria-hidden="true"><use href="#i-heart"/></svg></button></div></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ONE BANNER -->
+  <section class="block flush" aria-labelledby="banner-title">
+    <div class="wrap">
+      <div class="banner zoom">
+        <div class="banner-copy">
+          <span class="eyebrow">[NEED: banner label]</span>
+          <h2 id="banner-title">A banner headline.</h2>
+          <p class="lede">[NEED: one line for the banner]</p>
+          <a class="btn" href="#products">Shop the collection</a>
+        </div>
+        <div class="ph" role="img" aria-label="Photo placeholder"><svg viewBox="0 0 100 80" preserveAspectRatio="xMidYMid slice" class="ph-zoom"><circle class="s1" cx="58" cy="38" r="28"/><circle class="s2" cx="36" cy="50" r="12"/><rect class="s3" x="0" y="64" width="100" height="16"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="news">
+    <div class="wrap">
+      <div><span class="eyebrow">Newsletter</span><h2>[NEED: newsletter line]</h2></div>
+      <form onsubmit="return false"><label class="sr-only" for="nl">Email address</label><input id="nl" type="email" placeholder="Enter your email" autocomplete="email"><button class="btn" type="button">Subscribe</button></form>
+    </div>
+  </div>
+  <div class="wrap foot-main">
+    <div><a class="wordmark" href="#top">Demo Store</a><p class="tagline">[NEED: tagline]</p></div>
+    <div class="foot-cols">
+      <div><h3>Shop</h3><ul><li><a href="#products">Shop all</a></li><li><a href="#products">New arrivals</a></li><li><a href="#products">Best sellers</a></li></ul></div>
+      <div><h3>Information</h3><ul><li><a href="#top">Privacy policy</a></li><li><a href="#top">Terms and conditions</a></li><li><a href="#top">Shipping policy</a></li><li><a href="#top">Cancellation and refunds</a></li></ul></div>
+      <div><h3>Contact</h3><ul><li><p>[NEED: email]</p></li><li><p>[NEED: phone]</p></li><li><p>[NEED: opening hours]</p></li></ul></div>
+    </div>
+  </div>
+  <div class="foot-legal-wrap"><div class="wrap foot-legal"><p>&copy; Demo Store. All rights reserved.</p></div></div>
+</footer>
+
+<aside class="notes" aria-label="Mockup notes (not part of the store)">
+  <div class="wrap">
+    <h2>Mockup notes</h2>
+    <p>Not part of the store. The real home page has about a dozen blocks. List here which ones this store keeps, so the client says yes to a page that can be built. Hiding a block is Phase 3 work: only Testimonials and Video stories have a switch in <code>src/config/features.ts</code>; the others follow the home content and settings, so each hidden block is a small code change.</p>
+    <div class="cols">
+      <div>
+        <h3>Shown in this mockup (stay)</h3>
+        <ul><li>Header with search and category links</li><li>Hero banner</li><li>Category display</li><li>One product row</li><li>One banner</li><li>Newsletter and footer</li></ul>
+      </div>
+      <div>
+        <h3>Home blocks left out: [NEED: decide per store]</h3>
+        <ul><li>Top deals</li><li>Best sellers and trending products</li><li>Featured product</li><li>Marquee band, feature icons, promo cards</li><li>Free-shipping band</li><li>Testimonials (only with real reviews)</li><li>Collection banner, video stories</li></ul>
+      </div>
+    </div>
+  </div>
+</aside>
+
+</body>
+</html>

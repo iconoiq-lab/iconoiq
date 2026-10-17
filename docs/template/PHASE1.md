@@ -1,0 +1,16 @@
+# Phase 1 checklist
+
+What Phase 1 (Setup) sets, and where. Values come from `REQUIREMENTS.md`; an answer that is still `[NEED: ...]` stays a marker. `npm test` fails when a name, a delivery number or a category is left behind in one of the copies below.
+
+| Set | Where | Caught by `npm test` |
+|---|---|---|
+| Store name, short name, legal name, slug, tagline, `description` (the footer tagline and the meta description), contact, state and code, hours, social links, price bands, member prefix (only if rewards stay on) | `src/config/brand.ts` | |
+| The name, copied where `brand.ts` cannot be imported | `STORE_NAME` in `api/media.ts`, `api/whatsapp-send.ts`, `api/send-call-notification.ts` and `scripts/test-whatsapp-otp.mjs`; `index.html` (`<title>`, `og:title`, `author`, and the two descriptions); `public/manifest.webmanifest` (`name`, `short_name`, `description`); the first line of `public/robots.txt`; the fallback title in `public/firebase-messaging-sw.js`; the slug in `index.html`'s theme key | Yes, all but the descriptions (`tests/brand-parity.test.ts`) |
+| Feature switches | `src/config/features.ts` (sizes and what each hides: `FEATURES.md`) | |
+| Categories | `DEFAULT_CATEGORIES` in `src/services/categoryService.ts`. The category strip, the About page, the starter home collection cards (Admin > Home collections > Import: the home page shows only saved collections), the footer links and the mobile search suggestions follow it. Strip icons are a short list in `CategoryIconNav.tsx` (Phase 3) | Yes, a demo name left in `src/` (`tests/category-names.test.ts`) |
+| Delivery | `DEFAULT_DELIVERY` in `src/services/siteSettingsService.ts` (charges, free-above amount, `estimatedDays`, which the shipping policy page shows) and its copy in `api/create-order.ts` (home state, charges, free-above amount) | Yes, the numbers and the home state |
+| Return window (days) | Change together, in three places: `RETURN_WINDOW_DAYS` in `src/lib/returnWindow.ts` (the "N-day returns" chips, the refund policy page and the promises panel read it), `duration.value(N, 'd')` in `isValidReturnRequest` in `firestore.rules` (what the server accepts), and `const RETURN_WINDOW_DAYS` in `api/notify-order.ts` (points stay locked until the window closes). Deploy the rules after changing them | Yes, the three numbers must be equal (`tests/returnWindow.test.ts`) |
+| Support reply time | `replyWithin` in `src/config/brand.ts` (`"24 hours"`; empty promises nothing). `DEFAULT_SUPPORT.responseTime` in `src/services/siteSettingsService.ts` is built from it ("Within 24 hours"), so there is one place to edit; the admin can still change the saved value in Admin > Commerce > Support | |
+| Where orders ship to | `shipsTo` in `src/config/brand.ts` (`"Shipped across India"`; empty hides the line). Shown under the delivery time in the home facts strip, which is off until `facts` is switched on in `src/config/homeBlocks.ts` (Phase 3) | |
+
+Not changed in Phase 1: until Phase 3 the logo is the template's, and until Phase 5 the preview reads the demo Firebase project, so it keeps that project's categories and products. Do not sign in as admin on the preview before Phase 5: opening a category page or the product form as admin writes `DEFAULT_CATEGORIES` to Firestore.

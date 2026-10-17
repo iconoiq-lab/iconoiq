@@ -1,0 +1,212 @@
+# UI system
+
+The shared pieces every page builds on. Rule zero is still CLAUDE.md: keep the layout, change the design. Use these instead of one-off classes; if something is missing, add it here rather than inventing a local version.
+
+## 1. Tokens
+
+This page describes roles and rules. **The values live in `src/index.css`** (colours, radius, motion, fonts, shadows, textures), and every store sets its own there in Phase 3 (`docs/template/PHASE3.md`), so this page states none of them: when a number or a name here disagrees with `src/index.css`, the CSS is right. All colours are HSL triplets with a light value (`:root`) and a dark value (`.dark`), so Tailwind opacity modifiers work (`bg-primary/10`). Token and class names (`btn-copper`, `--gradient-gold`, `cream`, `charcoal`) are kept across stores so components keep working; they describe a role, not a colour. Fonts are `--font-heading` and `--font-body`, loaded by one Google Fonts link in `index.html`.
+
+| Role | Tailwind | Notes |
+|---|---|---|
+| Page, text | `bg-background`, `text-foreground` | |
+| Raised surface | `bg-card text-card-foreground` | `tx-sheet` adds the paper texture |
+| Inset, hover | `bg-muted` | row hover `hover:bg-muted/60` |
+| Secondary text | `text-muted-foreground` | at least 4.5:1 on background, card and muted. Never `text-muted-foreground/NN` |
+| Brand colour | `bg-primary`, `text-primary` | the only brand fill. `highlight` is for small emphasis text, never fills |
+| Menu highlight, ghost hover | `bg-accent` | a soft neutral tone, not the brand colour |
+| Borders | `border-border`; fields `border-input` (3:1) | hairlines inside panels `border-foreground/[0.08]` |
+| Charcoal bands | `bg-charcoal`, `text-charcoal-foreground` | on charcoal, text at least `/60` |
+| Destructive | `text-destructive`, `bg-destructive` | filled only in ConfirmDialog |
+
+**`--primary-dark` and `--primary-light` do not mean the same thing in light and dark.** In the light theme `--primary-dark` is the hover shade (a step deeper than `--primary`: `.btn-copper:hover`, the compact card buttons) and `--primary-light` a lighter step. In the dark theme the primary is already the light colour, so there is no lighter step: `--primary-light` is the dimmer hover shade (`dark:hover:bg-primary-light`) and `--primary-dark` is a dark chip colour (the offer tag icon). `--gradient-gold` happens to use all three in order in both themes. When you choose a palette, set the pair for the hover shade of each theme, and check button text on that hover shade by hand: `scripts/qa/contrast.mjs` measures `primary-foreground` on `primary` but not on the hover shade.
+
+**Status tones** (`--status-<tone>-fg/-bg/-line`): `success`, `danger`, `warning`, `info`, `returns`, `neutral`.
+Classes: `text-status-success-fg`, `bg-status-success-bg`, `border-status-success-line`, `border-l-status-danger-fg` ... Every fg-on-bg pair must pass 4.5:1 in both themes (`scripts/qa/contrast.mjs` and `npm test` check it).
+
+**Radius**, four roles from largest to smallest: `rounded-panel` (dialogs, sheets, panels, notices), `rounded-card` (product cards, menus, popovers, toasts, list tiles), `rounded-control` (buttons, inputs, selects, segmented controls, filter chips), `rounded-chip` (badges, status chips, `tag-dark`, `chip-off`). `rounded-full` only for icon buttons, avatars, switches, dots. No `rounded-2xl/3xl` or one-off pixel radii. All four read CSS variables (`--radius-panel`, `--radius-card`, `--radius-control`, `--radius-chip` in `src/index.css`), so a store sets its radius there and nowhere else.
+
+**Opacity steps** added: 6, 7, 8, 11, 12, 18, 28, 42 (`bg-foreground/8` now works).
+
+**Z-index** (`z-*` utilities, CSS `var(--z-*)`, values in `src/index.css`), low to high: `raised` (buttons above a card's stretched link) · `sticky` · `header` · `overlay` (dialog + scrim) · `drawer` (Sheet, Drawer) · `popover` (menus, selects, tooltips) · `toast` · `loader` · `grain` (pointer-events none). Never `z-[999]`. Sticky sidebars: `top-[var(--sticky-top)]` (it changes at the lg breakpoint).
+
+**Surfaces and helpers** (in `src/index.css`): `tx-paper`, `tx-sheet`, `tx-slate`, `tx-contour`, `panel` (rounded-panel + hairline + `--shadow-panel`; Tailwind `shadow-panel`), `card-product`, `tile-img`, `price-now`, `price-was`, `chip-off`, `tag-dark` (10px, charcoal/90), `eyebrow-no` (words only, no numbers), `btn-copper`, `btn-line`, `btn-round`, `link-arrow`.
+Look dials in `src/index.css`, each defaulting to the template look and documented with "set to 0 for a matte store" in `docs/template/PHASE3.md`: `--texture-opacity` (paper, sheet, slate and contour textures), `--grain-opacity` (the film grain), `--sheen` (foil sweep on buttons, contour rings, offer foil), `--hover-lift` (how far a card rises on hover; use `hover:-translate-y-[var(--hover-lift)]`, never a fixed pixel lift) and `data-heading-weight="light"` with `--heading-weight-lg/-sm` (opt-in light headings). Colours inside these classes come from tokens (`--charcoal`, `--primary`, `--highlight-soft`), never literals.
+Text on photos: `photo-scrim` (bottom, a charcoal scrim fading to transparent) or `photo-scrim-side` (desktop hero), plus `on-photo` on the text. Google Maps iframe: class `map-embed` (dimmed in dark mode).
+
+**Icons**: lucide only. Every `svg.lucide` is stroke 1.5 globally; per-icon `strokeWidth` props no longer do anything, delete them when you touch a file. Override with a utility (`[stroke-width:2.5]`) when truly needed. Sizes: 16px inline, 20px in controls, 24px nav. Decorative icons get `aria-hidden="true"`.
+
+## 2. Motion
+
+CSS tokens and Tailwind keys:
+
+| Use | Tailwind | Token |
+|---|---|---|
+| Press feedback | `duration-press` | `--dur-press` |
+| Hover colour | `duration-hover` | `--dur-hover` |
+| Tooltip | `duration-tooltip` | `--dur-tooltip` |
+| Menu, select, popover | `duration-dropdown` | `--dur-dropdown` |
+| Dialog | `duration-modal` | `--dur-modal` |
+| Sheet / drawer | `duration-drawer` + `ease-drawer` | `--dur-drawer`, `--ease-drawer` |
+| Any exit | `duration-exit` | `--dur-exit` |
+| Scroll reveal | `duration-reveal` | `--dur-reveal` |
+
+The values (in ms) are in `src/index.css`, and their JS twins in `src/lib/motion.ts`; `tailwind.config.ts` repeats the reveal one. Change a duration in all of them, or none. `ease-out` and `ease-in-out` are overridden globally with the strong curves in `--ease-out` and `--ease-in-out`. `future.hoverOnlyWhenSupported` is on: every `hover:` utility only applies on devices that can hover.
+
+Rules: animate only `transform` and `opacity`; name the properties (`transition-[transform,background-color]`, never `transition-all`); never start from `scale(0)` (min 0.9); popovers scale from their trigger, dialogs stay centred; exits faster than entries; nothing over 300ms except reveals; never animate keyboard-initiated or very frequent actions; every pressable gets `active:scale-[0.97]`.
+
+`src/lib/motion.ts` (import from `framer-motion`, not `motion/react`):
+
+| Export | Use |
+|---|---|
+| `EASE_OUT`, `EASE_IN_OUT`, `EASE_DRAWER`, `DUR` | raw values |
+| `fadeUp` | content appearing in place (message, swapped panel): `<motion.div {...fadeUp}>` |
+| `pop` | small things popping in (badge, check mark) |
+| `sheetBottom`, `sheetRight` | hand-built panels only; prefer the Sheet primitive |
+| `reveal` | whole-section scroll reveal; use `<Reveal>` |
+| `staggerDelay(i)` | `--stagger` per item, capped at 8 |
+| `tap` | `whileTap={tap}` on `motion.button` |
+
+**Reduced motion**: `<MotionConfig reducedMotion="user">` at the app root makes framer drop transforms and keep fades. A global CSS block keeps colour/opacity transitions (a short fixed duration) and stops marquee, foil sweeps, `animate-ping/pulse/bounce`; Radix enter/exit animations keep their fade but lose slide and zoom. Infinite loops you write must also check `useReducedMotion()` and stop when off screen or the tab is hidden (`useAutoScroll` does this).
+
+**Route transitions** (App.tsx): navigation runs in a React transition (old page stays until the next chunk is ready); the Suspense fallback is `RouteSkeleton`, visible only after 150ms; each page fades in 200ms on a keyed wrapper (`.route-enter`, opacity only). Admin pages share one key, so the admin shell does not refade on every click.
+
+`<Reveal>` (`src/components/Reveal.tsx`): wraps a whole section, fades up a little once when 10% is visible. Never wrap individual products. Props: `delay` (seconds) plus any `motion.div` props.
+
+## 3. Loading: skeletons, not spinners
+
+`src/components/skeletons/index.tsx`. Each root has `aria-busy="true"` and a screen-reader label (`label` prop; pass `label=""` when nested inside another skeleton). Render them inside the normal page chrome (Header/Footer stay) at the final height.
+
+`RouteSkeleton` · `ProductCardSkeleton` · `ProductGridSkeleton({count=8})` · `ProductRowSkeleton({count=5, itemClassName="w-[230px]"})` · `HeroSkeleton` (tx-slate at hero size, no text) · `SectionSkeleton({title, children})` · `PanelSkeleton({lines=3})` · `ListSkeleton({rows=3, thumb})` · `TableSkeleton({rows=8, cols=5})` · `FormSkeleton({fields=6})` · `DetailSkeleton` (order/customer page) · `StatCardsSkeleton({count=4})` · `MediaGridSkeleton({count=8})` · `AuthCardSkeleton`.
+
+`<Skeleton className="h-4 w-1/2" />` (`ui/skeleton`) is the single block: `bg-foreground/[0.06]`, control-sized radius, still under reduced motion.
+
+`<Spinner size={16} label? />` (`ui/spinner`) only inside buttons: `<Button disabled={saving}>{saving && <Spinner />}Save</Button>`.
+
+## 4. Status and feedback
+
+**`getOrderStatus(status, order?)`** (`src/lib/orderStatus.ts`) returns `{ label, tone, icon }` for every Order status: pending (warning), processing/packed/shipped/outForDelivery (info), delivered/refunded (success), cancelled/deliveryFailed "Delivery failed" (danger), returnRequested/returnScheduled/picked/returned (returns). Pass the order to get "Pending, COD", "Needs review" (danger, for `needsManualReview`), outbound `picked` as "Out for delivery", and "Late return" (neutral) when a return came after the 7-day window. `ORDER_STATUSES` lists them in order. `getProductStatus({ isActive, stock })` gives Live / Hidden / Sold out.
+
+**`<StatusBadge tone label icon? dot? pulse? />`** (`ui/status-badge`): 24px chip, icon + label. `<OrderStatusBadge status={o.status} order={o} />` wraps the map. `STATUS_TONE_CLASSES[tone]` gives the chip classes for custom rows.
+
+**`<Notice tone title? icon? action? compact?>`** (`ui/notice`): every banner, callout and inline error. Paper sheet, 3px left rule in the tone colour, tone icon, normal body text. `role="alert"` for danger, `role="status"` otherwise (override with `role`). Replaces gradient banners and red/green/purple boxes. (`ui/alert` is restyled to the same look for old callers.)
+
+**`<EmptyState icon title description? action? secondaryAction? as? />`** (`src/components/EmptyState.tsx`): charcoal tile with a highlight-colour icon, heading-font title, one muted line, one `btn-copper` action (`{ label, to }` or `{ label, onClick }`) and an optional `link-arrow`.
+
+**Toasts**: Sonner only (`<Sonner />` in App). `import { toast } from 'sonner'`; `toast('Saved')`, `toast.success()`, `toast.error()`. Undo: `toast('Removed from cart', { action: { label: 'Undo', onClick } })`. Old `useToast()` calls still work (`src/hooks/use-toast.ts` adapter; `variant: 'destructive'` becomes `toast.error`). Copy: say what happened, sentence case, no "!" or emoji.
+
+## 5. Overlays
+
+All Radix. Dialog: centred, fade + zoom from 0.96 (`--dur-modal` in, `--dur-exit` out), charcoal/60 scrim with a slight blur, `rounded-panel bg-card`, built-in 40px Close button labelled "Close" (`hideClose` to drop it). Sheet (`side`): drawer curve and `--dur-drawer`, exit `--dur-exit`, bottom sheets `rounded-t-panel` with a safe-area pad (`hideClose` available). Menus, popovers, selects, tooltips scale from their trigger (`origin-[var(--radix-*-transform-origin)]`), `rounded-card`, highlighted item `bg-accent`. Tooltip: charcoal chip, 400ms delay then instant between tooltips (set on the `TooltipProvider` in App). Escape closes, focus is trapped and returned.
+
+**`<ConfirmDialog open onOpenChange title description confirmLabel cancelLabel="Cancel" tone="danger"|"default" onConfirm />`** (`src/components/ConfirmDialog.tsx`): every destructive or irreversible action. Title names the object ("Delete this address?"), confirm label 1-3 words. Cancel has focus on open. If `onConfirm` returns a promise, the button shows a spinner and the dialog closes when it resolves (stays open if it throws).
+
+**Focus return for dialogs opened from state.** Radix returns focus to the opener only when a `*Trigger` opened the dialog. When one opens from state (`open={x}`), focus falls to `<body>` on close. For ConfirmDialog pass `returnFocusRef={buttonRef}`; for a Dialog or Sheet add `onCloseAutoFocus={(e) => { e.preventDefault(); triggerRef.current?.focus(); }}` to its Content.
+
+## 6. Buttons
+
+| Level | Use |
+|---|---|
+| Primary (one per view) | `<Button>` (primary colour, h-11, 11px bold caps, `rounded-control`) or `className="btn-copper"` |
+| Secondary | `<Button variant="outline">` (border-input, hover muted) or `variant="line"` / `btn-line` (current colour, for photos) |
+| Tertiary | `<Button variant="ghost">` (sentence case) or `link-arrow`; `variant="link"` for inline text links |
+| Destructive in a flow | `<Button variant="destructive">` (outlined danger) |
+| Confirm inside ConfirmDialog | `variant="destructiveSolid"` (only there) |
+
+Sizes: `default` h-11, `sm` h-9 (12px semibold, normal case), `lg` h-12, `icon` size-10. All have press scale 0.97 and `disabled:opacity-60 cursor-not-allowed`. No one-off CTA colours (any custom fill that is not the brand colour), never `rounded-full` text buttons. CTA labels at most 3 words, no wrapping. `secondary` is kept for old callers (muted fill).
+
+**`<IconButton label variant="ghost"|"solid"|"onPhoto" size="default"|"sm"|"lg" tooltip? asChild?>`** (`ui/icon-button`): every icon-only control. `label` is required and becomes `aria-label` ("Close", "Open menu", "Add {name} to cart"); `tooltip` (true or a string) shows it on hover/focus. Round; default 44px on touch, 40px with a mouse; an invisible 4px ring extends the hit area. `asChild` to render a `<Link>`. Pass the icon as the child: `<IconButton label="Close"><X /></IconButton>` (the icon is sized by the button).
+
+**`<WishlistToggle name saved onToggle variant? size? />`** (`src/components/WishlistToggle.tsx`): the heart. Controlled: the parent calls `useWishlist()` once (each instance syncs with Firestore, so never one per card) and passes `saved={isInWishlist(id)}` and `onToggle={() => toggleWishlist(id, name)}`. One label, "Save {name} to wishlist"; `aria-pressed` carries the saved state; primary-filled heart when saved. It stops click propagation, so it works inside a card link.
+
+## 7. Product card
+
+`<ProductCard product index? size="grid"|"row" showEmptyRating={true} className? />` (`src/components/ProductCard.tsx`).
+
+- The title is a `<Link to="/product/:id">` stretched over the card (`after:absolute after:inset-0`); the card shows a primary-colour outline when the link has keyboard focus. Buttons inside sit above it with `relative z-raised`. Do not add `onClick` navigation to the card.
+- Title: `h3`, 13px (14px from md), two lines max, `title` attribute with the full name.
+- Price: `formatINR`, was-price inline whenever `oldPrice > price`, `chip-off` when `discount > 0`.
+- `grid` (default): category label, star row (kept even with no reviews, owner decision; `showEmptyRating={false}` hides it until there are reviews), full-width "Add to cart" that becomes a 40px-tall quantity stepper ("Decrease/Increase quantity of {name}").
+- `row`: 230px wide home-row card, no category or stars, round 40px "Add {name} to cart" IconButton beside the price.
+- Entrance: opacity plus a small rise, `staggerDelay(index)`. Hover lift (`--hover-lift`) only with a mouse.
+- The products page (`CategoryPage`) keeps its own card (owner decision); restyle it to this spec, do not swap it.
+
+## 8. Forms and auth
+
+- `Input`, `Textarea`, `SelectTrigger`: h-11, `rounded-control`, 16px text on phones (14px from md), `border-input`, focus = ring-colour border + soft ring (`focus-visible:border-ring ring-2 ring-ring/30`), `aria-invalid="true"` turns the border red.
+- `Checkbox` 18px `rounded-chip`, `RadioGroupItem` 18px with a primary dot, `Switch` (visible track in dark mode). Checkbox, radio and slider thumb have a 44px invisible hit area. `Slider` and native `input[type=range]` share one look (4px track, 18px thumb). `Tabs` and `ToggleGroup`: muted track, selected item on card with a small shadow.
+- **`<AuthCard title description? as="h1" footer?>`** (`src/components/auth/AuthCard.tsx`): panel + paper + contour, 448px, `p-6 sm:p-9`. The title is the page's h1 by default.
+- **`<AuthField id label type hint? error? labelAction? passwordToggle? autoComplete inputMode ...>`** (`src/components/auth/AuthField.tsx`): small-caps label tied by `htmlFor`, 48px input, error/hint wired with `aria-describedby`, `aria-invalid` on error, Show/Hide password IconButton with `aria-pressed` for `type="password"`. Always pass `autoComplete` (`email`, `current-password`, `new-password`, `name`, `tel`) and `inputMode` where it helps. Forwards its ref to the input.
+
+## 9. Admin
+
+**`<AdminPageHeader title eyebrow? description? actions? leading?>{children}</AdminPageHeader>`** (`src/components/admin/AdminPageHeader.tsx`): the page's h1 in the heading font, muted description, actions on the right (one filled Button at most), `leading` for a back IconButton, `children` after the title for counts, Live indicators (`<StatusBadge tone="success" label="Live" dot pulse />`). Stat tiles use `<StatCard>` (`src/components/admin/StatCard.tsx`); inline add/edit forms move focus into themselves with `useInlineFormFocus` (`src/components/admin/useInlineFormFocus.tsx`). Admin order numbers read `ORD-<number>` everywhere (`orderLabel`).
+
+Raw palette classes map by role: page `bg-background`; raised `bg-card text-card-foreground`; inset `bg-muted`; row hover `hover:bg-muted/60`; borders `border-border`, inputs `border-input`; text gray-900/800 `text-foreground`, 700/600 `text-foreground/80`, 500/400 `text-muted-foreground`; primary actions `<Button>`; links `text-primary`; overlays `bg-charcoal/60`; statuses StatusBadge; category/stat chips `bg-muted text-foreground/70`.
+
+In dark mode `.dark .admin-panel` in `src/index.css` only gives raised admin surfaces the panel shadow; the colours come from the tokens, so write admin classes by role (above), never raw gray, white or palette classes.
+
+**Scratch & Win** (`src/components/scratch/`, rules in `src/lib/scratchWin.ts`): `ScratchFoil` (canvas silver foil, erased with a round brush, reveals past 50%, `aria-hidden`), `ScratchCardStage` (the charcoal card: skeleton until the server answers, Reveal prize as the keyboard path, the result in `role="status"`, Try again after a failure), `ScratchCardDialog` (bottom Sheet below 1024px, Dialog above, title focused on open, Next card queue), `ScratchCardsPanel` (wallet panel; `ScratchCardsPanelView` takes plain data) and `ScratchCardOrderNote`. The reveal uses `.sw-pop` and `.sw-sheen` in `src/index.css` (tokens `--ease-out`, `--dur-reveal`; reduced motion fades only); `.scratch-foil` is the same silver as a CSS gradient. The admin tab is `src/components/admin/ScratchWinSettingsTab.tsx`.
+
+## 10. Formatting and page meta
+
+`src/lib/format.ts` (display only, never to compute a total):
+
+- `formatINR(1499)` "₹1,499" · `formatINR(1499.5)` "₹1,499.50" · missing values "₹0"
+- `formatNumber(1200)` "1,200"
+- `formatDate(ts)` "3 Oct 2026" · `formatDayMonth(ts)` "3 Oct" · `formatTime(ts)` "8:01 pm" · `formatDateTime(ts)` "3 Oct 2026, 8:01 pm" (Firestore Timestamp, `{seconds}`, Date, ISO or millis; "" when missing)
+- `plural(3, 'item')` "3 items" · `plural(2, 'box', 'boxes')`
+- `toDate(value)` for the same inputs
+
+Prices and stats use `tabular-nums` (`price-now` and `chip-off` already do).
+
+**`usePageMeta({ title, description, canonicalPath, image, noindex, jsonLd })`** (`src/hooks/usePageMeta.ts`): sets `document.title` ("{title} | {BRAND.name}"), meta description, canonical (`SITE_URL` + path; defaults to the current path), Open Graph and Twitter tags, `robots` (noindex for account, checkout, admin, search results) and one JSON-LD script; restores the index.html defaults on unmount. The static canonical was removed from index.html, so pages that matter for search should call it.
+
+## 11. Focus and accessibility rules
+
+- A 2px outline in the ring colour, 2px offset, on every focusable element (`:focus-visible`), the lighter `highlight-soft` inside `tx-slate`, `bg-charcoal` and `footer`. Rows inside `overflow-hidden` panels: add `focus-inset` (outline drawn inside).
+- Never `focus:outline-none` or `focus-visible:outline-none` without a replacement (fields use border + ring). The count must not grow.
+- Skip link and landmarks: the shell package adds "Skip to content" to Header/MobileHeader pointing at `#main`; each page's content wrapper becomes `<main id="main" tabIndex={-1}>` (tabindex -1 never shows a ring). One h1 per page.
+- Colour is never the only signal (status chips have icons, errors have text).
+- Touch targets at least 44px (use IconButton or a hit-area `after:` pseudo-element).
+- Copy: no em or en dashes anywhere a user sees or hears (text, toasts, placeholders, alt, aria-label); ranges "3-7 days" or "₹400 to ₹700"; sentence case; no "!" or emoji; "Sign in", "Sign up", "Create account".
+
+## 12. Theme
+
+Light / Dark / System (new visitors start in light: `DEFAULT_THEME` in `ThemeContext`). `index.html` applies the saved theme before first paint (`BRAND.storageKeys.theme` in localStorage) and sets `color-scheme`; `ThemeContext` keeps the `dark`/`light` class, `color-scheme` and the `theme-color` metas in sync (the meta colour is the theme's `--background`, read from `src/index.css` by `src/lib/lookTokens.ts`; the static metas in `index.html` are a hand edit for the first paint), and switches all transitions off for one frame during a swap so the page snaps instead of smearing. The other places that need a hex or a font name in code (the Razorpay checkout colour, the shared receipt image, the scratch card canvas) read the same tokens through `src/lib/lookTokens.ts`; `tests/look-audit.test.ts` keeps a second copy of the look out of `src/`. `useTheme()` gives `{ theme, setTheme, resolvedTheme }`. Every colour needs a light and a dark value; use tokens, not `dark:` overrides.
+
+## 13. Dealer Membership and Loyalty card
+
+New UI here follows the Scratch & Win pattern: a pure `...View` (props only, no Firestore, so every state can be checked with fixture data) plus a thin container or hook that reads the data. Rules live in `src/lib/dealer.ts` (dealer-core, copied into `api/create-order.ts`) and `src/lib/rewards.ts`; the browser only displays what the server will charge.
+
+**Loyalty card** (`src/components/loyalty/MemberCard.tsx`):
+- `MemberCardView({ name, memberNumber, memberSince?, tierIndex, tiers, points, pointsWorth, dealer? })`: the charcoal member card (tier metal edge from `tierStyle(index)`, wordmark, tier chip and a Dealer chip, member number with a Copy IconButton, name, member since, points and their worth, the tier's multiplier line). `points` is `null` when the balance could not load (never shown as 0).
+- `TierChip({ index, name, multiplier?, onPaper? })`: the tier's chip, on charcoal by default, `onPaper` on paper (metal disc). Tier looks are keyed by position 0 to 3 (steel, gold, platinum, copper) because admins can rename tiers. Screen readers also hear that it is a member tier and its multiplier.
+- `TierSteps({ spend, tierIndex, tiers })`: the progress bar and the four steps with thresholds and multipliers. The bar fills gap by gap (equal spacing), not by spend divided by the top threshold.
+- `LoyaltyStatusPanelView` and its container `LoyaltyStatusPanel({ uid, name, createdAt })` make the `/wallet` status panel. The account page card uses `TierChip` and the member number too.
+- `useLoyaltyStatus(uid)` (`src/hooks/useLoyaltyStatus.ts`) returns `{ loading, error, spend, tierIndex, tiers, settings, retry }`: tier spend worked out like the server (`tierSpend` in rewards-core: rupees paid online, from the server-written `payments`, on orders now delivered, not dealer-priced). Used by `/wallet`, the account page and the admin customer page.
+- Member numbers: `formatMemberNumber(memberDigits(uid), BRAND.memberPrefix)` from `src/lib/loyaltyCard.ts` ("DS 4821 7730 1956"). Nothing is stored.
+
+**Dealer state** (`src/hooks/useDealer.ts`; one set of listeners shared by the whole session, guests read nothing, any read error means regular prices):
+- `useDealer()` returns `{ ready, signedIn, settings, record, pricing, active, showEntry }`. `active` is true only for an approved dealer while the programme is on and the private prices have loaded. `showEntry` shows the "Dealer programme" menu item (programme on, or the customer has an application).
+- `useDealerUnit(productId, regularPrice)` returns `{ unit, percentOff }` for an active dealer, or `null` (show the regular price). Every product surface calls it and swaps its price row when it returns a price.
+- `useDealerQuote(items)` returns `{ active, quote, pricing: 'dealer' | 'retail', potentialSavings, minOrder, discountPercent }`; `quote` is the same `dealerQuote` the server runs (`applies`, `regularSubtotal`, `subtotal`, `savings`, `shortBy`, `units[]`). The cart and checkout send `pricing` to `create-order`, which answers 409 `dealer_pricing_changed` or 503 `dealer_unavailable` when they disagree.
+
+**Dealer prices on product surfaces** (`src/components/dealer/DealerPrice.tsx`):
+- `DealerPriceInline({ unit, regular, percentOff, size?, tone?, stacked?, reserveChipLine? })`: price, struck regular price and a "Dealer −N%" chip (hidden when the saving rounds to 0). `size` `sm | md | lg | xl`; `tone="dark"` for charcoal or photo scrims; `stacked` puts the chip on its own line (`reserveChipLine` keeps that line so cards in a row share a baseline).
+- `DealerPriceBlock({ unit, regular, percentOff, minOrder })`: the product page's block ("Dealer price" eyebrow, big price, struck regular price, chip, and the "applies on orders of ₹X or more at regular prices" line).
+
+**Cart and checkout** (`src/components/checkout/DealerCheckoutNotices.tsx`):
+- `DealerNudge({ regularSubtotal, minOrder, shortBy, potentialSavings, compact?, className? })`: below the minimum, a progress bar with "Add ₹X more to unlock dealer prices" and what the items would save. `compact` is one line for the cart drawer.
+- `DealerAppliedNotice({ regularSubtotal, savings, compact?, className? })`: the "Dealer prices applied" notice. It sits with the disabled coupon field ("Coupons, points and cashback don't apply to dealer-priced orders"); the rewards card is hidden.
+- `DealerLinePrice({ unit, regular, layout? })`: one cart line's price, `layout` `stacked | inline | each`. A line with no saving shows its plain price.
+
+**The /dealer page** (`src/components/dealer/DealerViews.tsx`, container `src/pages/DealerProgramme.tsx`): `DealerPageView` picks one of `DealerApplyForm`, `DealerPendingPanel`, `DealerAccountCard` with `DealerTerms`, `DealerRejectedNotice` (Apply again, details prefilled) or the paused state, under `DealerBand` and `HowItWorks`. Form rules are pure in `src/lib/dealerForm.ts`; the states list is the shared Indian states file `src/lib/indianStates.ts`.
+
+**Admin** (`src/components/admin/`):
+- `DealerApplicationSheet`: Admin > Dealers sheet (pure view): the full application, customer account link, a note to the applicant, and Approve, Reject, Suspend or Reinstate (`DealerAction`). Suspend asks for confirmation. `src/pages/admin/AdminDealers.tsx` owns the list, filter, search and the writes.
+- `DealerSettingsTab`: Commerce settings > Dealers (status chip, switch, dealer discount %, "Dealer prices from" ₹, an example line, counts, the "How dealer prices work" notice). It loads before it is editable, shows a danger Notice with Retry on a failed read, and saves both documents in one batch.
+- `LoyaltyTiersSection({ tiers, onChange, pointsPer100 })`: four editable tier rows (name, spend from, multiplier, points on a sample order) inside the Rewards tab, saved with it. Rules in `src/lib/loyaltyTiersForm.ts`.
+- `DealerPriceField` (`DealerPriceFieldView`): the optional "Dealer price (₹)" under Price on the product form, with the store-wide price as the hint. Rules in `src/lib/dealerPriceForm.ts`.
+- `CustomerMembership` (`CustomerMembershipView({ memberNumber, onCopy, loyalty, dealer, onRetry })`) with its container hook `useCustomerMembership(customerId)`: the member number, tier chip and progress, and the dealer record, on the admin customer page.
+- `DealerOrderRows`: `DealerOrderChip` ("Dealer order") beside the payment status and `DealerOrderTotalsRows` ("Items at regular prices", "Dealer prices −₹X") in the order totals.
+- Commerce settings tabs open from a link: `/admin/commerce-settings?tab=delivery|support|rewards|scratch|dealers` (anything else opens Delivery and GST).

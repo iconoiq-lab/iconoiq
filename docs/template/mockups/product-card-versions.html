@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Product card versions</title>
+<!-- Mockup only: not app code. Standalone; open it from disk. Add ?theme=dark for the dark theme. -->
+<script>
+  (function () {
+    var dark = new URLSearchParams(location.search).get('theme') === 'dark';
+    document.documentElement.classList.toggle('dark', dark);
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400..700&display=swap">
+<style>
+/* Tokens copied from src/index.css (:root and .dark), tailwind.config.ts and the Google Fonts link in index.html. */
+:root {
+  color-scheme: light;
+  --background: 60 8% 98%;
+  --foreground: 24 8% 10%;
+  --cream: 60 8% 98%;
+  --cream-dark: 60 3% 96%;
+  --card: 0 0% 100%;
+  --primary: 24 8% 10%;
+  --primary-foreground: 60 8% 98%;
+  --primary-light: 30 6% 25%;
+  --primary-dark: 20 13% 4%;
+  --muted: 60 3% 96%;
+  --muted-foreground: 33 5% 32%;
+  --highlight-soft: 213 94% 68%;
+  --charcoal: 24 8% 10%;
+  --border: 20 4% 90%;
+  --input: 24 4% 52%;
+  --ring: 24 8% 10%;
+  --radius-card: 12px;
+  --radius-control: 6px;
+  --radius-chip: 4px;
+  --font-heading: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --shadow-sm: 0 1px 3px rgba(28, 25, 23, 0.05), 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-md: 0 4px 12px rgba(28, 25, 23, 0.06);
+  --shadow-card-hover: 0 22px 40px -28px rgba(28, 25, 23, 0.5);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-press: 140ms;
+  --dur-hover: 150ms;
+  --dur-lift: 180ms;
+  /* Classic image ratio: 4/5 here; the store's listing card is 1/1 today. */
+  --ratio-tall: 4 / 5;
+}
+.dark {
+  color-scheme: dark;
+  --background: 20 13% 4%;
+  --foreground: 60 8% 98%;
+  --cream: 24 8% 10%;
+  --cream-dark: 12 6% 15%;
+  --card: 24 8% 10%;
+  --primary: 60 8% 98%;
+  --primary-foreground: 20 13% 4%;
+  --primary-light: 24 5% 83%;
+  --primary-dark: 30 6% 25%;
+  --muted: 12 6% 15%;
+  --muted-foreground: 24 5% 64%;
+  --highlight-soft: 213 94% 68%;
+  --border: 12 6% 15%;
+  --input: 23 5% 45%;
+  --ring: 60 8% 98%;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-card-hover: 0 24px 44px -26px rgba(0, 0, 0, 0.85);
+}
+
+*, *::before, *::after { box-sizing: border-box; border-color: hsl(var(--border)); }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; overflow-x: clip; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; width: 100%; overflow-x: clip;
+  background: hsl(var(--background)); color: hsl(var(--foreground));
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3 { margin: 0; font-family: var(--font-heading); font-weight: 500; letter-spacing: -0.02em; }
+p, ul { margin: 0; padding: 0; }
+ul { list-style: none; }
+img { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; }
+:where(a, button):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+svg.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+svg:not(.sprite) { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; pointer-events: none; }
+
+/* Page frame */
+.wrap { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 768px) { .wrap { padding: 0 32px; } }
+@media (min-width: 1024px) { .wrap { padding: 0 64px; } }
+
+.bar { position: sticky; top: 0; z-index: 30; background: hsl(var(--background) / 0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid hsl(var(--foreground) / 0.08); }
+.bar-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
+.jump { display: flex; align-items: center; gap: 6px; }
+.chip-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 12px;
+  border: 1px solid hsl(var(--foreground) / 0.15); border-radius: var(--radius-control);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; text-decoration: none;
+  color: hsl(var(--foreground)); background: transparent;
+  transition: border-color var(--dur-hover) ease, background-color var(--dur-hover) ease, color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+.chip-btn:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .chip-btn:hover { border-color: hsl(var(--primary)); background: hsl(var(--muted)); } }
+.chip-btn[aria-pressed="true"] { background: hsl(var(--muted)); border-color: hsl(var(--foreground) / 0.4); }
+.chip-btn .full { display: none; }
+@media (min-width: 520px) { .chip-btn .full { display: inline; } }
+.theme-btn svg { width: 16px; height: 16px; }
+
+.intro { padding-top: 40px; padding-bottom: 32px; }
+@media (min-width: 1024px) { .intro { padding-top: 64px; padding-bottom: 40px; } }
+.kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: hsl(var(--primary)); }
+.intro h1 { margin-top: 12px; font-size: 30px; line-height: 1.15; }
+@media (min-width: 768px) { .intro h1 { font-size: 36px; } }
+@media (min-width: 1024px) { .intro h1 { font-size: 48px; } }
+.lede { margin-top: 12px; max-width: 60ch; font-size: 16px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+@media (min-width: 768px) { .lede { font-size: 18px; } }
+code {
+  font-family: var(--font-mono); font-size: 0.86em; color: hsl(var(--foreground));
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--foreground) / 0.08); border-radius: var(--radius-chip); padding: 1px 6px; white-space: nowrap;
+}
+
+@media (max-width: 359px) { code { white-space: normal; overflow-wrap: anywhere; } }
+
+/* Version sections */
+.ver { padding: 36px 0 52px; border-top: 1px solid hsl(var(--foreground) / 0.08); scroll-margin-top: 72px; }
+@media (min-width: 1024px) { .ver { padding: 48px 0 72px; } }
+.ver-head { margin-bottom: 24px; display: grid; gap: 10px; }
+@media (min-width: 1024px) { .ver-head { margin-bottom: 32px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 48px; align-items: start; } }
+.ver-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ver-letter { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-size: 13px; font-weight: 700; }
+.ver h2 { font-size: 28px; line-height: 1.1; }
+@media (min-width: 1024px) { .ver h2 { font-size: 36px; } }
+.today { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid hsl(var(--primary) / 0.45); border-radius: var(--radius-chip); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--primary)); }
+.ver-code { margin-top: 2px; }
+@media (min-width: 1024px) { .ver-code { margin-top: 10px; } }
+.ver-when { max-width: 62ch; font-size: 15px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+@media (min-width: 1024px) { .ver-when { font-size: 16px; } }
+.specs { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.spec { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid hsl(var(--foreground) / 0.12); border-radius: var(--radius-chip); font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+.spec b { font-weight: 600; color: hsl(var(--foreground)); }
+.note { margin-top: 20px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+
+/* Listing grids */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 768px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+@media (min-width: 1024px) { .grid { gap: 20px; } }
+.grid--dense { gap: 8px; }
+@media (min-width: 768px) { .grid--dense { gap: 10px; } }
+@media (min-width: 1024px) { .grid--dense { gap: 12px; } }
+@media (min-width: 1280px) { .grid--dense { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.cell { min-width: 0; display: flex; }
+.cell:nth-child(n+5) { display: none; }
+@media (min-width: 1280px) { .grid--dense .cell:nth-child(n+5) { display: flex; } }
+
+/* The card (src/index.css .card-product, .tile-img, .tag-dark) */
+.card {
+  container: card / inline-size;
+  position: relative; display: flex; flex-direction: column; width: 100%; padding: 6px;
+  border-radius: var(--radius-card); background: hsl(var(--card)); border: 1px solid hsl(var(--foreground) / 0.07);
+  transition: transform var(--dur-lift) var(--ease-out), box-shadow var(--dur-lift) var(--ease-out), border-color var(--dur-hover) ease;
+}
+@media (min-width: 1024px) { .card { padding: 8px; } }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { transform: translateY(-3px); border-color: hsl(var(--primary) / 0.35); box-shadow: var(--shadow-card-hover); }
+  .card:hover .tile img { transform: scale(1.03); }
+}
+.card:has(.card-link:focus-visible) { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+.tile {
+  position: relative; overflow: hidden; aspect-ratio: var(--ratio-tall);
+  border-radius: calc(var(--radius-card) - 4px);
+  background: radial-gradient(120% 90% at 50% 18%, hsl(var(--cream)) 0%, hsl(var(--cream-dark)) 100%);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.05);
+}
+.tile img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--dur-lift) var(--ease-out); }
+.tag-new {
+  position: absolute; left: 8px; top: 14px; pointer-events: none;
+  display: inline-flex; align-items: center; border-radius: var(--radius-chip);
+  background: hsl(var(--charcoal) / 0.9); color: hsl(var(--highlight-soft));
+  padding: 4px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; line-height: 1.2;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.info { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px 6px 4px; }
+.name {
+  font-family: var(--font-body); font-size: 13px; font-weight: 600; line-height: 1.3; letter-spacing: 0; color: hsl(var(--foreground)); text-wrap: pretty;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+@media (min-width: 768px) { .name { font-size: 14px; } }
+.card-link { outline: none; text-decoration: none; color: inherit; }
+.card-link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-card); }
+.price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: auto; }
+.price-now { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: hsl(var(--foreground)); }
+@media (min-width: 1024px) { .price-now { font-size: 18px; } }
+
+/* Round icon buttons (src/components/ui/icon-button.tsx) */
+.icon-btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 999px;
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-hover) ease, color var(--dur-hover) ease, border-color var(--dur-hover) ease;
+}
+.icon-btn::after { content: ""; position: absolute; inset: -6px; border-radius: 999px; }
+.icon-btn:active { transform: scale(0.97); }
+.icon-btn--solid {
+  width: 36px; height: 36px; border: 1px solid hsl(var(--foreground) / 0.1); background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: var(--shadow-sm);
+}
+@media (hover: hover) and (pointer: fine) { .icon-btn--solid:hover { border-color: hsl(var(--primary) / 0.4); } }
+.heart svg { transition: fill var(--dur-hover) ease, color var(--dur-hover) ease; }
+.heart[aria-pressed="true"] { color: hsl(var(--primary)); }
+.heart[aria-pressed="true"] svg { fill: currentColor; }
+.on-img { position: absolute; z-index: 10; }
+.on-img:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; box-shadow: 0 0 0 2px hsl(var(--card)); }
+.heart.on-img { top: 6px; right: 6px; }
+@media (min-width: 1024px) { .heart.on-img { top: 8px; right: 8px; } .tag-new { top: 16px; } .card--compact .heart.on-img { top: 6px; right: 6px; } .card--compact .tag-new { top: 14px; } }
+
+/* Buttons (the store's card button: 40px, 6px radius, 10px tracked caps) */
+.btn {
+  position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 40px; padding: 0 12px;
+  border-radius: var(--radius-control); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
+  transition: background-color var(--dur-press) ease, border-color var(--dur-press) ease, color var(--dur-press) ease, transform var(--dur-press) var(--ease-out);
+}
+@media (min-width: 1024px) { .btn { font-size: 11px; } }
+.btn:active { transform: scale(0.97); }
+.btn--outline { border: 1px solid hsl(var(--foreground) / 0.15); color: hsl(var(--foreground)); margin-top: 6px; }
+@media (hover: hover) and (pointer: fine) {
+  .btn--outline:hover { border-color: hsl(var(--primary)); background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+}
+.btn--solid { border: 1px solid hsl(var(--primary)); background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); letter-spacing: 0.16em; }
+@media (hover: hover) and (pointer: fine) {
+  .btn--solid:hover { background: hsl(var(--primary-dark)); border-color: hsl(var(--primary-dark)); }
+  .dark .btn--solid:hover { background: hsl(var(--primary-light)); border-color: hsl(var(--primary-light)); }
+}
+.sq-btn {
+  position: relative; z-index: 10; flex: none; display: grid; place-items: center; width: 40px; height: 40px;
+  border: 1px solid hsl(var(--foreground) / 0.15); border-radius: var(--radius-control); color: hsl(var(--foreground));
+  transition: border-color var(--dur-press) ease, color var(--dur-press) ease, transform var(--dur-press) var(--ease-out);
+}
+.sq-btn svg { width: 18px; height: 18px; transition: fill var(--dur-hover) ease; }
+.sq-btn:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .sq-btn:hover { border-color: hsl(var(--primary)); } }
+.sq-btn[aria-pressed="true"] { border-color: hsl(var(--primary)); color: hsl(var(--primary)); }
+.sq-btn[aria-pressed="true"] svg { fill: currentColor; }
+
+/* B. Compact: 1:1, tighter padding and gaps, round quick-add on the image */
+.card--compact { padding: 4px; }
+.card--compact .tile, .card--classic .tile { aspect-ratio: 1 / 1; }
+.card--compact .tile img { object-position: 50% 0; } /* square crop keeps the placeholder label clear of the badge and heart */
+.card--compact .tag-new { left: 6px; top: 14px; }
+.card--compact .heart.on-img { top: 6px; right: 6px; }
+.card--compact .info { gap: 2px; padding: 8px 4px 4px; }
+.card--compact .name { font-size: 13px; }
+.card--compact .price { margin-top: 0; }
+.card--compact .price-now { font-size: 14px; }
+@media (min-width: 1024px) { .card--compact .price-now { font-size: 16px; } }
+.quick {
+  right: 6px; bottom: 6px; width: 36px; height: 36px;
+  background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: 0 0 0 2px hsl(var(--card)), var(--shadow-md);
+}
+.quick svg { width: 16px; height: 16px; stroke-width: 2; }
+@media (hover: hover) and (pointer: fine) {
+  .quick:hover { background: hsl(var(--primary-dark)); }
+  .dark .quick:hover { background: hsl(var(--primary-light)); }
+}
+
+/* C. Detailed: category, one attribute line, price, then button + wishlist */
+.card--detailed .info { gap: 4px; }
+.eyebrow-cat { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: hsl(var(--primary)); }
+@media (min-width: 1024px) { .eyebrow-cat { letter-spacing: 0.2em; } }
+.card--detailed .name { font-size: 14px; }
+@media (min-width: 1024px) { .card--detailed .name { font-size: 15px; } }
+.attr { font-size: 12px; line-height: 1.4; color: hsl(var(--muted-foreground)); }
+.card--detailed .price { margin-top: auto; padding-top: 4px; }
+.row { display: flex; align-items: stretch; gap: 6px; margin-top: 8px; }
+@media (min-width: 1024px) { .row { gap: 8px; } }
+.btn--solid svg { display: none; }
+@container card (min-width: 220px) { .btn--solid svg { display: block; } }
+.card--detailed .btn { padding: 0 8px; }
+@container card (min-width: 220px) { .card--detailed .btn { padding: 0 12px; } }
+@container card (max-width: 150px) { .card--detailed .btn { min-width: 0; padding: 0 2px; letter-spacing: 0.04em; } .card--detailed .sq-btn { width: 36px; } .card--detailed .row { gap: 4px; } }
+.card--detailed .info { padding-left: 2px; padding-right: 2px; }
+@container card (min-width: 220px) { .card--detailed .info { padding-left: 6px; padding-right: 6px; } }
+
+.foot { padding: 28px 0 56px; border-top: 1px solid hsl(var(--foreground) / 0.08); font-size: 13px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+  .card:hover { transform: none !important; }
+  .card:hover .tile img { transform: none !important; }
+  .btn:active, .icon-btn:active, .sq-btn:active, .chip-btn:active { transform: none !important; }
+}
+</style>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+</svg>
+<div class="bar">
+  <div class="wrap bar-in">
+    <nav class="jump" aria-label="Versions">
+      <a class="chip-btn" href="#classic">A<span class="full">&nbsp;Classic</span><span class="sr-only"> version</span></a>
+      <a class="chip-btn" href="#compact">B<span class="full">&nbsp;Compact</span><span class="sr-only"> version</span></a>
+      <a class="chip-btn" href="#detailed">C<span class="full">&nbsp;Detailed</span><span class="sr-only"> version</span></a>
+    </nav>
+    <button type="button" id="theme" class="chip-btn theme-btn" aria-pressed="false">
+      <svg class="moon" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>
+      <span>Dark mode</span>
+    </button>
+  </div>
+</div>
+
+<main>
+  <header class="wrap intro">
+    <p class="kicker">Mockup &middot; Section versions</p>
+    <h1>Product card versions</h1>
+    <p class="lede">Each client store picks one with <code>sections.productCard</code>. Same data, same tokens; only the card changes.</p>
+  </header>
+
+  <section class="ver" id="classic" aria-labelledby="h-classic">
+    <div class="wrap">
+      <header class="ver-head">
+        <div>
+          <div class="ver-title">
+            <span class="ver-letter" aria-hidden="true">A</span>
+            <h2 id="h-classic">Classic</h2>
+            <span class="today">Today's card</span>
+          </div>
+          <p class="ver-code"><code>sections.productCard = "classic"</code></p>
+        </div>
+        <div>
+          <p class="ver-when">Pick it for a balanced catalogue: a square photo, the price and a clear Add to cart button. It is the card the store ships with today.</p>
+          <div class="specs" aria-label="Key settings"><span class="spec">Image <b>1:1</b></span><span class="spec">Columns <b>2 &rarr; 4</b></span><span class="spec">Action <b>full-width button</b></span></div>
+        </div>
+      </header>
+      <ul class="grid" role="list">
+      <li class="cell">
+        <article class="card card--classic">
+        <div class="tile">
+          <img src="../../../public/demo/collection-1.svg" alt="" width="800" height="1000">
+          <span class="tag-new">New</span>
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 1 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-1" data-card-link>Sample product 1</a></h3>
+            <p class="price"><span class="price-now">₹299</span></p>
+            <button type="button" class="btn btn--outline">Add to cart<span class="sr-only">: Sample product 1</span></button>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--classic">
+        <div class="tile">
+          <img src="../../../public/demo/collection-2.svg" alt="" width="800" height="1000">
+          
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 2 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-2" data-card-link>Sample product 2</a></h3>
+            <p class="price"><span class="price-now">₹749</span></p>
+            <button type="button" class="btn btn--outline">Add to cart<span class="sr-only">: Sample product 2</span></button>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--classic">
+        <div class="tile">
+          <img src="../../../public/demo/collection-3.svg" alt="" width="800" height="1000">
+          
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 3 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-3" data-card-link>Sample product 3</a></h3>
+            <p class="price"><span class="price-now">₹1,599</span></p>
+            <button type="button" class="btn btn--outline">Add to cart<span class="sr-only">: Sample product 3</span></button>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--classic">
+        <div class="tile">
+          <img src="../../../public/demo/collection-4.svg" alt="" width="800" height="1000">
+          
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 4 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-4" data-card-link>Sample product 4</a></h3>
+            <p class="price"><span class="price-now">₹349</span></p>
+            <button type="button" class="btn btn--outline">Add to cart<span class="sr-only">: Sample product 4</span></button>
+          </div>
+        </article>
+      </li>
+      </ul>
+      <p class="note">Rating row appears only when the product has reviews.</p>
+    </div>
+  </section>
+
+  <section class="ver" id="compact" aria-labelledby="h-compact">
+    <div class="wrap">
+      <header class="ver-head">
+        <div>
+          <div class="ver-title">
+            <span class="ver-letter" aria-hidden="true">B</span>
+            <h2 id="h-compact">Compact</h2>
+          </div>
+          <p class="ver-code"><code>sections.productCard = "compact"</code></p>
+        </div>
+        <div>
+          <p class="ver-when">Pick it for large catalogues, where shoppers scan many products and add straight from the grid: more cards per screen and one tap to add.</p>
+          <div class="specs" aria-label="Key settings"><span class="spec">Image <b>1:1</b></span><span class="spec">Columns <b>2 &rarr; 5</b></span><span class="spec">Action <b>quick-add icon</b></span></div>
+        </div>
+      </header>
+      <ul class="grid grid--dense" role="list">
+      <li class="cell">
+        <article class="card card--compact">
+        <div class="tile">
+          <img src="../../../public/demo/collection-1.svg" alt="" width="800" height="1000">
+          <span class="tag-new">New</span>
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 1 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button><button type="button" class="icon-btn on-img quick" aria-label="Add Sample product 1 to cart"><svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-1" data-card-link>Sample product 1</a></h3>
+            <p class="price"><span class="price-now">₹299</span></p>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--compact">
+        <div class="tile">
+          <img src="../../../public/demo/collection-2.svg" alt="" width="800" height="1000">
+          
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 2 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button><button type="button" class="icon-btn on-img quick" aria-label="Add Sample product 2 to cart"><svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-2" data-card-link>Sample product 2</a></h3>
+            <p class="price"><span class="price-now">₹749</span></p>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--compact">
+        <div class="tile">
+          <img src="../../../public/demo/collection-3.svg" alt="" width="800" height="1000">
+          
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 3 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button><button type="button" class="icon-btn on-img quick" aria-label="Add Sample product 3 to cart"><svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-3" data-card-link>Sample product 3</a></h3>
+            <p class="price"><span class="price-now">₹1,599</span></p>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--compact">
+        <div class="tile">
+          <img src="../../../public/demo/collection-4.svg" alt="" width="800" height="1000">
+          
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 4 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button><button type="button" class="icon-btn on-img quick" aria-label="Add Sample product 4 to cart"><svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-4" data-card-link>Sample product 4</a></h3>
+            <p class="price"><span class="price-now">₹349</span></p>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--compact">
+        <div class="tile">
+          <img src="../../../public/demo/collection-5.svg" alt="" width="800" height="1000">
+          
+          <button type="button" class="icon-btn icon-btn--solid on-img heart " aria-label="Save Sample product 5 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button><button type="button" class="icon-btn on-img quick" aria-label="Add Sample product 5 to cart"><svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></button>
+        </div>
+          <div class="info">
+            <h3 class="name"><a class="card-link" href="#product-5" data-card-link>Sample product 5</a></h3>
+            <p class="price"><span class="price-now">₹649</span></p>
+          </div>
+        </article>
+      </li>
+      </ul>
+      <p class="note">Rating row appears only when the product has reviews. Sample product 5 is added so the five-column desktop row is full.</p>
+    </div>
+  </section>
+
+  <section class="ver" id="detailed" aria-labelledby="h-detailed">
+    <div class="wrap">
+      <header class="ver-head">
+        <div>
+          <div class="ver-title">
+            <span class="ver-letter" aria-hidden="true">C</span>
+            <h2 id="h-detailed">Detailed</h2>
+          </div>
+          <p class="ver-code"><code>sections.productCard = "detailed"</code></p>
+        </div>
+        <div>
+          <p class="ver-when">Pick it for considered purchases, where shoppers compare details before they buy: category, one key attribute and a separate wishlist button.</p>
+          <div class="specs" aria-label="Key settings"><span class="spec">Image <b>4:5</b></span><span class="spec">Columns <b>2 &rarr; 4</b></span><span class="spec">Action <b>button + wishlist</b></span></div>
+        </div>
+      </header>
+      <ul class="grid" role="list">
+      <li class="cell">
+        <article class="card card--detailed">
+        <div class="tile">
+          <img src="../../../public/demo/collection-1.svg" alt="" width="800" height="1000">
+          <span class="tag-new">New</span>
+          
+        </div>
+          <div class="info">
+            <span class="eyebrow-cat">Category One</span>
+            <h3 class="name"><a class="card-link" href="#product-1" data-card-link>Sample product 1</a></h3>
+            <p class="attr">[NEED: size or variant]</p>
+            <p class="price"><span class="price-now">₹299</span></p>
+            <div class="row">
+              <button type="button" class="btn btn--solid"><svg aria-hidden="true" focusable="false"><use href="#i-bag"/></svg><span>Add to cart<span class="sr-only">: Sample product 1</span></span></button>
+              <button type="button" class="sq-btn heart" aria-label="Save Sample product 1 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+            </div>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--detailed">
+        <div class="tile">
+          <img src="../../../public/demo/collection-2.svg" alt="" width="800" height="1000">
+          
+          
+        </div>
+          <div class="info">
+            <span class="eyebrow-cat">Category One</span>
+            <h3 class="name"><a class="card-link" href="#product-2" data-card-link>Sample product 2</a></h3>
+            <p class="attr">[NEED: size or variant]</p>
+            <p class="price"><span class="price-now">₹749</span></p>
+            <div class="row">
+              <button type="button" class="btn btn--solid"><svg aria-hidden="true" focusable="false"><use href="#i-bag"/></svg><span>Add to cart<span class="sr-only">: Sample product 2</span></span></button>
+              <button type="button" class="sq-btn heart" aria-label="Save Sample product 2 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+            </div>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--detailed">
+        <div class="tile">
+          <img src="../../../public/demo/collection-3.svg" alt="" width="800" height="1000">
+          
+          
+        </div>
+          <div class="info">
+            <span class="eyebrow-cat">Category One</span>
+            <h3 class="name"><a class="card-link" href="#product-3" data-card-link>Sample product 3</a></h3>
+            <p class="attr">[NEED: size or variant]</p>
+            <p class="price"><span class="price-now">₹1,599</span></p>
+            <div class="row">
+              <button type="button" class="btn btn--solid"><svg aria-hidden="true" focusable="false"><use href="#i-bag"/></svg><span>Add to cart<span class="sr-only">: Sample product 3</span></span></button>
+              <button type="button" class="sq-btn heart" aria-label="Save Sample product 3 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+            </div>
+          </div>
+        </article>
+      </li>
+      <li class="cell">
+        <article class="card card--detailed">
+        <div class="tile">
+          <img src="../../../public/demo/collection-4.svg" alt="" width="800" height="1000">
+          
+          
+        </div>
+          <div class="info">
+            <span class="eyebrow-cat">Category One</span>
+            <h3 class="name"><a class="card-link" href="#product-4" data-card-link>Sample product 4</a></h3>
+            <p class="attr">[NEED: size or variant]</p>
+            <p class="price"><span class="price-now">₹349</span></p>
+            <div class="row">
+              <button type="button" class="btn btn--solid"><svg aria-hidden="true" focusable="false"><use href="#i-bag"/></svg><span>Add to cart<span class="sr-only">: Sample product 4</span></span></button>
+              <button type="button" class="sq-btn heart" aria-label="Save Sample product 4 to wishlist" aria-pressed="false"><svg aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></button>
+            </div>
+          </div>
+        </article>
+      </li>
+      </ul>
+      <p class="note">Rating row appears only when the product has reviews.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Images and <code>[NEED: ...]</code> text are template placeholders. No card shows a rating, review count, stock level or deadline; those appear only when the store has real data for the product.</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('theme');
+    function sync() { btn.setAttribute('aria-pressed', root.classList.contains('dark') ? 'true' : 'false'); }
+    sync();
+    btn.addEventListener('click', function () {
+      var dark = !root.classList.contains('dark');
+      root.classList.toggle('dark', dark);
+      sync();
+      try {
+        var u = new URL(location.href);
+        if (dark) u.searchParams.set('theme', 'dark'); else u.searchParams.delete('theme');
+        history.replaceState(null, '', u);
+      } catch (e) {}
+    });
+    document.addEventListener('click', function (e) {
+      var heart = e.target.closest('.heart');
+      if (heart) { heart.setAttribute('aria-pressed', heart.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); return; }
+      var card = e.target.closest('[data-card-link]');
+      if (card) e.preventDefault();
+    });
+  })();
+</script>
+</body>
+</html>

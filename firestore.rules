@@ -1,0 +1,739 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- HELPER FUNCTIONS (The "Brain" of the Rules) ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function ownAccountStatusChangeAllowed(before, after) {
+      return after == before ||
+             (before != 'suspended' && after in ['active', 'pending_deletion']);
+    }
+
+    // --- USER RULES (Profiles, Addresses, History, & Security) ---
+    match /users/{userId} {
+      // Admin can see everyone; Users can see their own profile
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Admin can create delivery boys; Users can create their own profile.
+      // A self-created profile must be an ordinary customer: before this, the
+      // create rule accepted any role, so a new account could write
+      // `role: 'admin'` into its own document and get the whole admin panel.
+      allow create: if isAdmin() || (
+        isOwner(userId) && request.resource.data.get('role', 'user') == 'user'
+      );
+
+      // Admin can update everything; Users can update own info.
+      // Users CANNOT change their role. They may move their own accountStatus
+      // only between 'active' and 'pending_deletion' - requesting and cancelling
+      // account deletion, and the automatic unlock after a login lockout, all
+      // run from the customer's browser - but never out of an admin's
+      // 'suspended'. `.get()` with a default, so a document that never had the
+      // field is compared safely instead of erroring.
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+        ownAccountStatusChangeAllowed(
+          resource.data.get('accountStatus', 'active'),
+          request.resource.data.get('accountStatus', 'active'))
+      );
+
+      // Only Admin can delete users
+      allow delete: if isAdmin();
+      
+      // --- Addresses ---
+      match /addresses/{addressId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // --- Browsing History ---
+      match /history/{historyId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // --- WISHLIST ---
+      match /wishlist/{productId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      // --- GIFT CARDS SUBCOLLECTION ---
+      match /giftCards/{giftCardId} {
+        allow read: if isOwner(userId) || isAdmin();
+        // Only admin can create/update/delete gift cards
+        allow write: if isAdmin();
+      }
+
+      // --- LEGACY WALLET (unused) ---
+      // Admin-only writes: the old rules let a customer create and update their
+      // own balance, transactions and rewards.
+      match /wallets/{walletId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isAdmin();
+        allow delete: if false;
+      }
+      match /transactions/{txId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isAdmin();
+        allow delete: if false;
+      }
+      match /rewards/{rewardId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isAdmin();
+        allow delete: if false;
+      }
+
+      // --- REWARD LEDGER (loyalty points + wallet cashback) ---
+      // Balance = sum of active entries (src/lib/rewards.ts). Customers only
+      // read. Admins add entries and may void one; the payment functions write
+      // through the Admin SDK. Entries are never otherwise edited or deleted.
+      match /rewardLedger/{entryId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin();
+        allow update: if isAdmin()
+          && resource.data.status == 'active'
+          && request.resource.data.status == 'void'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'voidedAt', 'voidedBy']);
+        allow delete: if false;
+      }
+
+      // --- REWARD STATE (server-only) ---
+      // The lock document api/create-order.ts writes in the same transaction as
+      // a points/cashback reservation, so two checkouts cannot spend one balance.
+      match /rewardState/{docId} {
+        allow read, write: if false;
+      }
+
+      // --- SCRATCH CARDS (Scratch & Win) ---
+      // Given, cancelled and scratched only by api/notify-order.ts through the
+      // Admin SDK (the server draws the prize). Customers read their own.
+      match /scratchCards/{cardId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if false;
+      }
+
+      // --- PAYMENT METHODS (Razorpay ready) ---
+      match /paymentMethods/{methodId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin(); // Only admin can hard-delete
+      }
+      
+      // --- LOGIN HISTORY (append-only security log) ---
+      match /loginHistory/{entryId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if false; // Immutable
+        allow delete: if isAdmin(); // Admin cleanup only
+      }
+      
+      // --- SESSIONS ---
+      match /sessions/{sessionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId) || isAdmin(); // For termination
+        allow delete: if isAdmin();
+      }
+      
+      // --- AUDIT LOG (append-only) ---
+      match /auditLog/{logId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if false; // Immutable audit trail
+        allow delete: if false; // Never delete audit logs
+      }
+    }
+    
+    // --- GIFT CARDS (global collection) ---
+    match /giftCards/{cardId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAuthenticated(); // For redemption
+      allow delete: if isAdmin();
+    }
+
+    // --- GIFT CARDS collection-group read (admin manager fast query) ---
+    // Lets the admin gift card manager load every user's gift cards with one
+    // collectionGroup('giftCards') query instead of scanning users one by one.
+    // Writes stay governed by the specific per-user path rule above.
+    match /{path=**}/giftCards/{giftCardId} {
+      allow read: if isAdmin();
+    }
+    
+    // --- REFUNDS (global collection) ---
+    match /refunds/{refundId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAdmin(); // Only admin processes refunds
+      allow delete: if false;
+    }
+    
+    // --- ADMIN WALLET LOG ---
+    match /adminWalletLog/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if false; // Immutable
+      allow delete: if false;
+    }
+    
+    // --- ACCOUNT DELETION REQUESTS ---
+    match /accountDeletionRequests/{requestId} {
+      // Allow list/query: users can query their own requests
+      allow list: if isAuthenticated();
+      // Allow get: users can read their own requests or admin can read all
+      allow get: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- STOREFRONT CONTENT & SETTINGS ---
+    // These had no rule, which in production meant "denied": the homepage
+    // banners, collections and videos would not load, and neither would the
+    // delivery, GST and silver-rate settings checkout prices from. Everyone
+    // may read them; only admins may change them. `siteSettings/catalogVersion`
+    // is written by the server with the Admin SDK, which bypasses these rules.
+    match /siteSettings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /homeBanners/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /homeCollections/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /homeVideos/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- NEWSLETTER ---
+    // A visitor may add their own address and nothing else. The document id is
+    // the address, so a repeat is refused as an update rather than detected by
+    // reading the list - which would expose every subscriber's email.
+    match /newsletterSubscriptions/{email} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'subscribedAt'])
+        && request.resource.data.email == email
+        && email.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
+        && email.size() <= 254;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    // --- DELIVERY RATINGS ---
+    // Left by the customer for their own order; read by the shop and by the
+    // delivery partner who was rated.
+    match /deliveryRatings/{ratingId} {
+      allow create: if isAuthenticated() && request.resource.data.get('userId', request.auth.uid) == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && (
+        resource.data.get('deliveryBoyId', '') == request.auth.uid ||
+        resource.data.get('userId', '') == request.auth.uid
+      ));
+      allow update, delete: if isAdmin();
+    }
+
+    // --- ADMIN TOOLS ---
+    match /promptHistory/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- STORE MANAGEMENT (Products & Admin Data) ---
+    match /products/{productId} {
+      allow read: if true;
+      // At most 5 photos per product (MAX_PRODUCT_IMAGES in src/services/mediaStorage.ts).
+      // An update that leaves the photo list as it was is still allowed, so an
+      // older product with more photos can get stock/price edits before it's trimmed.
+      allow create: if isAdmin() && productImages(request.resource.data).size() <= 5;
+      allow update: if (isAdmin() && (
+        productImages(request.resource.data).size() <= 5 ||
+        productImages(request.resource.data) == productImages(resource.data)
+      )) || (isAuthenticated() && isStockOnlyChange());
+      allow delete: if isAdmin();
+    }
+
+    function productImages(data) {
+      return data.get('media', {}).get('images', []);
+    }
+
+    // What a customer's own order is allowed to change on a product: the stock
+    // count, and the sold-out hide/restore that goes with it. Checkout decrements
+    // stock inside the order transaction and a cancellation puts it back, both
+    // from the customer's browser, so these must be writable by them - but
+    // price, name, photos and every other field stay admin-only. That is what
+    // stops a shopper from setting a Rs.38,000 piece to Rs.1 and checking out,
+    // since the payment server prices orders from these very documents.
+    function isStockOnlyChange() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.diff(before).affectedKeys()
+               .hasOnly(['inventory', 'flags', 'inactiveReason', 'outOfStockAt', 'updatedAt'])
+        && after.inventory.diff(before.inventory).affectedKeys().hasOnly(['stock'])
+        && after.inventory.stock is int
+        && after.inventory.stock >= 0
+        && after.get('flags', {}).diff(before.get('flags', {})).affectedKeys().hasOnly(['isActive'])
+        // Hide only when it has sold out; re-list only a product the sell-out
+        // rule hid, never one the owner switched off by hand.
+        && (after.get('flags', {}).get('isActive', true) == before.get('flags', {}).get('isActive', true)
+            || (after.flags.isActive == false && after.inventory.stock == 0)
+            || (after.flags.isActive == true && before.get('inactiveReason', null) == 'outOfStock'
+                && after.inventory.stock > 0))
+        && after.get('inactiveReason', null) in [null, 'outOfStock'];
+    }
+
+    match /admin/{docId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // --- CUSTOMER EXPERIENCE (Carts & Categories) ---
+    match /carts/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+      
+      match /items/{itemId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- MARKETING (Banners) ---
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- COUPONS ---
+    // Customers need to read coupons to apply them at checkout, and need to
+    // bump `usedCount` by 1 after their order is created so admin limits stay
+    // accurate. They must NOT be able to mutate any other coupon field.
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['usedCount', 'updatedAt'])
+        && request.resource.data.usedCount == resource.data.usedCount + 1
+      );
+    }
+    
+    // --- HOMEPAGE SHOWCASES ---
+    match /showcases/{showcaseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- HOMEPAGE TESTIMONIALS ---
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- CUSTOMER REVIEWS ---
+    match /reviews/{reviewId} {
+      // Anyone can read approved reviews
+      allow read: if true;
+      // Authenticated users can create their own reviews
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      // Only admin can update (approve/reject) or delete reviews
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // --- HOMEPAGE GALLERY ---
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- ORDER FULFILLMENT (Optimized for Delivery Partners with OTP Verification) ---
+    match /orders/{orderId} {
+      // Helper: Check if user is the assigned delivery partner
+      function isAssignedDeliveryBoy() {
+        return isAuthenticated() && resource.data.delivery_boy_id == request.auth.uid;
+      }
+      
+      // Helper: Check if user is the order owner (customer)
+      function isOrderOwner() {
+        return isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
+      
+      // Helper: Validate status transitions for delivery workflow
+      function isValidStatusTransition() {
+        let currentStatus = resource.data.status;
+        let newStatus = request.resource.data.status;
+        
+        // Delivery boy workflow: shipped/assigned → picked → outForDelivery → delivered
+        return (currentStatus == 'shipped' && newStatus == 'picked') ||
+               (currentStatus == 'assigned' && newStatus == 'picked') ||
+               (currentStatus == 'picked' && newStatus == 'outForDelivery') ||
+               (currentStatus == 'outForDelivery' && newStatus == 'delivered');
+      }
+      
+      // Helper: Ensure OTP is only cleared when marking as delivered
+      function isValidOTPUpdate() {
+        let newStatus = request.resource.data.status;
+        // Only allow OTP to be cleared (set to null) when status becomes 'delivered'
+        return newStatus == 'delivered' ?
+          (request.resource.data.delivery_otp == null && request.resource.data.otp_verified == true) :
+          true;
+      }
+
+      // Helper: a delivery partner's status step touches only delivery fields,
+      // never the total, the customer or the payment.
+      function deliveryFieldsOnly() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'lastUpdated', 'statusHistory',
+          'pickedAt', 'outForDeliveryAt', 'deliveredAt',
+          'delivery_otp', 'otp_verified', 'otp_generated_at'
+        ]);
+      }
+
+      // Helper: a payment the server verified (api/verify-payment.ts writes
+      // payments/<razorpay order id>) and bound to this customer.
+      function isVerifiedPaymentForCaller() {
+        let payment = /databases/$(database)/documents/payments/$(orderId);
+        return exists(payment) && get(payment).data.uid == request.auth.uid;
+      }
+
+      // Helper: the dealer fields of a new order. A retail order has none of
+      // them. A dealer-priced order is an approved dealer's own, for the
+      // business name and GSTIN the shop approved (the invoice prints them).
+      function hasValidDealerFields() {
+        let d = request.resource.data;
+        let dealer = /databases/$(database)/documents/dealers/$(request.auth.uid);
+        return !d.keys().hasAny(['pricing', 'regularSubtotal', 'dealerSavings', 'buyerBusiness'])
+          || (d.get('pricing', '') == 'dealer'
+            && exists(dealer)
+            && get(dealer).data.status == 'approved'
+            && (!('buyerBusiness' in d)
+              || (d.buyerBusiness.name == get(dealer).data.businessName
+                && d.buyerBusiness.gstin == get(dealer).data.gstin)));
+      }
+
+      // Helper: what a customer may create. One order per payment: an online
+      // order lives at orders/<razorpay order id>, and may say it is paid only
+      // when the server has a verified payment for that id in the customer's
+      // name. It starts as a new order; the fields the shop, the delivery
+      // partner and the server set later cannot be written up front.
+      function isValidOrderCreate() {
+        let d = request.resource.data;
+        return d.userId == request.auth.uid
+          && d.get('status', '') == 'pending'
+          && d.get('razorpayOrderId', orderId) == orderId
+          && (d.get('paymentStatus', 'pending') != 'paid' || isVerifiedPaymentForCaller())
+          && hasValidDealerFields()
+          && !d.keys().hasAny([
+            'deliveredAt', 'pickedAt', 'outForDeliveryAt', 'returnedAt',
+            'delivery_boy_id', 'delivery_boy_name', 'delivery_partner_id', 'delivery_partner_name', 'deliveryBoyId',
+            'delivery_otp', 'otp_verified', 'cancelledAt', 'cancelledBy',
+            'returnStatus', 'returnRequestedAt', 'returnApprovedAt', 'returnScheduledAt', 'returnCancelled',
+            'pointsEarned', 'pointsEarnedState', 'pointsUnlockAt', 'paymentVerifiedAt',
+            'refundReceiptUrl', 'paymentCollectedAt', 'paymentCollectedBy'
+          ]);
+      }
+      
+      // Helper: Check if customer is cancelling their own order
+      function isValidCancellation() {
+        let currentStatus = resource.data.status;
+        let newStatus = request.resource.data.status;
+        // Customers can only cancel orders that are 'pending' or 'processing'.
+        // The fields list stops a "cancellation" from also rewriting the
+        // total, the payment status or the refund details.
+        return newStatus == 'cancelled' &&
+               (currentStatus == 'pending' || currentStatus == 'processing') &&
+               request.resource.data.cancelledBy == 'user' &&
+               request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                 'status', 'cancellationReason', 'cancelledAt', 'cancelledBy',
+                 'updatedAt', 'lastUpdated', 'statusHistory', 'stockDecremented'
+               ]);
+      }
+      
+      // Helper: Check if customer is requesting a return for a delivered order.
+      // The fields list keeps a return request from also rewriting the
+      // customer, the payment or the delivery date; a cancelled return cannot
+      // be requested again. Returns close 7 days after delivery, the same
+      // window as src/lib/returnWindow.ts (earned points unlock after it), and
+      // an order with no delivery time is refused; the shop can still record a
+      // return for it from the admin panel.
+      function isValidReturnRequest() {
+        let currentStatus = resource.data.status;
+        let newStatus = request.resource.data.status;
+        let deliveredAt = resource.data.get('deliveredAt', null);
+        return currentStatus == 'delivered' && newStatus == 'returnRequested'
+          && resource.data.get('returnCancelled', false) != true
+          // The shop decides: a request always starts pending.
+          && request.resource.data.get('returnStatus', 'pending') == 'pending'
+          && deliveredAt is timestamp
+          && request.time < deliveredAt + duration.value(7, 'd')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'returnReason', 'returnRequestedAt', 'returnStatus',
+            'updatedAt', 'lastUpdated', 'statusHistory'
+          ]);
+      }
+
+      // Helper: the customer withdraws their own return request (once), which
+      // puts the order back to delivered.
+      function isValidReturnCancel() {
+        return resource.data.status == 'returnRequested'
+          // Only before the shop approves it: after that the goods may be on their way back.
+          && resource.data.get('returnStatus', 'pending') == 'pending'
+          && request.resource.data.status == 'delivered'
+          && request.resource.data.returnCancelled == true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'returnCancelled', 'returnCancelledAt', 'return_otp', 'return_otp_verified',
+            'updatedAt', 'lastUpdated', 'statusHistory'
+          ]);
+      }
+
+      // Helper: Assigned delivery partner can mark COD payment as collected
+      // without changing the fulfillment status. This keeps collection state
+      // persisted on the order instead of being inferred from payment method.
+      function isValidCodPaymentCollectionUpdate() {
+        return resource.data.paymentMethod == 'Cash On Delivery'
+          && resource.data.status == 'outForDelivery'
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.paymentStatus == 'paid'
+          && resource.data.paymentStatus != 'paid'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'paymentStatus',
+            'paymentCollectedAt',
+            'paymentCollectedBy',
+            'paymentCollectedByName',
+            'updatedAt',
+            'lastUpdated',
+            'statusHistory'
+          ]);
+      }
+      
+      // READ: Admins see all; Customers see their orders; Delivery boys see assigned orders
+      allow read: if isAuthenticated() && 
+        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || isAdmin());
+      
+      // CREATE: customers create their own new orders (see isValidOrderCreate)
+      allow create: if (isAuthenticated() && isValidOrderCreate()) || isAdmin();
+
+      // UPDATE: Complex rules for different roles
+      // - Admin can update anything
+      // - Customers can cancel their own orders (pending/processing only)
+      // - Customers can request returns for delivered orders, and withdraw the request
+      // - Delivery boys can only update their assigned orders with valid status transitions
+      allow update: if isAdmin() ||
+        (isOrderOwner() && isValidCancellation()) ||
+        (isOrderOwner() && isValidReturnRequest()) ||
+        (isOrderOwner() && isValidReturnCancel()) ||
+        (isAssignedDeliveryBoy() && isValidCodPaymentCollectionUpdate()) ||
+        (isAssignedDeliveryBoy() && isValidStatusTransition() && isValidOTPUpdate() && deliveryFieldsOnly());
+      
+      // DELETE: Only admin can delete orders
+      allow delete: if isAdmin();
+
+      // --- ORDER MESSAGES / IN-APP CHAT ---
+      match /messages/{messageId} {
+        function parentOrder() {
+          return get(/databases/$(database)/documents/orders/$(orderId));
+        }
+
+        function isMessageOrderOwner() {
+          return isAuthenticated() && parentOrder().data.userId == request.auth.uid;
+        }
+
+        function isCustomerMessageWrite() {
+          return request.resource.data.authorType == 'customer'
+            && request.resource.data.authorId == request.auth.uid
+            && request.resource.data.visibility == 'customer'
+            && request.resource.data.channel == 'chat';
+        }
+
+        allow read: if isAdmin() ||
+          (isMessageOrderOwner() && resource.data.visibility == 'customer');
+
+        allow create: if isAdmin() ||
+          (isMessageOrderOwner() && isCustomerMessageWrite());
+
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // --- VERIFIED PAYMENTS (server-only) ---
+    // payments/<razorpay order id>, written with the Admin SDK by
+    // api/verify-payment.ts once Razorpay's signature checks out (or by the
+    // reconcile action after asking Razorpay): who paid, how much, the cart
+    // hash and the points/cashback spent. The orders create rule needs it to
+    // accept an order marked paid; the admin order page compares against it.
+    match /payments/{razorpayOrderId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // --- DEALERS (Dealer Membership) ---
+    // One application per customer (doc id = uid). The customer creates it as
+    // 'pending' with only the application fields, may withdraw it while it is
+    // pending, and may re-apply after a rejection. Only an admin approves,
+    // rejects, suspends or reinstates. api/create-order.ts reads the status
+    // with the Admin SDK before charging dealer prices.
+    match /dealers/{uid} {
+      function dealerAppKeys() {
+        return ['businessName', 'businessType', 'contactName', 'phone', 'city', 'state', 'gstin', 'message'];
+      }
+      function validDealerApp(d) {
+        return d.businessName is string && d.businessName.size() >= 2 && d.businessName.size() <= 80
+          && d.businessType in ['retail', 'specialty', 'salon', 'gym', 'online', 'distributor', 'other']
+          && d.contactName is string && d.contactName.size() >= 2 && d.contactName.size() <= 60
+          && d.phone is string && d.phone.matches('^[+]?[0-9][0-9 ]{9,14}$')
+          && d.city is string && d.city.size() >= 2 && d.city.size() <= 60
+          && d.state is string && d.state.size() >= 2 && d.state.size() <= 40
+          && d.gstin is string
+          && (d.gstin == '' || d.gstin.matches('^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$'))
+          && d.message is string && d.message.size() <= 500;
+      }
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(dealerAppKeys().concat(['uid', 'status', 'appliedAt', 'updatedAt']))
+        && request.resource.data.keys().hasAll(dealerAppKeys().concat(['uid', 'status', 'appliedAt']))
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.appliedAt == request.time
+        && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time)
+        && validDealerApp(request.resource.data);
+      allow update: if isAdmin()
+        || (isOwner(uid)
+          && resource.data.status == 'rejected'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(dealerAppKeys().concat(['status', 'appliedAt', 'updatedAt']))
+          && request.resource.data.appliedAt == request.time
+          && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time)
+          && validDealerApp(request.resource.data));
+      allow delete: if isAdmin() || (isOwner(uid) && resource.data.status == 'pending');
+    }
+
+    // --- DEALER PRICES (private) ---
+    // The store-wide dealer discount and per-product dealer prices. Only admins
+    // and approved dealers can read them; only admins write them.
+    match /dealerPricing/{docId} {
+      allow read: if isAdmin()
+        || (isAuthenticated()
+          && exists(/databases/$(database)/documents/dealers/$(request.auth.uid))
+          && get(/databases/$(database)/documents/dealers/$(request.auth.uid)).data.status == 'approved');
+      allow write: if isAdmin();
+    }
+
+    // --- USER FCM TOKENS (web push) ---
+    // Document ID = the FCM registration token; data: { uid, token, platform, userAgent, createdAt, updatedAt }
+    match /userTokens/{token} {
+      // Owner may create or update their own token document
+      allow create, update: if isAuthenticated()
+                            && request.resource.data.uid == request.auth.uid;
+      // Owner may delete their own token (sign-out / unsubscribe)
+      allow delete: if isAuthenticated()
+                    && resource.data.uid == request.auth.uid;
+      // Admin may read all tokens (for the broadcast UI); owner may read their own
+      allow read: if isAdmin()
+                  || (isAuthenticated() && resource.data.uid == request.auth.uid);
+    }
+
+    // --- WHATSAPP OTP ARTIFACTS ---
+    // Server-only collection. Hashed OTP records are written/verified through
+    // the Vercel functions running with the firebase-admin SDK, which bypasses
+    // these rules. Block all client access.
+    match /whatsappOtps/{doc} {
+      allow read, write: if false;
+    }
+
+    // --- MARKETING CAMPAIGNS (broadcasts: push + WhatsApp) ---
+    // Admin-only. The /api/broadcast endpoint uses the admin SDK (bypasses
+    // these rules) to write per-channel results back to the document.
+    match /broadcastCampaigns/{campaignId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- WHATSAPP TEMPLATE METADATA ---
+    // Admin-managed list of approved Cloud-API template names + parameter
+    // descriptions used by the Marketing Center composer. Templates themselves
+    // are approved in Meta dashboard; this collection only stores metadata
+    // for picker UX.
+    match /whatsappTemplates/{templateId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // --- WHATSAPP INBOX (admin reply console) ---
+    // Threaded conversation records populated by the /api/whatsapp-webhook
+    // function (admin SDK). Admin-only client access.
+    // Team-inbox fields (status, assignedTo) live on the thread doc and
+    // internal notes are `messages` docs with direction 'note'; both are
+    // covered by the admin-only rules below. Notes are never sent to Meta.
+    match /whatsappThreads/{threadId} {
+      allow read, write: if isAdmin();
+      match /messages/{msgId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // --- WHATSAPP QUICK-REPLY SNIPPETS (team inbox) ---
+    // Saved answers the team inserts into replies. Admin-only.
+    match /whatsappSnippets/{snippetId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- VIDEO CALL SIGNALLING ---
+    // Two participants only: caller and callee. SDP offer/answer + ICE
+    // candidates live for the duration of the call and are deleted on hangup.
+    match /videoCalls/{callId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.callerUid == request.auth.uid;
+      allow read, update, delete: if isAuthenticated()
+                    && (resource.data.callerUid == request.auth.uid
+                        || resource.data.calleeUid == request.auth.uid);
+      match /callerCandidates/{cand} {
+        allow read, write: if isAuthenticated()
+                          && (get(/databases/$(database)/documents/videoCalls/$(callId)).data.callerUid == request.auth.uid
+                              || get(/databases/$(database)/documents/videoCalls/$(callId)).data.calleeUid == request.auth.uid);
+      }
+      match /calleeCandidates/{cand} {
+        allow read, write: if isAuthenticated()
+                          && (get(/databases/$(database)/documents/videoCalls/$(callId)).data.callerUid == request.auth.uid
+                              || get(/databases/$(database)/documents/videoCalls/$(callId)).data.calleeUid == request.auth.uid);
+      }
+    }
+
+    // --- VIDEO CALL REQUESTS (demo booking) ---
+    match /videoCallRequests/{reqId} {
+      // Customer can create their own request
+      allow create: if isAuthenticated()
+                    && request.resource.data.customerUid == request.auth.uid;
+      // Customer can read/update (cancel) their own requests
+      allow read, update: if isAuthenticated()
+                    && (resource.data.customerUid == request.auth.uid || isAdmin());
+      // Only admin can delete
+      allow delete: if isAdmin();
+      // List-level: admins see all; customers query filtered by their uid
+      allow list: if isAuthenticated();
+    }
+  }
+}
