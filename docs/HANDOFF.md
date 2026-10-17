@@ -26,10 +26,11 @@ Last updated: 2026-10-17 (full-photo hero and Editor's picks on the home page; a
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 1 | Phase 5 (accounts), when the owner is ready: Razorpay test keys (ICONOIQ Chrome, into `.env` only), Vercel project and env vars (owner to choose the account), image storage (Cloudflare R2 keys) and `VITE_SITE_URL`; then a test order end to end (`docs/setup/`) | No | High |
-| 2 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password" | — | — |
+| 1 | Finish the UI: check the signed-in customer pages (account, orders, wishlist, checkout) and the whole home page at 390 and 1440 px, light and dark; fix what is wrong; replace the "500 g" line on product cards (every dummy product has the same weight) with something useful or nothing | No | High |
+| 2 | Phase 5 accounts, planned with the owner for 2026-10-18: Razorpay test keys (ICONOIQ Chrome, into `.env` only), Vercel project and env vars (owner to choose the account), image storage (Cloudflare R2 keys) and `VITE_SITE_URL`; then a test order end to end (`docs/setup/`) | No | High |
+| 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password" | — | — |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Phase 5: Razorpay, Vercel, R2).`
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (finish the UI).`
 
 ## Waiting on the client or the user
 

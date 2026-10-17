@@ -48,8 +48,8 @@
 - ✅ Admin account: iconoiq@gmail.com has the admin role (2026-10-17; the client sets the password with "Forgot password" on /admin); every admin page checked at 1440 light and 390 dark
 - ✅ Storage rules: not needed (the app never uses Firebase Storage; uploads go through `api/media.ts` to Cloudflare R2)
 - ⏳ Image storage (Cloudflare R2 keys in Vercel; until then admin pages log a 503 from `/api/media` and uploads cannot work)
-- ⏳ Razorpay keys (test, then live) (owner: later)
-- ⏳ Vercel project and env vars (owner: later; which account still to decide)
+- ⏳ Razorpay keys (test, then live) (owner: 2026-10-18)
+- ⏳ Vercel project and env vars (owner: 2026-10-18; which account still to decide)
 - ⏳ Domain and `VITE_SITE_URL`
 
 ## Phase 6. Content
