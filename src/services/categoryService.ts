@@ -39,39 +39,53 @@ export interface Category {
 
 export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>[] = [
   {
-    name: 'Category One',
-    slug: 'category-one',
+    name: 'Learning Kits',
+    slug: 'learning-kits',
     subcategories: [
-      { name: 'Subcategory 1A', slug: 'subcategory-1a', children: [] },
-      { name: 'Subcategory 1B', slug: 'subcategory-1b', children: [] },
-      { name: 'Subcategory 1C', slug: 'subcategory-1c', children: [] },
+      { name: 'Deity Iconography', slug: 'deity-iconography', children: [] },
+      { name: 'Temple Architecture', slug: 'temple-architecture', children: [] },
+      { name: 'Mudras & Natyam', slug: 'mudras-natyam', children: [] },
     ],
   },
   {
-    name: 'Category Two',
-    slug: 'category-two',
+    name: 'Templates & Stencils',
+    slug: 'templates-stencils',
     subcategories: [
-      { name: 'Subcategory 2A', slug: 'subcategory-2a', children: [] },
-      { name: 'Subcategory 2B', slug: 'subcategory-2b', children: [] },
-      { name: 'Subcategory 2C', slug: 'subcategory-2c', children: [] },
+      { name: 'Drawing Templates', slug: 'drawing-templates', children: [] },
+      { name: 'Metal Stencils', slug: 'metal-stencils', children: [] },
     ],
   },
   {
-    name: 'Category Three',
-    slug: 'category-three',
+    name: 'Books & Charts',
+    slug: 'books-charts',
     subcategories: [
-      { name: 'Subcategory 3A', slug: 'subcategory-3a', children: [] },
-      { name: 'Subcategory 3B', slug: 'subcategory-3b', children: [] },
-      { name: 'Subcategory 3C', slug: 'subcategory-3c', children: [] },
+      { name: 'Picture Books', slug: 'picture-books', children: [] },
+      { name: 'Wall Charts', slug: 'wall-charts', children: [] },
+      { name: 'Activity Books', slug: 'activity-books', children: [] },
     ],
   },
   {
-    name: 'Category Four',
-    slug: 'category-four',
+    name: 'Games & Puzzles',
+    slug: 'games-puzzles',
     subcategories: [
-      { name: 'Subcategory 4A', slug: 'subcategory-4a', children: [] },
-      { name: 'Subcategory 4B', slug: 'subcategory-4b', children: [] },
-      { name: 'Subcategory 4C', slug: 'subcategory-4c', children: [] },
+      { name: 'Puzzles', slug: 'puzzles', children: [] },
+      { name: 'Card Games', slug: 'card-games', children: [] },
+    ],
+  },
+  {
+    name: 'Art & Stationery',
+    slug: 'art-stationery',
+    subcategories: [
+      { name: 'Colouring', slug: 'colouring', children: [] },
+      { name: 'Craft Supplies', slug: 'craft-supplies', children: [] },
+    ],
+  },
+  {
+    name: 'School & Academy Packs',
+    slug: 'school-academy-packs',
+    subcategories: [
+      { name: 'Classroom Packs', slug: 'classroom-packs', children: [] },
+      { name: 'Academy Packs', slug: 'academy-packs', children: [] },
     ],
   },
 ];

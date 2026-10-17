@@ -9,7 +9,7 @@
       (function () {
         var theme = 'light';
         try {
-          var stored = localStorage.getItem('demo-store-theme');
+          var stored = localStorage.getItem('iconoiq-theme');
           if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
         } catch (e) {}
         var dark = theme === 'dark' || (theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -27,13 +27,13 @@
     <meta name="theme-color" content="#0C0A09" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- [NEED: store name, title and description] Keep in sync with BRAND in src/config/brand.ts. -->
-    <title>Demo Store</title>
-    <meta name="description" content="Demo Store: an online store." />
-    <meta name="author" content="Demo Store" />
+    <!-- Keep in sync with BRAND in src/config/brand.ts. -->
+    <title>ICONOIQ</title>
+    <meta name="description" content="ICONOIQ: Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples." />
+    <meta name="author" content="ICONOIQ" />
 
-    <meta property="og:title" content="Demo Store" />
-    <meta property="og:description" content="Demo Store: an online store." />
+    <meta property="og:title" content="ICONOIQ" />
+    <meta property="og:description" content="ICONOIQ: Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples." />
     <meta property="og:type" content="website" />
     <!-- Absolute, from VITE_SITE_URL (set it on Vercel; see .env.example). -->
     <meta property="og:image" content="%VITE_SITE_URL%/og-image.jpg" />

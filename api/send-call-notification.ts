@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import admin from 'firebase-admin';
 
-const STORE_NAME = 'Demo Store'; // must equal BRAND.name (tests/brand-parity.test.ts)
+const STORE_NAME = 'ICONOIQ'; // must equal BRAND.name (tests/brand-parity.test.ts)
 
 function initAdmin() {
   if (admin.apps.length) return admin.app();

@@ -3,7 +3,7 @@ import admin from 'firebase-admin';
 import { AwsClient } from 'aws4fetch';
 import { randomBytes } from 'node:crypto';
 
-const STORE_NAME = 'Demo Store'; // must equal BRAND.name (tests/brand-parity.test.ts)
+const STORE_NAME = 'ICONOIQ'; // must equal BRAND.name (tests/brand-parity.test.ts)
 
 /**
  * /api/media - the only door into object storage (Cloudflare R2 today).
@@ -892,7 +892,7 @@ export function productPreviewHtml(product: PreviewProduct | null, pageUrl: stri
   const about = String(product?.description || '').replace(/\s+/g, ' ').trim();
   let description = [price, about].filter(Boolean).join(' · ');
   if (description.length > 200) description = `${description.slice(0, 197).trimEnd()}...`;
-  if (!description) description = 'An online store.'; // must equal BRAND.description (src/config/brand.ts)
+  if (!description) description = 'Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples.'; // must equal BRAND.description (src/config/brand.ts)
   const imageType = image?.endsWith('.png') ? 'image/png' : image?.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
 
   const t = escapeHtml(title);

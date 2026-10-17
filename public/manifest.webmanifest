@@ -1,7 +1,7 @@
 {
-  "name": "Demo Store",
-  "short_name": "Demo",
-  "description": "Demo Store: an online store.",
+  "name": "ICONOIQ",
+  "short_name": "ICONOIQ",
+  "description": "ICONOIQ: Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

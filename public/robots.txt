@@ -1,4 +1,4 @@
-# Demo Store
+# ICONOIQ
 User-agent: *
 Allow: /
 Disallow: /admin

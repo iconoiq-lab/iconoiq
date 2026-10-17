@@ -34,7 +34,7 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.messagin
         );
         if (isAppInForeground) return;
 
-        const notificationTitle = payload.notification?.title || payload.data?.title || 'Demo Store';
+        const notificationTitle = payload.notification?.title || payload.data?.title || 'ICONOIQ';
         const notificationOptions = {
           body: payload.notification?.body || payload.data?.body || '',
           icon: payload.notification?.icon || '/icon-192.png',

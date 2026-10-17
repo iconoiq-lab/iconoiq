@@ -241,7 +241,7 @@ export interface DeliverySettings {
  * Delivery values a store shows until its admin saves real ones (Admin > Commerce > Delivery and GST).
  * The home state is the store's own state (BRAND.state). api/create-order.ts keeps a copy of these
  * (it cannot import from src/); tests/brand-parity.test.ts checks its home state matches BRAND.state.
- * The charges, free-delivery amount and days are demo numbers until the client confirms them.
+ * The charges, free-delivery amount and days are provisional (owner, 2026-10-17): confirm with the client in Phase 6.
  */
 export const DEFAULT_DELIVERY: DeliverySettings = {
   enabled: true,
@@ -250,7 +250,7 @@ export const DEFAULT_DELIVERY: DeliverySettings = {
   outsideStateCharge: 100,
   stateRates: [],
   freeDeliveryAbove: 999,
-  estimatedDays: '3-5 business days',
+  estimatedDays: '4-7 business days',
 };
 
 const DELIVERY_DOC = doc(db, 'siteSettings', 'delivery');

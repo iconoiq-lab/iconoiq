@@ -17,7 +17,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import admin from 'firebase-admin';
 import { createHash, randomInt, timingSafeEqual } from 'crypto';
 
-const STORE_NAME = 'Demo Store'; // must equal BRAND.name (tests/brand-parity.test.ts)
+const STORE_NAME = 'ICONOIQ'; // must equal BRAND.name (tests/brand-parity.test.ts)
 
 const META_BASE = 'https://graph.facebook.com/v21.0';
 

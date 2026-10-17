@@ -48,7 +48,7 @@ const SDK_B64  = process.env.FIREBASE_ADMIN_SDK_BASE64;
 const TEMPLATE = process.env.WHATSAPP_OTP_TEMPLATE || 'otp_login';
 const LANG     = process.env.WHATSAPP_OTP_LANG     || 'en';
 const META_BASE = 'https://graph.facebook.com/v21.0';
-const STORE_NAME = 'Demo Store'; // same as BRAND.name
+const STORE_NAME = 'ICONOIQ'; // same as BRAND.name
 
 if (!TOKEN || !PHONE_ID || !SDK_B64) {
   console.error(RED('Missing env vars: WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, or FIREBASE_ADMIN_SDK_BASE64'));
