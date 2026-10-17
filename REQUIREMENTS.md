@@ -53,7 +53,7 @@ Every number here is shown to customers, so each one must come from the client. 
 
 Every feature the template has, with its default. Write keep or off; details per feature are in `docs/template/FEATURES.md`. A feature the brief is silent on that needs an account or key: propose off and confirm with the owner.
 
-Owner (2026-10-17): the same features as his earlier store, which are the template defaults: delivery partners off, live metal-rate pricing off, everything else on.
+Owner (2026-10-17): the same features as the owner's earlier store, which are the template defaults: delivery partners off, live metal-rate pricing off, everything else on.
 
 | Feature | Template default | Client wants | Notes |
 |---|---|---|---|
