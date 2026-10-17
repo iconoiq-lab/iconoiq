@@ -1,6 +1,6 @@
 # ICONOIQ: progress
 
-**Overall: 33% (9 of 27 steps done, 0 waiting)**
+**Overall: 41% (11 of 27 steps done, 1 waiting)**
 
 ✅ done · ⏳ to do or in progress · ⛔ waiting on the client or the owner (say what in the line). After ticking steps, run `node scripts/progress.mjs` to update the line above. Add or remove steps to fit the client (new features go under Phase 4).
 
@@ -28,9 +28,9 @@
 
 ## Phase 2. Look
 
-- ⏳ Palette, fonts, radius and motion chosen (`ui-ux-pro-max`)
-- ⏳ Homepage mockup at 390 px and 1440 px, light and dark
-- ⏳ Client's yes on the mockup
+- ✅ Palette, fonts, radius and motion chosen (`ui-ux-pro-max`)
+- ✅ Homepage mockup at 390 px and 1440 px, light and dark
+- ⛔ Client's yes on the mockup (waiting on the owner)
 
 ## Phase 3. Apply look
 
@@ -75,5 +75,5 @@
 - [NEED: reference sites and dislikes for the look] (Phase 2; "choose for us" works)
 - [NEED: GST: confirm no GST is charged, and what changes once the client registers]
 - Provisional selling rules, to confirm in Phase 6: delivery ₹50 inside Telangana and ₹100 outside, free above ₹999, 4-7 business days, 7-day returns for any reason, reply within 24 hours, the template's policy pages
-- Phase 5: the owner's new Firebase project (he is creating it), Razorpay KYC (in progress), Vercel, WhatsApp Business API account, Gemini API key, image storage (Cloudinary or Cloudflare R2)
+- Phase 5: Firebase project created (iconoiq-85b53), setup pending, Razorpay KYC (in progress), Vercel, WhatsApp Business API account, Gemini API key, image storage (Cloudinary or Cloudflare R2)
 - Phase 6: real product count and photos (the catalogue is dummy for now), about story, real reviews, FAQ
