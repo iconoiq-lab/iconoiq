@@ -23,7 +23,7 @@ export type SectionChoice = { [K in SectionKey]: SectionVersion<K> };
 /** This store's picks. */
 export const SECTIONS: SectionChoice = {
   header: 'centered',
-  hero: 'split',
+  hero: 'classic', // owner 2026-10-17: a full-photo hero, like the shop sites they liked
   productCard: 'detailed',
   categoryDisplay: 'tiles',
   productPage: 'classic',

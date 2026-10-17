@@ -983,6 +983,18 @@ html[data-heading-weight="light"] :is(h3, h4, h5, h6, .font-heading, .font-serif
   .on-photo {
     text-shadow: 0 1px 12px hsl(var(--charcoal) / 0.45);
   }
+
+  /* Hero photo: a slow push-in while its slide is on screen. Still under reduced motion. */
+  .hero-drift {
+    animation: hero-drift 9s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+  }
+  @keyframes hero-drift {
+    from { transform: scale(1.001); }
+    to { transform: scale(1.06); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-drift { animation: none; }
+  }
 }
 
 /* Surfaces, part 2: centred eyebrows, bands, tags on imagery. */

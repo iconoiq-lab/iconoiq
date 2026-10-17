@@ -22,6 +22,14 @@ const HERO_LINES = [
   "Every symbol\ntells a story.",
   "For homes, schools\nand academies.",
 ];
+/** One supporting line under each headline (Classic only), same order as HERO_LINES. */
+const HERO_SUBLINES = [
+  "Learning kits, cards and stencils that explain deities, temples and mudras.",
+  "Picture books, charts and games that make iconography easy to remember.",
+  "Classroom and academy packs, made for teachers.",
+];
+/** Small label above every Classic headline: the logo's own tagline. */
+const HERO_EYEBROW = "Indian iconography learning kits";
 
 /** Time each slide stays on screen before the next one. */
 const SLIDE_MS = 4200;
@@ -324,8 +332,21 @@ const HeroBanner = () => {
             const Heading = "h2";
             const line = HERO_LINES[(idx % count) % HERO_LINES.length];
             const link = banner.redirectLink?.trim();
+            const subline = HERO_SUBLINES[(idx % count) % HERO_SUBLINES.length];
+            // Solid cream on the photo (the strongest action on screen); its ::after stretches the link over the slide.
             const ctaClass =
-              "btn-line mt-6 w-fit text-charcoal-foreground after:absolute after:inset-0 after:content-[''] group-hover/hero:bg-charcoal-foreground group-hover/hero:text-charcoal md:mt-7 lg:mt-8";
+              "btn-line mt-6 w-fit border-transparent bg-charcoal-foreground text-charcoal shadow-[0_8px_24px_hsl(var(--charcoal)/0.35)] after:absolute after:inset-0 after:content-[''] group-hover/hero:bg-[hsl(var(--highlight-soft))] md:mt-7 md:px-7 md:py-4 lg:mt-9";
+            // The slide's words rise in a beat after the slide lands. Inactive slides keep them lowered and
+            // hidden; the instant loop resets (transitions off) skip the animation so nothing flickers.
+            const rise = (delay: number, className: string) => ({
+              className: cn(
+                "transition-[opacity,transform] ease-out motion-reduce:translate-y-0 motion-reduce:transition-none",
+                isActive ? "translate-y-0 opacity-100 duration-700" : "translate-y-3 opacity-0 duration-200",
+                !transitionsEnabled && "!transition-none",
+                className,
+              ),
+              style: { transitionDelay: isActive && transitionsEnabled ? `${delay}ms` : "0ms" },
+            });
             const cta = (
               <>
                 Explore the range <ArrowRight aria-hidden="true" className="size-3.5" />
@@ -378,7 +399,7 @@ const HeroBanner = () => {
                   <SmartImage
                     src={banner.imageUrl}
                     alt=""
-                    className="absolute inset-0 -z-10 h-full w-full object-cover transition-transform duration-500 ease-out group-hover/hero:scale-[1.03]"
+                    className={cn("absolute inset-0 -z-10 h-full w-full object-cover", isActive && "hero-drift")}
                     draggable={false}
                     preset="hero"
                     priority={idx === 0}
@@ -388,23 +409,58 @@ const HeroBanner = () => {
                 {/* Legibility scrim: rises from the bottom on phones and tablets, from the left on desktop */}
                 <div aria-hidden="true" className="photo-scrim lg:photo-scrim-side absolute inset-0 -z-10" />
 
-                <div className="px-6 pb-16 md:px-10 md:pb-16 lg:w-[60%] lg:max-w-[820px] lg:px-16 lg:pb-24">
-                  <Heading
-                    className="on-photo whitespace-pre-line text-[32px] font-semibold leading-[1.04] text-charcoal-foreground md:text-[44px] lg:text-[60px] xl:text-[68px]"
-                    style={{ fontFamily: "var(--font-heading)", fontStretch: "var(--font-heading-stretch)", letterSpacing: "-0.03em" }}
+                <div className="px-6 pb-14 md:px-10 md:pb-16 lg:w-[62%] lg:max-w-[860px] lg:px-16 lg:pb-24">
+                  <p
+                    {...rise(
+                      150,
+                      "mb-4 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.26em] text-[hsl(var(--highlight-soft))] md:mb-5 md:text-[11px]",
+                    )}
                   >
-                    {line}
-                  </Heading>
+                    <span aria-hidden="true" className="h-px w-8 bg-current md:w-10" />
+                    {HERO_EYEBROW}
+                  </p>
+                  {(() => {
+                    const r = rise(
+                      250,
+                      "on-photo whitespace-pre-line text-[34px] font-semibold leading-[1.04] text-charcoal-foreground md:text-[48px] lg:text-[62px] xl:text-[72px]",
+                    );
+                    return (
+                      <Heading
+                        className={r.className}
+                        style={{ ...r.style, fontFamily: "var(--font-heading)", fontStretch: "var(--font-heading-stretch)", letterSpacing: "-0.03em" }}
+                      >
+                        {line}
+                      </Heading>
+                    );
+                  })()}
+                  <p
+                    {...rise(
+                      350,
+                      "on-photo mt-3 max-w-[36ch] text-[14px] leading-relaxed text-charcoal-foreground/85 md:mt-4 md:text-[16px] lg:text-[17px]",
+                    )}
+                  >
+                    {subline}
+                  </p>
                   {link ? (
-                    /^https?:\/\//i.test(link) ? (
-                      <a href={link} target="_blank" rel="noopener noreferrer" className={ctaClass}>
-                        {cta}
-                      </a>
-                    ) : (
-                      <Link to={link} className={ctaClass}>
-                        {cta}
-                      </Link>
-                    )
+                    // Fades only: a transform here would trap the CTA's slide-wide ::after inside this box.
+                    <div
+                      className={cn(
+                        "transition-opacity ease-out motion-reduce:transition-none",
+                        isActive ? "opacity-100 duration-700" : "opacity-0 duration-200",
+                        !transitionsEnabled && "!transition-none",
+                      )}
+                      style={{ transitionDelay: isActive && transitionsEnabled ? "450ms" : "0ms" }}
+                    >
+                      {/^https?:\/\//i.test(link) ? (
+                        <a href={link} target="_blank" rel="noopener noreferrer" className={ctaClass}>
+                          {cta}
+                        </a>
+                      ) : (
+                        <Link to={link} className={ctaClass}>
+                          {cta}
+                        </Link>
+                      )}
+                    </div>
                   ) : null}
                 </div>
               </div>

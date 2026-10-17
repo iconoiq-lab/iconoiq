@@ -16,7 +16,7 @@ export const HOME_BLOCKS = {
   /** "Most loved right now": products flagged as best sellers (admin product form). */
   bestSellers: true,
   /** "Editor's picks": a dark photo band of featured products. */
-  featured: false, // ICONOIQ mockup (2026-10-17)
+  featured: true, // owner 2026-10-17: a fuller, shop-like home page
   /** "New arrivals": products flagged as new arrivals (admin product form). */
   newArrivals: true,
   /** "Trending now": a second product shelf (products flagged as trending). */
