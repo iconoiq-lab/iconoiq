@@ -7,14 +7,14 @@ This file holds the working state between chats, so a new chat never needs the o
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-10-17 (Phases 0-3 done; own Firebase set up with the dummy catalogue; Firestore indexes wait on the owner)
+Last updated: 2026-10-17 (Phases 0-3 done; own Firebase set up with rules, indexes and the dummy catalogue)
 
 ## State
 
 - **Branch and last commit:** main, local only. The template is the `template` git remote.
 - **Done:** Phase 0 (answers in `REQUIREMENTS.md`, plan and [NEED] list in `PROGRESS.md`), Phase 1 (brand, categories, delivery, name copies; contact details follow Admin > Commerce > Support via `useCustomerSupport`), Phase 2 (owner said yes to `docs/look/home-mockup.html`), Phase 3 (look applied, below).
 - **Phase 3, the look ("Temple Modern"):** tokens from the mockup in `src/index.css` (plus derived popover/secondary/accent/sidebar values and a `--gold` token), radius 28/18/pill/pill, Marcellus + Figtree (`index.html`, `data-heading-weight="light"`, both heading weights 400 because Marcellus has one weight; the light-weight rule also covers inline `--font-heading` styles, so no fake bold), theme colours `#F8F2E8`/`#120C08`, manifest `#794120`. Contrast 62/62. Logo: the client's picture logo (`brand-assets/logo.png`, `logo-light.png`; `build-logo-assets.mjs` now uses `logo-light.png` for the light wordmark instead of a negative) and a Marcellus "IQ" monogram (`mark.svg`). Home page per the mockup notes: facts strip on; top deals, Editor's picks, scrolling word band and phrase band off; category tiles moved to straight after the hero (`src/pages/Index.tsx`), six across with arch tops; kolam dots behind the hero text; hero lines from the mockup (`HeroBanner.tsx`); category strip icons for all six.
-- **Firebase `iconoiq-85b53` (owner OK 2026-10-17):** `.firebaserc` now names it. Firestore rules deployed (through the Rules API with the project's admin key: the `firebase` CLI here is logged in with another Google account). Email sign-in was already on. The 6 categories and the dummy catalogue are seeded by `node scripts/seed-iconoiq.mjs` (content in `scripts/iconoiq/content.mjs`; 15 products, 2 hero slides, 6 category tiles, 6 collections, 1 schools banner; all `demo: true`; `--remove` clears them; photo URLs cached in `scripts/iconoiq/images.json`, Cloudinary folder `iconoiq-85b53/dummy`). Product specs are `[NEED]`; descriptions say "Sample listing". **Indexes are not deployed:** the admin key may not create them. Until they exist the hero slides, the schools banner and product reviews do not load (the hero shows its "Welcome to ICONOIQ" fallback).
+- **Firebase `iconoiq-85b53` (owner OK 2026-10-17):** `.firebaserc` now names it. Firestore rules deployed (through the Rules API with the project's admin key: the `firebase` CLI here is logged in with another Google account). Email sign-in was already on. The 6 categories and the dummy catalogue are seeded by `node scripts/seed-iconoiq.mjs` (content in `scripts/iconoiq/content.mjs`; 15 products, 2 hero slides, 6 category tiles, 6 collections, 1 schools banner; all `demo: true`; `--remove` clears them; photo URLs cached in `scripts/iconoiq/images.json`, Cloudinary folder `iconoiq-85b53/dummy`). Product specs are `[NEED]`; descriptions say "Sample listing". **Indexes:** all 12 from `firestore.indexes.json` are enabled (made in the Firebase console in the ICONOIQ Chrome with the links in `docs/setup/ICONOIQ_INDEXES.md`, 2026-10-17; the admin key may not create indexes). Home hero, schools banner and reviews load; checked at 390/1440 light/dark.
 - **Photos:** all 15 dummy product photos done (ChatGPT, DREAM TEAM SERVICES browser); originals in `client-brief/generated/iq-*.png` (git-ignored), web copies in `docs/look/img/`.
 - **Still the template's until later phases:** policy text and About/Contact photos (`[NEED]` placeholders, Phase 6), the Contact page's "Website example.com" (until `VITE_SITE_URL`, Phase 5).
 - **Unfinished or uncommitted work:** none.
@@ -24,10 +24,9 @@ Last updated: 2026-10-17 (Phases 0-3 done; own Firebase set up with the dummy ca
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 1 | Owner: create the 12 Firestore indexes with the links in `docs/setup/ICONOIQ_INDEXES.md` (signed in as the owner of `iconoiq-85b53`), or run `firebase login:add` with that account so `firebase deploy --only firestore:indexes` works. Then check the home hero and schools banner at 390/1440 light/dark and tick Phase 3's last step | No | Medium |
-| 2 | Phase 5 (accounts): Storage rules if Storage is used (`storage.rules`), make an admin account (`scripts/make-admin.mjs`) and check the admin pages, Razorpay test keys, Vercel project and env vars (`docs/setup/`) | No | High |
+| 1 | Phase 5 (accounts): Storage rules if Storage is used (`storage.rules`), make an admin account (`scripts/make-admin.mjs`) and check the admin pages, Razorpay test keys, Vercel project and env vars (`docs/setup/`) | No | High |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (indexes are created: yes/no), then Next step 2.`
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Phase 5 accounts).`
 
 ## Waiting on the client or the user
 
@@ -44,7 +43,7 @@ Last updated: 2026-10-17 (Phases 0-3 done; own Firebase set up with the dummy ca
 - 2026-10-17 (owner): ChatGPT and other creative work runs in the "DREAM TEAM SERVICES" Chrome; the client's own accounts (Cloudinary, Firebase) in the "ICONOIQ" Chrome.
 
 - 2026-10-17: Home blocks follow the mockup's notes (owner's yes): top deals off (no real offers, and it said "Savings" and "Deal of the week"), Editor's picks, the scrolling word band and the phrase band off; facts strip on. Switch top deals back on only with real discounts.
-- 2026-10-17: Firebase indexes are made by the owner (links file), because the admin key cannot create them and the CLI login is another account.
+- 2026-10-17: Firebase indexes are made in the console (ICONOIQ Chrome, links file), because the admin key cannot create them and the CLI login is another account. A new index in `firestore.indexes.json` needs the same: add a row to the links file or use the console.
 
 ## Gotchas
 

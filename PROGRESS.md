@@ -1,6 +1,6 @@
 # ICONOIQ: progress
 
-**Overall: 56% (15 of 27 steps done, 2 waiting)**
+**Overall: 63% (17 of 27 steps done, 0 waiting)**
 
 ✅ done · ⏳ to do or in progress · ⛔ waiting on the client or the owner (say what in the line). After ticking steps, run `node scripts/progress.mjs` to update the line above. Add or remove steps to fit the client (new features go under Phase 4).
 
@@ -36,7 +36,7 @@
 
 - ✅ Design tokens and fonts (Temple Modern: palette, Marcellus + Figtree, radius, home blocks and order from the mockup)
 - ✅ Logo files built from `brand-assets/` (the client's picture logo + an IQ monogram)
-- ⛔ Every page checked at 390 px and 1440 px, light and dark: done except the hero slides and the schools banner, which wait on the Firestore indexes (owner: the links in `docs/setup/ICONOIQ_INDEXES.md`); signed-in pages wait for Phase 5
+- ✅ Every page checked at 390 px and 1440 px, light and dark (2026-10-17, hero and schools banner too once the indexes were built; signed-in pages and admin are checked in Phase 5)
 
 ## Phase 4. New features
 
@@ -44,7 +44,7 @@
 
 ## Phase 5. Accounts
 
-- ⛔ Client's Firebase project, rules and indexes: rules deployed, email sign-in on, `.firebaserc` switched, categories and 15 dummy products seeded (2026-10-17); the 12 indexes wait on the owner (`docs/setup/ICONOIQ_INDEXES.md`)
+- ✅ Client's Firebase project, rules and indexes: rules deployed, all 12 indexes enabled, email sign-in on, `.firebaserc` switched, categories and 15 dummy products seeded (2026-10-17)
 - ⏳ Razorpay keys (test, then live)
 - ⏳ Vercel project and env vars
 - ⏳ Domain and `VITE_SITE_URL`
