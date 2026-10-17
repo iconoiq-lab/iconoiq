@@ -4,6 +4,8 @@
  *
  *   node scripts/seed-iconoiq.mjs           # upload missing photos, replace every dummy doc
  *   node scripts/seed-iconoiq.mjs --remove  # delete every dummy doc (do this before launch)
+ *   node scripts/seed-iconoiq.mjs --add-missing-products  # add only products whose slug is not there yet
+ *     (product ids are random, so a full re-run breaks carts, wishlists and order links that point at them)
  *
  * Photos are the originals in client-brief/generated/ (git-ignored), cropped and compressed with sharp and
  * uploaded to Cloudinary with the unsigned preset. URLs are cached in scripts/iconoiq/images.json, so a
@@ -31,6 +33,7 @@ if (!categoryLiteral) throw new Error('DEFAULT_CATEGORIES not found in src/servi
 const DEFAULT_CATEGORIES = new Function(`return ${categoryLiteral}`)();
 
 const REMOVE = process.argv.includes('--remove');
+const ADD_MISSING = process.argv.includes('--add-missing-products');
 const CACHE_FILE = new URL('./iconoiq/images.json', import.meta.url);
 const SOURCE_DIR = 'client-brief/generated';
 const DEMO_COLLECTIONS = ['products', 'banners', 'showcases', 'homeCollections', 'homeBanners'];
@@ -137,41 +140,43 @@ async function ensureCategories() {
 
 const FLAG_LETTERS = { T: 'isTopDeal', B: 'isBestSeller', F: 'isFeatured', N: 'isNewArrival', R: 'isTrendProduct' };
 
+async function productDoc(p, i, base) {
+  const flags = { isActive: true, isFeatured: false, isNewArrival: false, isBestSeller: false, isTopDeal: false, isTrendProduct: false };
+  for (const letter of p.flags) flags[FLAG_LETTERS[letter]] = true;
+  const url = await photo(`product-${slugify(p.name)}`, p.photo, 'product');
+  // Staggered so "newest first" keeps the order written here.
+  const createdAt = admin.firestore.Timestamp.fromMillis(base - i * 60_000);
+  return {
+    name: p.name,
+    slug: slugify(p.name),
+    barcode: null,
+    category: p.category,
+    subcategory: p.subcategory,
+    subSubcategory: null,
+    description: p.description,
+    price: p.price,
+    originalPrice: p.originalPrice,
+    discount: 0,
+    currency: 'INR',
+    media: { images: [url], videos: [], thumbnail: url },
+    inventory: { stock: p.stock, sku: '', weight: p.weight, weightUnit: 'grams' },
+    specifications: p.specs,
+    flags,
+    inactiveReason: null,
+    delivery: null,
+    silverPricing: { enabled: false },
+    createdBy: 'seed-iconoiq',
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
 async function writeDummies() {
   const batch = db.batch();
   const add = (collection, data) => batch.set(db.collection(collection).doc(), { ...data, demo: true });
   const base = Date.now();
 
-  for (const [i, p] of PRODUCTS.entries()) {
-    const flags = { isActive: true, isFeatured: false, isNewArrival: false, isBestSeller: false, isTopDeal: false, isTrendProduct: false };
-    for (const letter of p.flags) flags[FLAG_LETTERS[letter]] = true;
-    const url = await photo(`product-${slugify(p.name)}`, p.photo, 'product');
-    // Staggered so "newest first" keeps the order written here.
-    const createdAt = admin.firestore.Timestamp.fromMillis(base - i * 60_000);
-    add('products', {
-      name: p.name,
-      slug: slugify(p.name),
-      barcode: null,
-      category: p.category,
-      subcategory: p.subcategory,
-      subSubcategory: null,
-      description: p.description,
-      price: p.price,
-      originalPrice: p.originalPrice,
-      discount: 0,
-      currency: 'INR',
-      media: { images: [url], videos: [], thumbnail: url },
-      inventory: { stock: p.stock, sku: '', weight: p.weight, weightUnit: 'grams' },
-      specifications: p.specs,
-      flags,
-      inactiveReason: null,
-      delivery: null,
-      silverPricing: { enabled: false },
-      createdBy: 'seed-iconoiq',
-      createdAt,
-      updatedAt: createdAt,
-    });
-  }
+  for (const [i, p] of PRODUCTS.entries()) add('products', await productDoc(p, i, base));
 
   for (const [i, b] of HERO_BANNERS.entries()) {
     add('banners', {
@@ -221,6 +226,19 @@ if (REMOVE) {
 
 console.log(`Project ${serviceAccount.project_id}:`);
 await ensureCategories();
+if (ADD_MISSING) {
+  const have = new Set((await db.collection('products').where('demo', '==', true).get()).docs.map((d) => d.get('slug')));
+  const base = Date.now();
+  let added = 0;
+  for (const [i, p] of PRODUCTS.entries()) {
+    if (have.has(slugify(p.name))) continue;
+    await db.collection('products').doc().set({ ...(await productDoc(p, i, base)), demo: true });
+    console.log(`  added ${p.name}`);
+    added += 1;
+  }
+  console.log(`Added ${added} products (demo: true); everything else left as it was.`);
+  process.exit(0);
+}
 await removeDummies();
 await writeDummies();
 console.log(`Wrote ${PRODUCTS.length} products, ${HERO_BANNERS.length} hero banners, ${SHOWCASES.length} showcases, ${COLLECTIONS.length} collections and 1 wide banner (all demo: true).`);

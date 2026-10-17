@@ -32,6 +32,17 @@ export const PRODUCTS = [
   p('Kolam & Rangoli Stencil Pack', 'Art & Stationery', 'Craft Supplies', 249, 'FNR', 'iq-p12-kolam-stencils.png', 'Stencils for drawing traditional kolam and rangoli patterns.'),
   p('Classroom Iconography Pack', 'School & Academy Packs', 'Classroom Packs', 4999, 'TBR', 'iq-p13-classroom-pack.png', 'A pack for teaching Indian iconography to a whole class.'),
   p('Natyam Academy Mudra Pack', 'School & Academy Packs', 'Academy Packs', 3499, 'BFN', 'iq-p14-natyam-pack.png', 'A teaching pack of hasta mudras for dance academies.'),
+  // 2026-10-18 (owner): ten more Learning Kits so the category page shows a full grid.
+  p('Lakshmi Iconography Learning Kit', 'Learning Kits', 'Deity Iconography', 1399, 'N', 'iq-p16-lakshmi-kit.png', 'A learning kit on the form of Lakshmi: the lotus seat, the four hands and what each one holds.'),
+  p('Saraswati Veena & Symbol Kit', 'Learning Kits', 'Deity Iconography', 1299, 'B', 'iq-p17-saraswati-kit.png', 'A learning kit on Saraswati, her veena, book and swan, and what each symbol stands for.'),
+  p('Krishna Forms Learning Kit', 'Learning Kits', 'Deity Iconography', 1499, 'F', 'iq-p18-krishna-kit.png', 'A learning kit on the best-known forms of Krishna and how to tell them apart.'),
+  p('Hanuman Form & Story Kit', 'Learning Kits', 'Deity Iconography', 1199, '', 'iq-p19-hanuman-kit.png', 'A learning kit on the form of Hanuman, with story cards that explain his poses.'),
+  p('Durga Weapons & Symbols Kit', 'Learning Kits', 'Deity Iconography', 1599, 'R', 'iq-p20-durga-kit.png', 'A learning kit on the many arms of Durga and the weapon or symbol in each hand.'),
+  p('Shiva Forms Learning Kit', 'Learning Kits', 'Deity Iconography', 1499, '', 'iq-p21-shiva-kit.png', 'A learning kit on the forms of Shiva, from Nataraja to Dakshinamurti, and their symbols.'),
+  p('Temple Pillar & Mandapam Model Kit', 'Learning Kits', 'Temple Architecture', 1999, 'N', 'iq-p22-mandapam-kit.png', 'Build a carved pillar hall piece by piece and learn the names of its parts.'),
+  p('Temple Chariot Build-and-Learn Kit', 'Learning Kits', 'Temple Architecture', 2299, '', 'iq-p23-ratha-kit.png', 'Build a temple chariot tier by tier and learn how festival chariots are made.'),
+  p('Nava Rasa Expression Cards', 'Learning Kits', 'Mudras & Natyam', 899, 'N', 'iq-p24-navarasa-cards.png', 'Cards that show the nine classical expressions and the feeling each one carries.'),
+  p('Adavu Practice Cards', 'Learning Kits', 'Mudras & Natyam', 799, '', 'iq-p25-adavu-cards.png', 'Cards that show the basic dance steps in order, with the hand and foot position for each.'),
 ];
 
 /** Hero carousel (`banners`). The split hero sets its own line beside the photo, so the photos carry no text. */

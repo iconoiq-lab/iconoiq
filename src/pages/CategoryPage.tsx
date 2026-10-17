@@ -61,6 +61,7 @@ import { SmartImage } from "@/components/ui/smart-image";
 import { BRAND } from "@/config/brand";
 import { DealerPriceInline } from "@/components/dealer/DealerPrice";
 import { useDealerUnit } from "@/hooks/useDealer";
+import { useTallSticky } from "@/hooks/useTallSticky";
 
 // ─── helpers ──────────────────────────────────────────
 const priceRanges = BRAND.priceRanges;
@@ -279,6 +280,9 @@ const CategoryPage = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
   // Desktop sidebar collapse — persisted per user
+  // The filter panel is taller than the screen: it scrolls with the page until its foot is in view, then
+  // sticks, instead of scrolling inside itself (owner 2026-10-18: no scroll bar of its own).
+  const filtersSticky = useTallSticky(true);
   const [desktopFiltersCollapsed, setDesktopFiltersCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('categoryFiltersCollapsed') === '1';
@@ -796,22 +800,22 @@ const CategoryPage = () => {
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col">
       {/* Back button + title bar */}
       <div className="tx-sheet tx-contour overflow-hidden border-b border-foreground/[0.08]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 lg:py-10 flex items-center lg:items-end gap-3 lg:gap-5">
-          <IconButton label="Go back" variant="solid" onClick={() => navigate(-1)} className="lg:size-11 lg:[&_svg]:size-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-5 flex items-center gap-3 lg:gap-4">
+          <IconButton label="Go back" variant="solid" onClick={() => navigate(-1)}>
             <ArrowLeft aria-hidden="true" />
           </IconButton>
           <div className="min-w-0">
-            <p className="eyebrow-no mb-2 hidden lg:inline-flex">
+            <p className="eyebrow-no mb-1 hidden lg:inline-flex">
               <span>{showAll ? "The full range" : tagMeta ? "Curated" : "Collection"}</span>
             </p>
             {titlePending ? (
               <>
                 <h1 className="sr-only">Loading collection</h1>
-                <Skeleton aria-hidden="true" className="h-8 w-48 lg:h-12 lg:w-72" />
+                <Skeleton aria-hidden="true" className="h-8 w-48 lg:h-9 lg:w-64" />
               </>
             ) : (
               <h1
-                className="text-2xl sm:text-3xl lg:text-5xl font-semibold text-foreground leading-tight [text-wrap:balance]"
+                className="text-2xl sm:text-3xl font-semibold text-foreground leading-tight [text-wrap:balance]"
                 style={{ fontFamily: "var(--font-heading)", fontStretch: "var(--font-heading-stretch)" }}
               >
                 {pageTitle}
@@ -927,7 +931,7 @@ const CategoryPage = () => {
             aria-label="Filters"
             className={`hidden lg:block flex-shrink-0 ${desktopFiltersCollapsed ? "w-12" : "w-64"}`}
           >
-            <div className="sticky top-[var(--sticky-top)] max-h-[calc(100dvh-152px)] overflow-y-auto pr-2 scrollbar-thin">
+            <div ref={filtersSticky.ref} style={filtersSticky.style} className="sticky top-[var(--sticky-top)]">
               {desktopFiltersCollapsed ? (
                 /* Collapsed rail */
                 <div className="relative mx-auto w-fit">

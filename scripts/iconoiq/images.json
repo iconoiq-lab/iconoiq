@@ -126,5 +126,45 @@
   "showcase-6": {
     "id": "iq-p13-classroom-pack.png|1200x800",
     "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792241637/iconoiq-85b53/dummy/hh5eodjor1yqvkuwfhaj.jpg"
+  },
+  "product-lakshmi-iconography-learning-kit": {
+    "id": "iq-p16-lakshmi-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266180/iconoiq-85b53/dummy/ltpncpycvcyekgcr6i5i.jpg"
+  },
+  "product-saraswati-veena-symbol-kit": {
+    "id": "iq-p17-saraswati-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266182/iconoiq-85b53/dummy/d72tmv491o6cfftqanfx.jpg"
+  },
+  "product-krishna-forms-learning-kit": {
+    "id": "iq-p18-krishna-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266184/iconoiq-85b53/dummy/qgwrhuljqlauwevftwpv.jpg"
+  },
+  "product-hanuman-form-story-kit": {
+    "id": "iq-p19-hanuman-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266185/iconoiq-85b53/dummy/oyuxqgfetxkkyznom5sr.jpg"
+  },
+  "product-durga-weapons-symbols-kit": {
+    "id": "iq-p20-durga-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266186/iconoiq-85b53/dummy/lnzcnkvibkvaz9j4g43a.jpg"
+  },
+  "product-shiva-forms-learning-kit": {
+    "id": "iq-p21-shiva-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266188/iconoiq-85b53/dummy/gxp0f5rzkmrnyt7fytcg.jpg"
+  },
+  "product-temple-pillar-mandapam-model-kit": {
+    "id": "iq-p22-mandapam-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266189/iconoiq-85b53/dummy/lofgrasps0qs7nzpijvm.jpg"
+  },
+  "product-temple-chariot-build-and-learn-kit": {
+    "id": "iq-p23-ratha-kit.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266192/iconoiq-85b53/dummy/pu4vlymw4bswhtprnheq.jpg"
+  },
+  "product-nava-rasa-expression-cards": {
+    "id": "iq-p24-navarasa-cards.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266193/iconoiq-85b53/dummy/kazsmag5fiklwmhs7cxn.jpg"
+  },
+  "product-adavu-practice-cards": {
+    "id": "iq-p25-adavu-cards.png|1000x1000",
+    "url": "https://res.cloudinary.com/kufiymn0/image/upload/v1792266194/iconoiq-85b53/dummy/xah7fabisxtr3wkaoqgl.jpg"
   }
 }
