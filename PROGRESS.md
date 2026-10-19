@@ -50,7 +50,7 @@
 - ✅ Image storage (Cloudflare R2 on the client's account, keys + analytics token in Vercel, live upload tested 2026-10-19; cache purge waits for the domain)
 - ⏳ Razorpay keys (test, then live) (owner: 2026-10-18)
 - ⏳ Vercel project and env vars (owner: 2026-10-18; which account still to decide)
-- ⏳ Domain and `VITE_SITE_URL` (temporary https://iconoiq.vercel.app in `.env`; still to add in Vercel) (temporary https://iconoiq.vercel.app in `.env`; still to add in Vercel)
+- ⏳ Domain and `VITE_SITE_URL` (`VITE_SITE_URL` = temporary https://iconoiq.vercel.app, in `.env` and Vercel, live 2026-10-19; domain still to buy) (temporary https://iconoiq.vercel.app in `.env`; still to add in Vercel)
 
 ## Phase 6. Content
 
