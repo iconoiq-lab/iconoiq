@@ -68,7 +68,7 @@ interface ProductCardProps {
  * a pricing or cart rule lives in one place.
  */
 function useCardActions(product: Product) {
-  const { addToCart, items, updateQuantity, removeFromCart } = useCart();
+  const { addToCart, items, updateQuantity, removeFromCart, closeCart } = useCart();
   const { toast } = useToast();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -90,14 +90,16 @@ function useCardActions(product: Product) {
   // An approved dealer's unit price, or null (guests, non-dealers, programme off): today's price row then renders.
   const dealer = useDealerUnit(product.id, displayPrice);
 
-  const handleAddToCart = () => {
+  // Adds one; true when it went in. No success toast: the View cart pill
+  // (src/components/ViewCartPill.tsx) and the card's stepper are the feedback.
+  const addOne = (): boolean => {
     if (!user) {
       navigate('/login', { state: { from: location } });
-      return;
+      return false;
     }
 
     try {
-      const added = addToCart({
+      return addToCart({
         id: product.id,
         name: product.title,
         price: product.price,
@@ -106,12 +108,6 @@ function useCardActions(product: Product) {
         category: product.category,
         stock: product.stock,
       });
-      if (!added) return;
-
-      toast({
-        title: "Added to cart",
-        description: product.title,
-      });
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
@@ -119,7 +115,24 @@ function useCardActions(product: Product) {
         description: "Please try again.",
         variant: "destructive",
       });
+      return false;
     }
+  };
+
+  const handleAddToCart = () => {
+    addOne();
+  };
+
+  // Buy now = the product page's rule: put it in the cart (once; one already in
+  // the cart is not doubled) and go straight to checkout.
+  const handleBuyNow = () => {
+    if (!user) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+    if (inCartQty === 0 && !addOne()) return;
+    closeCart();
+    navigate('/checkout', { state: { from: 'product' } });
   };
 
   const decrease = () => {
@@ -141,6 +154,7 @@ function useCardActions(product: Product) {
     saved: isInWishlist(product.id),
     toggleSaved: () => toggleWishlist(product.id, product.title),
     handleAddToCart,
+    handleBuyNow,
     decrease,
     increase,
   };
