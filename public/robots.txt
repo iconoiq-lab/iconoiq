@@ -8,5 +8,5 @@ Disallow: /wallet
 Disallow: /delivery
 Disallow: /api/
 
-# [NEED: live domain] Confirm it, then generate sitemap.xml for it.
-Sitemap: https://example.com/sitemap.xml
+# [NEED: live domain] Confirm it, generate sitemap.xml for it, then uncomment the line below.
+# Sitemap: https://example.com/sitemap.xml
