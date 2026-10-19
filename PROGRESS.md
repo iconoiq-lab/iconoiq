@@ -50,7 +50,7 @@
 - ✅ Image storage (Cloudflare R2 on the client's account, keys + analytics token in Vercel, live upload tested 2026-10-19; cache purge waits for the domain)
 - ⏳ Razorpay keys (test, then live) (owner: 2026-10-18)
 - ⏳ Vercel project and env vars (owner: 2026-10-18; which account still to decide)
-- ⏳ Domain and `VITE_SITE_URL` (`VITE_SITE_URL` = temporary https://iconoiq.vercel.app, in `.env` and Vercel, live 2026-10-19; domain still to buy) (temporary https://iconoiq.vercel.app in `.env`; still to add in Vercel)
+- ✅ Domain and `VITE_SITE_URL`: iconoiq.com (GoDaddy) live on Vercel, www.iconoiq.com main; `VITE_SITE_URL=https://www.iconoiq.com` in `.env` and Vercel 2026-10-19 (needs a Redeploy to take effect); sitemap.xml still to make
 
 ## Phase 6. Content
 
@@ -71,7 +71,6 @@
 - [NEED: confirm the Udyam address may be shown publicly] (it is in the footer, contact and policy pages)
 - [NEED: opening or support hours]
 - [NEED: social links (Instagram, Facebook, YouTube)]
-- [NEED: the domain name] (the owner owns it and connects it in Phase 5)
 - [NEED: launch date]
 - [NEED: launch coupons or offers, or "none"]
 - [NEED: processing time before dispatch]

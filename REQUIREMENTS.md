@@ -20,7 +20,7 @@ Filled in by Claude in Phase 0 from the documents in `client-brief/`; the owner 
 | Address (or "online only") | Plot No. 7 & 8, Raghava Kalyan Estate, Chandragiri Colony, Yapral, Secunderabad, Medchal Malkajgiri, Telangana 500094 (from the Udyam certificate). [NEED: confirm the address may be shown publicly] |
 | Opening or support hours | [NEED: opening or support hours] |
 | Instagram, Facebook, YouTube links | [NEED: social links] |
-| Domain (bought? where?) | Owned by the owner, who connects it in Phase 5. [NEED: the domain name] |
+| Domain (bought? where?) | iconoiq.com (registrar GoDaddy, DNS at GoDaddy); connected in Vercel: iconoiq.com → 308 → www.iconoiq.com (main) |
 | Wanted launch date | [NEED: launch date] |
 
 ## 2. Catalogue
@@ -124,5 +124,5 @@ Write only "ready", "not yet" or who owns it. Never paste passwords or keys into
 
 - [NEED: confirm the WhatsApp number (the phone number is used for now)]
 - [NEED: confirm the Udyam address may be shown publicly]
-- [NEED: opening or support hours, social links, launch date, the domain name]
+- [NEED: opening or support hours, social links, launch date]
 - Provisional selling rules (delivery charges, free-delivery amount, delivery time, 7-day returns, 24-hour reply, template policies): confirm with the client in Phase 6.

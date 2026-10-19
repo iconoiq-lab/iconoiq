@@ -31,8 +31,8 @@ export const BRAND = {
   /** Real facts only. The footer tagline and the meta description; keep api/media.ts and index.html in step. */
   description: 'Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples.',
 
-  /** [NEED: live domain] VITE_SITE_URL overrides it, e.g. on a preview. */
-  siteUrl: 'https://example.com',
+  /** The live domain (connected in Vercel). VITE_SITE_URL overrides it, e.g. on a preview. */
+  siteUrl: 'https://www.iconoiq.com',
 
   /**
    * Contact details. Empty values are hidden on the site. These are only the starting values: the admin edits
