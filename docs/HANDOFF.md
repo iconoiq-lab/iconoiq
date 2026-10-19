@@ -7,7 +7,7 @@ This file holds the working state between chats, so a new chat never needs the o
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-10-19 (Cloudflare analytics token made; R2 vars in Vercel, redeployed and live-tested; before that, Cloudflare R2 set up on the client's account; before that, product card: real stars, square photo, cart button + Buy now, floating "View cart" pill; before that, compact category header, sticky filters, 10 more dummy Learning Kits; Top deals on, classic header, one-row category bar, card-by-card rows; before that, UI finished: signed-in pages checked, "Shop for" block, own category icons, word band, wishlist banner, card detail line; Razorpay and Vercel wait for the owner)
+Last updated: 2026-10-19 (VITE_SITE_URL=https://iconoiq.vercel.app in `.env`; NOT yet in Vercel: the ICONOIQ Chrome is now signed in to Vercel as the Dream Team account, so the owner adds it; all no-domain Cloudflare/R2 steps done; before that, Cloudflare analytics token made; R2 vars in Vercel, redeployed and live-tested; before that, Cloudflare R2 set up on the client's account; before that, product card: real stars, square photo, cart button + Buy now, floating "View cart" pill; before that, compact category header, sticky filters, 10 more dummy Learning Kits; Top deals on, classic header, one-row category bar, card-by-card rows; before that, UI finished: signed-in pages checked, "Shop for" block, own category icons, word band, wishlist banner, card detail line; Razorpay and Vercel wait for the owner)
 
 ## State
 
@@ -30,11 +30,11 @@ Last updated: 2026-10-19 (Cloudflare analytics token made; R2 vars in Vercel, re
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 1 | Phase 5 accounts, planned with the owner for 2026-10-18: Razorpay test keys (ICONOIQ Chrome, into `.env` only), Razorpay vars in Vercel, and `VITE_SITE_URL` (R2, analytics token, Vercel vars and the live upload check are done); then a test order end to end (`docs/setup/`) | No | High |
+| 1 | Phase 5 accounts, planned with the owner for 2026-10-18: Razorpay test keys (ICONOIQ Chrome, into `.env` only), Razorpay vars in Vercel, and `VITE_SITE_URL=https://iconoiq.vercel.app` in Vercel Production + Preview, then Redeploy (already in `.env`; the ICONOIQ Chrome's Vercel login switched to the Dream Team account, so the owner signs it back in to iconoiq-9308 or adds the var); after a domain: `CLOUDFLARE_ZONE_ID` + Zone Cache Purge on the analytics token + custom domain on the bucket (R2, analytics token, Vercel vars and the live upload check are done); then a test order end to end (`docs/setup/`) | No | High |
 | 2 | Port the card change (cart button + Buy now, View cart pill) to the template (`Desktop/Ecommerce Template`) | No | High |
 | 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; and ask whether the four "Shop for" cards point at the right shelves | — | — |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Phase 5 accounts: Razorpay test keys, Vercel, R2, VITE_SITE_URL).`
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Phase 5 accounts: Razorpay test keys, VITE_SITE_URL in Vercel, test order).`
 
 ## Waiting on the client or the user
 

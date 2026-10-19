@@ -1,6 +1,6 @@
 # ICONOIQ: progress
 
-**Overall: 63% (19 of 30 steps done, 0 waiting)**
+**Overall: 67% (20 of 30 steps done, 0 waiting)**
 
 ✅ done · ⏳ to do or in progress · ⛔ waiting on the client or the owner (say what in the line). After ticking steps, run `node scripts/progress.mjs` to update the line above. Add or remove steps to fit the client (new features go under Phase 4).
 
@@ -47,10 +47,10 @@
 - ✅ Client's Firebase project, rules and indexes: rules deployed, all 12 indexes enabled, email sign-in on, `.firebaserc` switched, categories and 15 dummy products seeded (2026-10-17)
 - ✅ Admin account: iconoiq@gmail.com has the admin role (2026-10-17; the client sets the password with "Forgot password" on /admin); every admin page checked at 1440 light and 390 dark
 - ✅ Storage rules: not needed (the app never uses Firebase Storage; uploads go through `api/media.ts` to Cloudflare R2)
-- ⏳ Image storage (Cloudflare R2 keys in Vercel; until then admin pages log a 503 from `/api/media` and uploads cannot work)
+- ✅ Image storage (Cloudflare R2 on the client's account, keys + analytics token in Vercel, live upload tested 2026-10-19; cache purge waits for the domain)
 - ⏳ Razorpay keys (test, then live) (owner: 2026-10-18)
 - ⏳ Vercel project and env vars (owner: 2026-10-18; which account still to decide)
-- ⏳ Domain and `VITE_SITE_URL`
+- ⏳ Domain and `VITE_SITE_URL` (temporary https://iconoiq.vercel.app in `.env`; still to add in Vercel) (temporary https://iconoiq.vercel.app in `.env`; still to add in Vercel)
 
 ## Phase 6. Content
 
