@@ -7,7 +7,7 @@ This file holds the working state between chats, so a new chat never needs the o
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-10-18 (compact category header, sticky filters, 10 more dummy Learning Kits; Top deals on, classic header, one-row category bar, card-by-card rows; before that, UI finished: signed-in pages checked, "Shop for" block, own category icons, word band, wishlist banner, card detail line; Razorpay and Vercel wait for the owner)
+Last updated: 2026-10-19 (product card: real stars, square photo, cart button + Buy now, floating "View cart" pill; before that, compact category header, sticky filters, 10 more dummy Learning Kits; Top deals on, classic header, one-row category bar, card-by-card rows; before that, UI finished: signed-in pages checked, "Shop for" block, own category icons, word band, wishlist banner, card detail line; Razorpay and Vercel wait for the owner)
 
 ## State
 
@@ -21,6 +21,7 @@ Last updated: 2026-10-18 (compact category header, sticky filters, 10 more dummy
 - **Admin:** iconoiq@gmail.com is an admin (made with the admin SDK as a verified email login, then given a random password nobody knows). The client signs in at `/admin` after "Forgot password" sets their own. All admin pages checked; the only console error is `/api/media` 503 (R2 not set up yet). Firebase Storage is not used by the app, so `storage.rules` was not deployed.
 - **Photos:** all 15 dummy product photos done (ChatGPT, DREAM TEAM SERVICES browser); originals in `client-brief/generated/iq-*.png` (git-ignored), web copies in `docs/look/img/`.
 - **Still the template's until later phases:** policy text and About/Contact photos (`[NEED]` placeholders, Phase 6), the Contact page's "Website example.com" (until `VITE_SITE_URL`, Phase 5).
+- **Product card (owner 2026-10-19, "like Sreerasthu, with the cart icon and Buy now, and a View cart like Blinkit"):** `DetailedCard.tsx` has a square photo with the heart on it, a real star row (empty stars until a product has reviews; `rating`/`reviews` come from reviewService), and a cart button (a − 1 + stepper once in the cart) beside "Buy now" (adds once, goes to checkout). `src/components/ViewCartPill.tsx`, bottom centre on the pages in `src/lib/cartPill.ts`, opens the cart and replaces the card's "Added to cart" toast. Checked signed in at 390/1440 light/dark; the test shopper's cart was put back to its two items. Same change made in Ishaputra (local commit `6dab671`, not deployed). Port to the template.
 - **Unfinished or uncommitted work:** none.
 - **How to run and check it:** `npm run dev` (port 5182: `npx vite --port 5182 --strictPort --host 127.0.0.1`); `node scripts/check.mjs` runs tests, build and screenshots.
 
@@ -29,7 +30,8 @@ Last updated: 2026-10-18 (compact category header, sticky filters, 10 more dummy
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
 | 1 | Phase 5 accounts, planned with the owner for 2026-10-18: Razorpay test keys (ICONOIQ Chrome, into `.env` only), Vercel project and env vars (owner to choose the account), image storage (Cloudflare R2 keys) and `VITE_SITE_URL`; then a test order end to end (`docs/setup/`) | No | High |
-| 2 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; and ask whether the four "Shop for" cards point at the right shelves | — | — |
+| 2 | Port the card change (cart button + Buy now, View cart pill) to the template (`Desktop/Ecommerce Template`) | No | High |
+| 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; and ask whether the four "Shop for" cards point at the right shelves | — | — |
 
 **Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Phase 5 accounts: Razorpay test keys, Vercel, R2, VITE_SITE_URL).`
 
