@@ -48,3 +48,6 @@ scripts/tests/out/
 # Client documents stay out of git (client copies; the template has none)
 client-brief/*
 !client-brief/README.md
+
+# Private client documents (MSME, GST etc.) stay local
+docs/*.pdf
