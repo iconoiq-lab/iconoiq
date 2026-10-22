@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { subscribeToFirestoreSilverRate, getCachedSilverRate } from '@/services/silverRateService';
+import { isOn } from '@/config/features';
 
 interface SilverRateContextValue {
   /** Live silver rate per gram in INR. 0 if not yet loaded. */
@@ -10,10 +11,12 @@ const SilverRateContext = createContext<SilverRateContextValue>({ ratePerGram: 0
 
 export function SilverRateProvider({ children }: { children: ReactNode }) {
   const [ratePerGram, setRatePerGram] = useState<number>(
-    () => getCachedSilverRate()?.pricePerGramInr ?? 0
+    () => (isOn('silverPricing') ? getCachedSilverRate()?.pricePerGramInr ?? 0 : 0)
   );
 
+  // A store without metal-rate pricing keeps 0 (stored prices) and opens no Firestore listener.
   useEffect(() => {
+    if (!isOn('silverPricing')) return;
     const unsub = subscribeToFirestoreSilverRate((rate) => {
       setRatePerGram(rate.pricePerGramInr);
     });

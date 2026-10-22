@@ -193,7 +193,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) {
-    return res.status(500).json({ verified: false, error: 'RAZORPAY_KEY_SECRET is not configured' });
+    console.error('[verify-payment] RAZORPAY_KEY_SECRET is not configured');
+    return res.status(503).json({ verified: false, error: 'We could not confirm your payment right now. If money was taken, contact us with your order number.' });
   }
 
   // ── Signature mismatch → 400, do NOT mark as paid ──

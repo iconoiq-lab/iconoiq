@@ -74,6 +74,7 @@ const RESERVE_TIMEOUT_MS = 9000;
  */
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
 const WEB_API_KEY = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
+const PAYMENTS_UNAVAILABLE = 'Online payment is not available right now. Please try again later or contact us.';
 
 const firestoreBase = () =>
   `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -922,14 +923,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  // The customer sees `error` in the checkout toast, so it says what to do; the
+  // missing variable names go to the server log for the owner.
   if (!keyId || !keySecret) {
-    return res
-      .status(500)
-      .json({ error: 'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not configured' });
+    console.error('[create-order] RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not configured');
+    return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
   }
 
   if (!PROJECT_ID || !WEB_API_KEY) {
-    return res.status(500).json({ error: 'Firebase project id / web API key are not configured' });
+    console.error('[create-order] Firebase project id / web API key are not configured');
+    return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
   }
 
   // Validate every cart line before spending any network calls on it. A

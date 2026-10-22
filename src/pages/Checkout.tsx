@@ -925,7 +925,7 @@ const MobileCheckout = () => {
   }, [showOrderSuccess]);
 
   // Fetch addresses and suggested products
-  const loadAddresses = async () => {
+  const loadAddresses = async (selectId?: string) => {
     if (user) {
       try {
         // Load user addresses
@@ -933,7 +933,11 @@ const MobileCheckout = () => {
         setAddresses(userAddresses);
         
         // Set default address or first address
-        const defaultAddr = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
+        // The address just saved ("Save and deliver here"), else the default, else the first.
+        const defaultAddr =
+          userAddresses.find(addr => addr.id === selectId) ||
+          userAddresses.find(addr => addr.isDefault) ||
+          userAddresses[0];
         setSelectedAddress(defaultAddr || null);
         setTempSelectedAddress(defaultAddr || null);
       } catch (error) {
@@ -986,7 +990,7 @@ const MobileCheckout = () => {
       setFormLoading(true);
 
       // Add new address
-      await addAddress(user.uid, formData);
+      const newId = await addAddress(user.uid, formData);
       toast({ title: 'Address saved' });
 
       // Reset form and reload addresses
@@ -1000,8 +1004,8 @@ const MobileCheckout = () => {
         state: '',
         isDefault: false,
       });
-      setShowAddressForm(false);
-      await loadAddresses();
+      await loadAddresses(newId);
+      handleCloseAddressSelector();
     } catch (error) {
       console.error('Error saving address:', error);
       toast({
@@ -2291,14 +2295,18 @@ const Checkout = () => {
   }, [items, cartLoading, showOrderSuccess, isMobile]);
 
   // Load addresses
-  const loadAddresses = async () => {
+  const loadAddresses = async (selectId?: string) => {
     if (user) {
       try {
         const userAddresses = await getUserAddresses(user.uid);
         setAddresses(userAddresses);
         
         // Set default address or first address
-        const defaultAddr = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
+        // The address just saved ("Save and deliver here"), else the default, else the first.
+        const defaultAddr =
+          userAddresses.find(addr => addr.id === selectId) ||
+          userAddresses.find(addr => addr.isDefault) ||
+          userAddresses[0];
         setSelectedAddress(defaultAddr || null);
         setTempSelectedAddress(defaultAddr || null);
       } catch (error) {
@@ -2338,7 +2346,7 @@ const Checkout = () => {
       setFormLoading(true);
 
       // Add new address
-      await addAddress(user.uid, formData);
+      const newId = await addAddress(user.uid, formData);
       toast({ title: 'Address saved' });
 
       // Reset form and reload addresses
@@ -2352,8 +2360,8 @@ const Checkout = () => {
         state: '',
         isDefault: false,
       });
-      setShowAddressForm(false);
-      await loadAddresses();
+      await loadAddresses(newId);
+      handleCloseAddressSelector();
     } catch (error) {
       console.error('Error saving address:', error);
       toast({

@@ -21,6 +21,10 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/catalog/products.json",
+      "destination": "https://pub-1721e1d562564ca39bca984fd714520c.r2.dev/catalog/products.json"
+    },
+    {
       "source": "/product/:id",
       "has": [
         {
