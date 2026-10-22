@@ -2,7 +2,7 @@
 
 A section version is a different layout for one big part of the store: the header, the home hero, the product card, the category display on the home page, the product page and the footer. Every store starts on **Classic**, the template's own look. Versions change layout only; colours, fonts, radius and logo come from the theme, so any version works with any theme.
 
-**A client copy has no section screenshots beside it:** the `template-shots/` folders named below sit next to the template repo only, outside git. In a copy, regenerate them with `node scripts/qa/section-shots.mjs --product <a product id>` (dev server up; see Screenshots below), or use the `?sections=` preview.
+**A client copy has no section screenshots beside it:** the `.shots/` folders named below sit inside the template repo only (git-ignored). In a copy, regenerate them with `node scripts/qa/section-shots.mjs --product <a product id>` (dev server up; see Screenshots below), or use the `?sections=` preview.
 
 - **Pick:** set the versions in `src/config/sections.ts` (`SECTIONS`) in Phase 2 (look), together with the homepage mockup, not after the client's yes. A "no" from the client changes them.
 - **Preview without editing code:** add `?sections=` to any URL in dev, for example `/?sections=header:centered,hero:split` or `/products?sections=productCard:compact`. The pick is remembered for the browser tab; `?sections=reset` clears it. Unknown names are ignored.
@@ -11,19 +11,19 @@ A section version is a different layout for one big part of the store: the heade
 
 | Section | Version | Name | Pick it when | Screenshots |
 |---|---|---|---|---|
-| `header` | `classic` | Classic | Search-first stores: logo left, a wide search box in the middle, icons right. | `template-shots/sections/header-classic/` |
-| `header` | `centered` | Centred logo | Brand-led stores with a strong logo: the logo sits in the centre, search moves left. | `template-shots/sections/header-centered/` |
-| `hero` | `classic` | Classic | Banners made as full photos: the image fills the width and the text sits on it. | `template-shots/sections/hero-classic/` |
-| `hero` | `split` | Split | Product photos on plain backgrounds, or busy photos where text on top is hard to read. | `template-shots/sections/hero-split/` |
-| `productCard` | `classic` | Classic | Most stores: square photo, name, stars and price, with the add button beside the price. | `template-shots/sections/productCard-classic/` |
-| `productCard` | `compact` | Compact | Large catalogues where shoppers scan many products and add straight from the grid. | `template-shots/sections/productCard-compact/` |
-| `productCard` | `detailed` | Detailed | Considered purchases: category, one key detail and a separate wishlist button. | `template-shots/sections/productCard-detailed/` |
-| `categoryDisplay` | `classic` | Classic | Few categories with strong photos: a large first tile and a mixed-size grid. | `template-shots/sections/categoryDisplay-classic/` |
-| `categoryDisplay` | `tiles` | Tiles | Many categories, or photos of mixed quality: equal tiles with the name below the photo. | `template-shots/sections/categoryDisplay-tiles/` |
-| `productPage` | `classic` | Classic | Most products: a photo with thumbnails beside the buying details, half and half. | `template-shots/sections/productPage-classic/` |
-| `productPage` | `stacked` | Stacked photos | Products sold on detail (fabric, finish, texture): every photo large, details stay in view. | `template-shots/sections/productPage-stacked/` |
-| `footer` | `classic` | Classic | Stores with many pages and a shop address: link columns, contact details and a map. | `template-shots/sections/footer-classic/` |
-| `footer` | `compact` | Compact | Small stores with few pages: one centred block with the key links and contact line. | `template-shots/sections/footer-compact/` |
+| `header` | `classic` | Classic | Search-first stores: logo left, a wide search box in the middle, icons right. | `.shots/sections/header-classic/` |
+| `header` | `centered` | Centred logo | Brand-led stores with a strong logo: the logo sits in the centre, search moves left. | `.shots/sections/header-centered/` |
+| `hero` | `classic` | Classic | Banners made as full photos: the image fills the width and the text sits on it. | `.shots/sections/hero-classic/` |
+| `hero` | `split` | Split | Product photos on plain backgrounds, or busy photos where text on top is hard to read. | `.shots/sections/hero-split/` |
+| `productCard` | `classic` | Classic | Most stores: square photo, name, stars and price, with the add button beside the price. | `.shots/sections/productCard-classic/` |
+| `productCard` | `compact` | Compact | Large catalogues where shoppers scan many products and add straight from the grid. | `.shots/sections/productCard-compact/` |
+| `productCard` | `detailed` | Detailed | Considered purchases: category, one key detail and a separate wishlist button. | `.shots/sections/productCard-detailed/` |
+| `categoryDisplay` | `classic` | Classic | Few categories with strong photos: a large first tile and a mixed-size grid. | `.shots/sections/categoryDisplay-classic/` |
+| `categoryDisplay` | `tiles` | Tiles | Many categories, or photos of mixed quality: equal tiles with the name below the photo. | `.shots/sections/categoryDisplay-tiles/` |
+| `productPage` | `classic` | Classic | Most products: a photo with thumbnails beside the buying details, half and half. | `.shots/sections/productPage-classic/` |
+| `productPage` | `stacked` | Stacked photos | Products sold on detail (fabric, finish, texture): every photo large, details stay in view. | `.shots/sections/productPage-stacked/` |
+| `footer` | `classic` | Classic | Stores with many pages and a shop address: link columns, contact details and a map. | `.shots/sections/footer-classic/` |
+| `footer` | `compact` | Compact | Small stores with few pages: one centred block with the key links and contact line. | `.shots/sections/footer-compact/` |
 
 Two things the table does not say:
 
@@ -32,7 +32,7 @@ Two things the table does not say:
 
 ## Screenshots
 
-Every version has a folder of screenshots at 390 px and 1440 px, light and dark, named in the Screenshots column. The folders sit beside the repo (outside git), under `template-shots/sections/` on the Desktop. They are local and not committed. Make or refresh them with the dev server running (`npx vite --port 5182 --strictPort --host 127.0.0.1`), from the repo root:
+Every version has a folder of screenshots at 390 px and 1440 px, light and dark, named in the Screenshots column. The folders sit beside the repo (outside git), under `.shots/sections/` on the Desktop. They are local and not committed. Make or refresh them with the dev server running (`npx vite --port 5182 --strictPort --host 127.0.0.1`), from the repo root:
 
 ```bash
 node scripts/qa/section-shots.mjs --product <a product id>

@@ -14,7 +14,7 @@
 //
 // node scripts/qa/dealer-loyalty-live.mjs [BASE] [OUT]
 //   run from ssecommerce/, dev server on BASE (default http://127.0.0.1:5182),
-//   screenshots to OUT (default ../shots/dealer-loyalty-live). Exit code 1 on any FAIL.
+//   screenshots to OUT (default .shots/dealer-loyalty-live). Exit code 1 on any FAIL.
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { createHmac } from 'node:crypto';
@@ -35,7 +35,7 @@ const T = admin.firestore.Timestamp;
 const FV = admin.firestore.FieldValue;
 
 const BASE = process.argv[2] || 'http://127.0.0.1:5182';
-const OUT = process.argv[3] || '../shots/dealer-loyalty-live';
+const OUT = process.argv[3] || '.shots/dealer-loyalty-live';
 mkdirSync(OUT, { recursive: true });
 
 process.env.RAZORPAY_KEY_ID = 'rzp_test_localcheck';

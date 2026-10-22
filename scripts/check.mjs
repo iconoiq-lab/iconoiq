@@ -1,14 +1,14 @@
 // node scripts/check.mjs [--no-shots] [path ...]          (npm run check -- [args])
 // The "done" check for a store: tests, build, then screenshots of the built site at 390 px and
 // 1440 px, light and dark (first screen of each page). Exit code 1 when any step fails.
-// Screenshots go to ../<this folder's name>-shots/check-<date-time>/, each with its console and
+// Screenshots go to .shots/check-<date-time>/ (git-ignored), each with its console and
 // network log beside it (a failed request and its console error count as one issue). The built site is served by `vite preview` on 127.0.0.1:5183 (never
 // 5173, never 0.0.0.0) and stopped afterwards. Default pages: / /products /cart /about /contact
 // /auth/login; pass others (for example /product/<id>). Git Bash: prefix MSYS_NO_PATHCONV=1 when
 // passing paths.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { failedTestNames, templateDefaultsLeft } from './lib/checkReport.mjs';
 
 const args = process.argv.slice(2);
@@ -70,7 +70,7 @@ if (SHOTS && built) {
   const d = new Date();
   const p2 = (n) => String(n).padStart(2, '0');
   const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`; // local time
-  shotsDir = resolve('..', `${basename(process.cwd())}-shots`, `check-${stamp}`);
+  shotsDir = resolve('.shots', `check-${stamp}`);
   const server = spawn(WIN ? 'npx.cmd' : 'npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { stdio: 'ignore', shell: WIN });
   try {
     if (step('preview server', await waitFor(BASE))) {

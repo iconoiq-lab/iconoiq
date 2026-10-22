@@ -24,7 +24,7 @@ const db = admin.firestore();
 const T = admin.firestore.Timestamp;
 
 const BASE = process.argv[2] || 'http://127.0.0.1:5182';
-const OUT = process.argv[3] || '../shots/scratch-win-live';
+const OUT = process.argv[3] || '.shots/scratch-win-live';
 mkdirSync(OUT, { recursive: true });
 
 process.env.RAZORPAY_KEY_ID = 'rzp_test_localcheck';

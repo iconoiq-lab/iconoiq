@@ -51,3 +51,6 @@ client-brief/*
 
 # Private client documents (MSME, GST etc.) stay local
 docs/*.pdf
+
+# Local screenshots from scripts/check.mjs and scripts/qa (never committed)
+.shots/

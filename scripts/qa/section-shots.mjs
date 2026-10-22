@@ -4,7 +4,7 @@
 // Needs the dev server up (never port 5173, never 0.0.0.0):
 //   npx vite --port 5182 --strictPort --host 127.0.0.1
 // --product  a product id for the product page shots (productPage only; without it those are skipped).
-// --out      default ../template-shots/sections (outside the repo: screenshots are never committed).
+// --out      default .shots/sections (git-ignored: screenshots are never committed).
 //            One folder per version: <out>/<key>-<version>/, for example <out>/header-centered/.
 // --only     run only these keys or key:version pairs, for example --only footer,hero:split.
 // Reads SECTION_VERSIONS from src/config/sections.ts (Node 22 strips the types), so a new version
@@ -28,7 +28,7 @@ const opt = (name, fallback) => {
   return i >= 0 ? args[i + 1] : fallback;
 };
 
-const out = resolve(opt('out', '../template-shots/sections'));
+const out = resolve(opt('out', '.shots/sections'));
 const base = opt('base', 'http://127.0.0.1:5182');
 const product = opt('product');
 const only = opt('only')?.split(',').filter(Boolean);
