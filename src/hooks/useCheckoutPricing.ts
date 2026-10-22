@@ -3,6 +3,7 @@ import {
   subscribeDeliverySettings,
   subscribeGstSettings,
   computeDeliveryCharge,
+  deliveryDependsOnAddress,
   computeGst,
   DEFAULT_DELIVERY,
   DEFAULT_GST,
@@ -30,7 +31,10 @@ export interface CheckoutPricing {
    * summary show "~~₹150~~ FREE" with a real number instead of a hardcoded one.
    */
   deliveryBeforeFree: number;
-  /** True while no address is chosen yet, so the quote may still rise. */
+  /**
+   * True while no address is chosen and the charge depends on it: the summary
+   * says "Calculated at address", and `deliveryCharge` and `total` leave it out.
+   */
   deliveryEstimated: boolean;
   gstAmount: number;
   gstAddOnTop: boolean;
@@ -72,6 +76,11 @@ export interface CheckoutPricingOptions {
   productIds?: string[];
   /** Destination state from the selected address; unknown on the cart page. */
   destinationState?: string;
+  /**
+   * An address is chosen (checkout). An address without a state is charged the
+   * home rate, as api/create-order.ts does, rather than left out.
+   */
+  hasAddress?: boolean;
   /** Categories present in the cart, for coupons restricted to some of them. */
   cartCategories?: string[];
   /** Signed-in customer, for `perUserLimit` / `firstOrderOnly` coupons. */
@@ -109,7 +118,7 @@ export function useCheckoutPricing(
   paymentMethod: string,
   options: CheckoutPricingOptions = {}
 ): CheckoutPricing {
-  const { productIds, destinationState, cartCategories, userId, applyRememberedCode, rewards } = options;
+  const { productIds, destinationState, hasAddress, cartCategories, userId, applyRememberedCode, rewards } = options;
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [delivery, setDelivery] = useState<DeliverySettings>(DEFAULT_DELIVERY);
@@ -267,18 +276,16 @@ export function useCheckoutPricing(
         cashbackApplied: 0,
       };
     }
-    const { charge: deliveryCharge, freeDelivery } = computeDeliveryCharge(
-      subtotal,
-      delivery,
-      deliveryItems,
-      destinationState
-    );
-    const { charge: deliveryBeforeFree } = computeDeliveryCharge(
-      subtotal,
-      { ...delivery, freeDeliveryAbove: 0 },
-      deliveryItems,
-      destinationState
-    );
+    // No address yet and the charge depends on it (say free at home, ₹100
+    // elsewhere): quote none rather than a "Free" that turns into ₹100.
+    const deliveryUnknown =
+      !hasAddress && !destinationState && deliveryDependsOnAddress(subtotal, delivery, deliveryItems);
+    const quote = computeDeliveryCharge(subtotal, delivery, deliveryItems, destinationState);
+    const deliveryCharge = deliveryUnknown ? 0 : quote.charge;
+    const freeDelivery = !deliveryUnknown && quote.freeDelivery;
+    const deliveryBeforeFree = deliveryUnknown
+      ? 0
+      : computeDeliveryCharge(subtotal, { ...delivery, freeDeliveryAbove: 0 }, deliveryItems, destinationState).charge;
     // `inclusive` is honoured here: when the admin says prices already contain
     // GST, `addOnTop` is false and the tax is shown as a breakdown of the
     // subtotal instead of being charged a second time. An earlier version
@@ -303,7 +310,7 @@ export function useCheckoutPricing(
       deliveryCharge,
       freeDelivery,
       deliveryBeforeFree,
-      deliveryEstimated: !destinationState && deliveryCharge > 0,
+      deliveryEstimated: deliveryUnknown,
       gstAmount,
       gstAddOnTop: addOnTop,
       codCharge: 0,
@@ -321,6 +328,7 @@ export function useCheckoutPricing(
     appliedDiscount,
     deliveryItems,
     destinationState,
+    hasAddress,
     rewards?.balances,
     rewards?.settings,
     rewards?.usePoints,

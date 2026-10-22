@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
@@ -7,8 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+
+/**
+ * The order-alert number is the store's (siteSettings/adminNotification, read by
+ * orderService), not this admin's profile: filling it from the profile showed a
+ * second admin an empty field, and their next save wiped the store's number.
+ */
+const ALERT_DOC = ['siteSettings', 'adminNotification'] as const;
 
 const AdminSettings = () => {
   const { userProfile, updateUserProfile } = useAuth();
@@ -16,7 +23,26 @@ const AdminSettings = () => {
   const [saving, setSaving] = useState(false);
   const [username, setUsername] = useState(userProfile?.username || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
-  const [whatsappNumber, setWhatsappNumber] = useState(userProfile?.whatsappNumber || '');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [alertState, setAlertState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const profileFilled = useRef(!!userProfile);
+
+  // The profile can arrive after the first render.
+  useEffect(() => {
+    if (!userProfile || profileFilled.current) return;
+    profileFilled.current = true;
+    setUsername(userProfile.username || '');
+    setPhone(userProfile.phone || '');
+  }, [userProfile]);
+
+  useEffect(() => {
+    getDoc(doc(db, ...ALERT_DOC))
+      .then((snap) => {
+        setWhatsappNumber(String(snap.data()?.whatsappNumber || ''));
+        setAlertState('ready');
+      })
+      .catch(() => setAlertState('error'));
+  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,14 +52,15 @@ const AdminSettings = () => {
     }
     setSaving(true);
     try {
-      const trimmedWhatsapp = whatsappNumber.trim();
-      await updateUserProfile({ username: username.trim(), phone: phone.trim(), whatsappNumber: trimmedWhatsapp });
-      // Also persist to siteSettings so order notifications use this number
-      await setDoc(
-        doc(db, 'siteSettings', 'adminNotification'),
-        { whatsappNumber: trimmedWhatsapp, updatedAt: serverTimestamp() },
-        { merge: true }
-      );
+      await updateUserProfile({ username: username.trim(), phone: phone.trim() });
+      // Only a number that was loaded is written back, so a failed read never clears it.
+      if (alertState === 'ready') {
+        await setDoc(
+          doc(db, ...ALERT_DOC),
+          { whatsappNumber: whatsappNumber.trim(), updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+      }
       toast({ title: 'Settings saved' });
     } catch {
       toast({ title: 'Could not save settings', description: 'Please try again.', variant: 'destructive' });
@@ -65,9 +92,13 @@ const AdminSettings = () => {
               <Input id="st-phone" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" className="mt-2" />
             </div>
             <div>
-              <Label htmlFor="st-whatsapp" className="text-foreground/80">WhatsApp number</Label>
-              <Input id="st-whatsapp" type="tel" inputMode="tel" aria-describedby="st-whatsapp-hint" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder="WhatsApp number" className="mt-2" />
-              <p id="st-whatsapp-hint" className="mt-1.5 text-xs text-muted-foreground">New order alerts are sent to this number.</p>
+              <Label htmlFor="st-whatsapp" className="text-foreground/80">WhatsApp number for order alerts</Label>
+              <Input id="st-whatsapp" type="tel" inputMode="tel" aria-describedby="st-whatsapp-hint" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder={alertState === 'loading' ? 'Loading' : 'WhatsApp number'} disabled={alertState !== 'ready'} className="mt-2" />
+              <p id="st-whatsapp-hint" className="mt-1.5 text-xs text-muted-foreground">
+                {alertState === 'error'
+                  ? 'Could not load the alert number. Reload the page to change it.'
+                  : 'One number for the whole store: new-order and return alerts go here. Empty means the support WhatsApp (Commerce, Support).'}
+              </p>
             </div>
             <div className="flex justify-end border-t border-border pt-4">
               <Button type="submit" disabled={saving}>

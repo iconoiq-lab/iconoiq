@@ -372,6 +372,7 @@ const BillRows = ({
   dealerSavings,
   deliveryCharge,
   deliveryBeforeFree = 0,
+  deliveryEstimated = false,
   discount,
   pointsApplied,
   pointsValue,
@@ -390,6 +391,8 @@ const BillRows = ({
   dealerSavings?: number;
   deliveryCharge: number;
   deliveryBeforeFree?: number;
+  /** No address yet and the charge depends on it: "Calculated at address". */
+  deliveryEstimated?: boolean;
   discount: number;
   pointsApplied: number;
   pointsValue: number;
@@ -422,7 +425,9 @@ const BillRows = ({
     )}
     <div className="flex justify-between gap-3">
       <span className="text-muted-foreground">Delivery</span>
-      {deliveryCharge === 0 ? (
+      {deliveryEstimated ? (
+        <span className="text-muted-foreground">Calculated at address</span>
+      ) : deliveryCharge === 0 ? (
         <span className="flex items-center gap-1.5">
           {deliveryBeforeFree > 0 && (
             <s className="tabular-nums text-muted-foreground">
@@ -1079,6 +1084,7 @@ const MobileCheckout = () => {
   const pricing = useCheckoutPricing(pricedSubtotal, items.length === 0, selectedPaymentMethod, {
     productIds: items.map((i) => i.id),
     destinationState: selectedAddress?.state,
+    hasAddress: !!selectedAddress,
     // Needed for category-restricted coupons and for `perUserLimit` /
     // `firstOrderOnly`, which the admin panel stores but nothing used to check.
     cartCategories: items.map((i) => i.category || '').filter(Boolean),
@@ -1358,6 +1364,7 @@ const MobileCheckout = () => {
     ...(dealerApplies ? { regularSubtotal: dealerCart.quote.regularSubtotal, dealerSavings: dealerCart.quote.savings } : {}),
     deliveryCharge,
     deliveryBeforeFree: pricing.deliveryBeforeFree,
+    deliveryEstimated: pricing.deliveryEstimated,
     discount,
     pointsApplied: pricing.pointsApplied,
     pointsValue: pricing.pointsValue,
@@ -2434,6 +2441,7 @@ const Checkout = () => {
   const pricing = useCheckoutPricing(pricedSubtotal, items.length === 0, selectedPaymentMethod, {
     productIds: items.map((i) => i.id),
     destinationState: selectedAddress?.state,
+    hasAddress: !!selectedAddress,
     // Needed for category-restricted coupons and for `perUserLimit` /
     // `firstOrderOnly`, which the admin panel stores but nothing used to check.
     cartCategories: items.map((i) => i.category || '').filter(Boolean),
@@ -2736,6 +2744,7 @@ const Checkout = () => {
     ...(dealerApplies ? { regularSubtotal: dealerCart.quote.regularSubtotal, dealerSavings: dealerCart.quote.savings } : {}),
     deliveryCharge,
     deliveryBeforeFree: pricing.deliveryBeforeFree,
+    deliveryEstimated: pricing.deliveryEstimated,
     discount,
     pointsApplied: pricing.pointsApplied,
     pointsValue: pricing.pointsValue,

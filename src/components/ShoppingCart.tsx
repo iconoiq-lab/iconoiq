@@ -539,8 +539,8 @@ const ShoppingCart = () => {
                   )}
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Delivery</dt>
-                    <dd className={freeDelivery ? 'font-medium text-primary' : 'tabular-nums text-foreground'}>
-                      {freeDelivery ? 'Free' : formatINR(deliveryCharge)}
+                    <dd className={pricing.deliveryEstimated ? 'text-muted-foreground' : freeDelivery ? 'font-medium text-primary' : 'tabular-nums text-foreground'}>
+                      {pricing.deliveryEstimated ? 'Calculated at address' : freeDelivery ? 'Free' : formatINR(deliveryCharge)}
                     </dd>
                   </div>
                   {/* Only celebrate a threshold that actually saved money, and only
@@ -554,7 +554,7 @@ const ShoppingCart = () => {
                   )}
                   {pricing.deliveryEstimated && (
                     <p className="text-[11px] leading-relaxed text-muted-foreground">
-                      Final delivery charge is calculated from your shipping address at checkout.
+                      Delivery is added at checkout, once you choose an address.
                     </p>
                   )}
                   {gstAddOnTop && gstAmount > 0 && (

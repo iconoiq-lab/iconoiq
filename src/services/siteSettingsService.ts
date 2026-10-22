@@ -383,6 +383,22 @@ export function computeDeliveryCharge(
   return { charge, freeDelivery: charge === 0, estimatedDays: settings.estimatedDays };
 }
 
+/**
+ * Whether the cart's delivery charge still depends on where it goes. Before an
+ * address is chosen the cart can then quote no single figure: "Free" (the home
+ * rate) that becomes ₹100 at checkout reads as a surprise charge.
+ */
+export function deliveryDependsOnAddress(
+  subtotal: number,
+  settings: DeliverySettings,
+  items: DeliverableItem[] = []
+): boolean {
+  // Home, any state without its own rate, and every state with one.
+  const destinations = [undefined, '\u0000other state', ...(settings.stateRates || []).map((r) => r.state)];
+  const charges = new Set(destinations.map((d) => computeDeliveryCharge(subtotal, settings, items, d).charge));
+  return charges.size > 1;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GST
 // ─────────────────────────────────────────────────────────────────────────────

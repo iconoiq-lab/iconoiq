@@ -1,6 +1,6 @@
 # ICONOIQ: progress
 
-**Overall: 67% (20 of 30 steps done, 0 waiting)**
+**Overall: 67% (22 of 33 steps done, 1 waiting)**
 
 ✅ done · ⏳ to do or in progress · ⛔ waiting on the client or the owner (say what in the line). After ticking steps, run `node scripts/progress.mjs` to update the line above. Add or remove steps to fit the client (new features go under Phase 4).
 
@@ -51,6 +51,9 @@
 - ⏳ Razorpay keys (test, then live) (owner: 2026-10-18)
 - ⏳ Vercel project and env vars (owner: 2026-10-18; which account still to decide)
 - ✅ Domain and `VITE_SITE_URL`: iconoiq.com (GoDaddy) live on Vercel, www.iconoiq.com main; `VITE_SITE_URL=https://www.iconoiq.com` in `.env` and Vercel 2026-10-19 (needs a Redeploy to take effect); sitemap.xml still to make
+- ✅ Live real-user test, shopper and admin (2026-10-22, `docs/qa/real-user-test-2026-10-22.md`): fixes committed, Rewards turned on in Admin
+- ⛔ Deploy the 2026-10-22 fixes (waiting on the owner's yes; push to `origin` = Vercel deploy)
+- ⏳ Categories admin page (add, rename, hide categories and subcategories; a template gap)
 
 ## Phase 6. Content
 

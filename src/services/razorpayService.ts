@@ -93,6 +93,8 @@ export interface RazorpayCheckoutOptions {
   name?: string;
   /** Short description shown in the modal. */
   description?: string;
+  /** Logo in the modal header (absolute URL); defaults to the store's app icon. */
+  image?: string;
   /** Prefilled customer details. */
   prefill?: { name?: string; email?: string; contact?: string };
   /** Theme accent colour for the modal. */
@@ -337,6 +339,8 @@ export async function payWithRazorpay(
       order_id: order.order_id,
       name: options.name || BRAND.name,
       description: options.description || 'Order payment',
+      // Without it Razorpay shows the dashboard's logo, or the name's first letter.
+      image: options.image || new URL('/icon-192.png', window.location.origin).href,
       ...(options.prefill ? { prefill: options.prefill } : {}),
       ...(options.notes ? { notes: options.notes } : {}),
       theme: { color: options.themeColor || checkoutColor() },
