@@ -40,13 +40,13 @@ const SectionHeader = () => (
 const CategoryShowcase = () => {
   const [showcases, setShowcases] = useState<Showcase[]>([]);
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState<Pick<Category, "name" | "slug">[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<Pick<Category, "name" | "slug" | "hidden">[]>(DEFAULT_CATEGORIES);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const unsubscribe = subscribeToCategories((cats) => {
       if (cats.length > 0) setCategories(cats);
-    });
+    }, { includeHidden: true });
     return () => unsubscribe();
   }, []);
 
@@ -79,7 +79,11 @@ const CategoryShowcase = () => {
     );
   }
 
-  if (showcases.length === 0) return null;
+  // A card for a hidden category (Admin > Categories) would open "Category not found".
+  const shown = showcases.filter(
+    (s) => !categories.some((c) => c.hidden && c.slug === s.subtitle.toLowerCase().trim()),
+  );
+  if (shown.length === 0) return null;
 
   return (
     <section className="tx-contour w-full py-12 md:py-20">
@@ -87,7 +91,7 @@ const CategoryShowcase = () => {
         <SectionHeader />
 
         <div className={GRID}>
-          {showcases.map((showcase, index) => {
+          {shown.map((showcase, index) => {
             const isFirst = index === 0;
             return (
               <motion.div

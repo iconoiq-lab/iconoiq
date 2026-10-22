@@ -20,9 +20,6 @@ import { cn } from "@/lib/utils";
  * category the admin creates appears here and its link always resolves.
  */
 
-/** Fallback order for the categories that ship by default: the order of DEFAULT_CATEGORIES. */
-const CATEGORY_ORDER = DEFAULT_CATEGORIES.map((c) => c.slug);
-
 /**
  * Icons for the default categories, in the same order as DEFAULT_CATEGORIES (Phase 3 swaps
  * them for the store's own). A category with no icon here, such as one the admin adds, gets
@@ -44,25 +41,16 @@ const CategoryIconNav = () => {
   const desktopScrollRef = useRef<HTMLDivElement>(null);
   const [firebaseCategories, setFirebaseCategories] = useState<Category[]>([]);
 
-  /**
-   * Nav entries built from Firestore. Ordering puts the known defaults first
-   * (so the strip keeps its familiar shape) and appends anything new after.
-   */
+  /** Nav entries built from Firestore, in the store's order (Admin > Categories; hidden ones are left out). */
   const categories = useMemo(
     () =>
-      [...firebaseCategories]
-        .sort((a, b) => {
-          const ai = CATEGORY_ORDER.indexOf(a.slug);
-          const bi = CATEGORY_ORDER.indexOf(b.slug);
-          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-        })
-        .map((cat) => ({
-          name: cat.name,
-          slug: cat.slug,
-          icon: ICON_MAP[cat.slug] || ICON_MAP[cat.name.toLowerCase()] || MoreHorizontal,
-          href: `/category/${cat.slug}`,
-          subcategories: cat.subcategories || [],
-        })),
+      firebaseCategories.map((cat) => ({
+        name: cat.name,
+        slug: cat.slug,
+        icon: ICON_MAP[cat.slug] || ICON_MAP[cat.name.toLowerCase()] || MoreHorizontal,
+        href: `/category/${cat.slug}`,
+        subcategories: cat.subcategories || [],
+      })),
     [firebaseCategories],
   );
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);

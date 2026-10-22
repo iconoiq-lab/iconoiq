@@ -167,7 +167,7 @@ const AdminCoupons = () => {
     return unsub;
   }, []);
 
-  useEffect(() => subscribeToCategories(setCategories), []);
+  useEffect(() => subscribeToCategories(setCategories, { includeHidden: true }), []);
 
   /** Subcategories of the categories this coupon is limited to. */
   const subcategoryChoices = useMemo(() => {
@@ -615,7 +615,7 @@ const AdminCoupons = () => {
                   const on = draft.applicableCategories.includes(cat.name);
                   return (
                     <ChipToggle key={cat.id || cat.name} on={on} onClick={() => toggleCategory(cat.name)}>
-                      {cat.name}
+                      {cat.name}{cat.hidden ? ' (hidden)' : ''}
                     </ChipToggle>
                   );
                 })}

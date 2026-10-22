@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, Copy, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { couponHeadline, couponTerms, couponTermsShort, type Coupon } from '@/services/couponService';
-import { toSlug } from '@/services/categoryService';
+import { subscribeToCategories, toSlug, type Category } from '@/services/categoryService';
 import { useDealer } from '@/hooks/useDealer';
 import { copyOfferCode, useBannerCoupons } from './useBannerCoupons';
 
@@ -26,11 +26,18 @@ const ROTATE_MS = 5500;
 /** Pages where the ribbon would be noise or would compete with the page itself. */
 const HIDDEN_ON = ['/checkout', '/admin', '/delivery', '/signup', '/login', '/forgot-password'];
 
-/** Where "Shop now" goes: the one category an offer is limited to, else everything. */
-const shopLink = (c: Coupon) =>
-  c.applicableCategories && c.applicableCategories.length === 1
-    ? `/category/${toSlug(c.applicableCategories[0])}`
-    : '/products';
+/**
+ * Where "Shop now" goes: the one category an offer is limited to, else everything.
+ * Coupons store the category's name; its address is the slug, which a rename keeps,
+ * so look it up in the live list (a hidden or removed category goes to everything).
+ */
+const shopLink = (c: Coupon, categories: Category[]) => {
+  if (c.applicableCategories?.length !== 1) return '/products';
+  const name = c.applicableCategories[0].trim().toLowerCase();
+  if (!categories.length) return `/category/${toSlug(name)}`;
+  const hit = categories.find((cat) => cat.name.trim().toLowerCase() === name);
+  return hit ? `/category/${hit.slug}` : '/products';
+};
 
 const readDismissed = () => {
   try {
@@ -47,6 +54,8 @@ const OfferRibbon = () => {
   const reduceMotion = useReducedMotion();
 
   const [index, setIndex] = useState(0);
+  const [categories, setCategories] = useState<Category[]>([]);
+  useEffect(() => subscribeToCategories(setCategories), []);
   const [paused, setPaused] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -195,7 +204,7 @@ const OfferRibbon = () => {
                 <span className="whitespace-nowrap text-[11px] text-charcoal-foreground/80">Copied · applied at checkout</span>
               ) : (
                 <Link
-                  to={shopLink(offer)}
+                  to={shopLink(offer, categories)}
                   className="hidden whitespace-nowrap text-[11px] font-medium text-charcoal-foreground underline decoration-highlight-soft/60 underline-offset-4 transition-colors hover:text-highlight-soft lg:inline"
                 >
                   Shop now →

@@ -2,14 +2,31 @@ import {
   collection,
   doc,
   setDoc,
-  addDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
   getDocs,
+  getDocsFromServer,
   onSnapshot,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import {
+  toSlug,
+  sortCategories,
+  uniqueSlug,
+  cleanName,
+  productsIn,
+  renamePlan,
+  removeFooterLinks,
+  type CascadePlan,
+  type CouponRef,
+  type ProductRef,
+} from '@/lib/categoryTree';
+import { requestCatalogRefresh } from '@/services/catalogPublisher';
+
+export { toSlug };
 
 // ── Types ──────────────────────────────────────────────
 
@@ -31,6 +48,10 @@ export interface Category {
   name: string;
   slug: string;
   subcategories: SubCategory[];
+  /** Position in the store (Admin > Categories). Unset = DEFAULT_CATEGORIES order, then creation time. */
+  order?: number;
+  /** Off the storefront's menus and pages; its products still show in search and "All products". */
+  hidden?: boolean;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -163,24 +184,19 @@ export const dedupeCategories = (cats: Category[]): Category[] => {
   return [...bySlug.values()];
 };
 
-// ── Helpers ────────────────────────────────────────────
-
-export const toSlug = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
 // ── CRUD ───────────────────────────────────────────────
 
 /** Dedupes concurrent callers - two components mounting at once seeded twice. */
 let seedInFlight: Promise<void> | null = null;
 
 /**
- * Create any missing default category, keyed by slug.
+ * Create the default categories in a store that has none yet (its first admin
+ * visit).
  *
- * Writing to `categories/<slug>` instead of `addDoc` makes seeding idempotent:
- * running it twice creates nothing and overwrites nothing, where the old
- * "collection is empty -> add everything" version produced a whole duplicate
- * set every time the collection read back empty. Existing documents are never
- * touched, so subcategories the admin added by hand survive.
+ * Only an empty collection is seeded, read from the server so a cold cache can't
+ * look empty: Admin > Categories can remove a default, and the old "create
+ * whatever default is missing" brought it straight back. Ids are the slugs, so
+ * two tabs seeding at once write the same documents instead of a duplicate set.
  *
  * Only admins may write to `categories`, so this is a silent no-op for shoppers.
  */
@@ -188,18 +204,13 @@ export const seedDefaultCategories = async (): Promise<void> => {
   if (seedInFlight) return seedInFlight;
 
   seedInFlight = (async () => {
-    const snapshot = await getDocs(collection(db, CATEGORIES_COLLECTION));
-    const present = new Set(
-      snapshot.docs.map((d) => {
-        const data = d.data() as Category;
-        return data.slug || toSlug(data.name || '');
-      }),
-    );
+    const snapshot = await getDocsFromServer(collection(db, CATEGORIES_COLLECTION));
+    if (!snapshot.empty) return;
 
-    const missing = DEFAULT_CATEGORIES.filter((c) => !present.has(c.slug));
-    for (const cat of missing) {
+    for (const [order, cat] of DEFAULT_CATEGORIES.entries()) {
       await setDoc(doc(db, CATEGORIES_COLLECTION, cat.slug), {
         ...cat,
+        order,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -224,16 +235,29 @@ export const seedDefaultCategories = async (): Promise<void> => {
  * timestamp would disappear from the whole storefront. Sorting client-side
  * after deduping keeps every document visible.
  */
-export const getCategories = async (): Promise<Category[]> => {
+export interface CategoryReadOptions {
+  /** Admin screens list hidden categories too; the storefront never does. */
+  includeHidden?: boolean;
+}
+
+const DEFAULT_SLUGS = DEFAULT_CATEGORIES.map((c) => c.slug);
+
+const inStoreOrder = (docs: Category[], { includeHidden = false }: CategoryReadOptions = {}) =>
+  sortCategories(dedupeCategories(docs), DEFAULT_SLUGS).filter((c) => includeHidden || !c.hidden);
+
+export const getCategories = async (options?: CategoryReadOptions): Promise<Category[]> => {
   const snapshot = await getDocs(collection(db, CATEGORIES_COLLECTION));
-  return dedupeCategories(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Category)));
+  return inStoreOrder(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Category)), options);
 };
 
-export const subscribeToCategories = (callback: (cats: Category[]) => void) => {
+export const subscribeToCategories = (
+  callback: (cats: Category[]) => void,
+  options?: CategoryReadOptions,
+) => {
   return onSnapshot(
     collection(db, CATEGORIES_COLLECTION),
     (snapshot) => {
-      callback(dedupeCategories(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Category))));
+      callback(inStoreOrder(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Category)), options));
     },
     (error) => {
       console.error('[categoryService] Subscription error:', error);
@@ -298,29 +322,175 @@ export const healDuplicateCategories = async (): Promise<number> => {
   return healInFlight;
 };
 
-export const addCategory = async (name: string): Promise<string> => {
-  const docRef = await addDoc(collection(db, CATEGORIES_COLLECTION), {
-    name,
-    slug: toSlug(name),
+// ── Admin > Categories ─────────────────────────────────
+
+/** Every product's category fields, read fresh so a rename or count never works from a stale list. */
+export const getProductRefs = async (): Promise<ProductRef[]> => {
+  const snapshot = await getDocs(collection(db, 'products'));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return { id: d.id, category: data.category ?? null, subcategory: data.subcategory ?? null };
+  });
+};
+
+const getCouponRefs = async (): Promise<CouponRef[]> => {
+  const snapshot = await getDocs(collection(db, 'coupons'));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      applicableCategories: data.applicableCategories || [],
+      applicableSubcategories: data.applicableSubcategories || [],
+    };
+  });
+};
+
+const FOOTER_DOC = ['siteSettings', 'footer'] as const;
+
+/** The footer's category links as shoppers see them: the saved list, else the default (category names). */
+const getFooterLinks = async (): Promise<string[]> => {
+  const snap = await getDoc(doc(db, ...FOOTER_DOC));
+  const saved = snap.exists() ? snap.data().categoryLinks : undefined;
+  return Array.isArray(saved) ? saved : DEFAULT_CATEGORIES.map((c) => c.name);
+};
+
+type Batch = ReturnType<typeof writeBatch>;
+
+/** Writes in chunks: a Firestore batch holds at most 500 writes. */
+const applyPlan = async (plan: CascadePlan) => {
+  const writes: Array<(b: Batch) => void> = [
+    ...plan.products.map(({ id, data }) => (b: Batch) =>
+      b.update(doc(db, 'products', id), { ...data, updatedAt: serverTimestamp() })),
+    ...plan.coupons.map(({ id, data }) => (b: Batch) =>
+      b.update(doc(db, 'coupons', id), { ...data, updatedAt: serverTimestamp() })),
+  ];
+  const links = plan.footerLinks;
+  if (links) writes.push((b) => b.set(doc(db, ...FOOTER_DOC), { categoryLinks: links }, { merge: true }));
+
+  for (let i = 0; i < writes.length; i += 400) {
+    const batch = writeBatch(db);
+    writes.slice(i, i + 400).forEach((w) => w(batch));
+    await batch.commit();
+  }
+  if (plan.products.length) requestCatalogRefresh(plan.products.map((p) => p.id));
+};
+
+/**
+ * A new category at the end of the list. Its slug (address) never changes after this.
+ * The others get their current position saved in the same batch: a category with no
+ * `order` sorts after every numbered one, so the new one would otherwise jump to the top.
+ */
+export const createCategory = async (name: string, all: Category[]): Promise<void> => {
+  const clean = cleanName(name);
+  const slug = uniqueSlug(toSlug(clean), all.map((c) => c.slug));
+  const batch = writeBatch(db);
+  all.forEach((c, order) => {
+    if (c.id && c.order !== order) batch.update(doc(db, CATEGORIES_COLLECTION, c.id), { order });
+  });
+  batch.set(doc(db, CATEGORIES_COLLECTION, slug), {
+    name: clean,
+    slug,
     subcategories: [],
+    order: all.length,
+    hidden: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  return docRef.id;
+  await batch.commit();
 };
 
-export const updateCategory = async (categoryId: string, data: Partial<Category>): Promise<void> => {
-  await updateDoc(doc(db, CATEGORIES_COLLECTION, categoryId), {
-    ...data,
+/**
+ * Rename a category, or one of its subcategories when `subSlug` is given. The
+ * slug stays; products, coupons and footer links that store the old name get
+ * the new one. Returns how many products changed.
+ */
+export const renameCategory = async (
+  cat: Category,
+  all: Category[],
+  newName: string,
+  subSlug?: string,
+): Promise<number> => {
+  if (!cat.id) throw new Error('This category has no document id.');
+  const clean = cleanName(newName);
+  const sub = subSlug ? cat.subcategories.find((s) => s.slug === subSlug) : undefined;
+  if (subSlug && !sub) throw new Error('That subcategory no longer exists.');
+
+  const [products, coupons, footerLinks] = await Promise.all([getProductRefs(), getCouponRefs(), getFooterLinks()]);
+  const plan = renamePlan({ cat, all, sub, newName: clean, products, coupons, footerLinks });
+
+  // The category document first. If the cascade then fails, the same rename can
+  // be retried: products still match by the slug, which did not change.
+  await updateDoc(doc(db, CATEGORIES_COLLECTION, cat.id), {
+    ...(sub
+      ? { subcategories: cat.subcategories.map((s) => (s.slug === sub.slug ? { ...s, name: clean } : s)) }
+      : { name: clean }),
+    updatedAt: serverTimestamp(),
+  });
+  await applyPlan(plan);
+  return plan.products.length;
+};
+
+export const addSubcategoryNamed = async (cat: Category, name: string): Promise<void> => {
+  if (!cat.id) throw new Error('This category has no document id.');
+  const clean = cleanName(name);
+  const slug = uniqueSlug(toSlug(clean), cat.subcategories.map((s) => s.slug));
+  await updateDoc(doc(db, CATEGORIES_COLLECTION, cat.id), {
+    subcategories: [...cat.subcategories, { name: clean, slug, children: [] }],
     updatedAt: serverTimestamp(),
   });
 };
 
-export const deleteCategory = async (categoryId: string): Promise<void> => {
-  await deleteDoc(doc(db, CATEGORIES_COLLECTION, categoryId));
+export const setCategoryHidden = async (cat: Category, hidden: boolean): Promise<void> => {
+  if (!cat.id) throw new Error('This category has no document id.');
+  await updateDoc(doc(db, CATEGORIES_COLLECTION, cat.id), { hidden, updatedAt: serverTimestamp() });
 };
 
-// ── Subcategory helpers ────────────────────────────────
+/** Store the given order as 0..n-1 on every category, in one batch. */
+export const saveCategoryOrder = async (ordered: Category[]): Promise<void> => {
+  const batch = writeBatch(db);
+  ordered.forEach((c, order) => {
+    if (c.id) batch.update(doc(db, CATEGORIES_COLLECTION, c.id), { order, updatedAt: serverTimestamp() });
+  });
+  await batch.commit();
+};
+
+export class CategoryInUseError extends Error {
+  count: number;
+  constructor(count: number) {
+    super(`${count} product${count === 1 ? ' is' : 's are'} still filed here. Move ${count === 1 ? 'it' : 'them'} to another category first.`);
+    this.name = 'CategoryInUseError';
+    this.count = count;
+  }
+}
+
+/**
+ * Remove a category, or one of its subcategories when `subSlug` is given.
+ * Refused while any product (active or not) is filed under it, counted fresh
+ * from Firestore. Its footer link goes too; coupons stay as they are (see
+ * `removeFooterLinks` in categoryTree.ts).
+ */
+export const removeCategory = async (cat: Category, all: Category[], subSlug?: string): Promise<void> => {
+  if (!cat.id) throw new Error('This category has no document id.');
+  const sub = subSlug ? cat.subcategories.find((s) => s.slug === subSlug) : undefined;
+  if (subSlug && !sub) return;
+  if (!sub && all.length <= 1) throw new Error('A store needs at least one category.');
+
+  const using = productsIn(await getProductRefs(), cat, all, sub).length;
+  if (using > 0) throw new CategoryInUseError(using);
+
+  if (sub) {
+    await updateDoc(doc(db, CATEGORIES_COLLECTION, cat.id), {
+      subcategories: cat.subcategories.filter((s) => s.slug !== sub.slug),
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    await deleteDoc(doc(db, CATEGORIES_COLLECTION, cat.id));
+  }
+  const footerLinks = removeFooterLinks(await getFooterLinks(), sub ? sub.name : cat.name);
+  if (footerLinks) await applyPlan({ products: [], coupons: [], footerLinks });
+};
+
+// ── Subcategory helpers (product form) ─────────────────
 
 export const addSubcategory = async (
   categoryId: string,
@@ -330,17 +500,6 @@ export const addSubcategory = async (
   const newSub: SubCategory = { name, slug: toSlug(name), children: [] };
   await updateDoc(doc(db, CATEGORIES_COLLECTION, categoryId), {
     subcategories: [...currentSubs, newSub],
-    updatedAt: serverTimestamp(),
-  });
-};
-
-export const removeSubcategory = async (
-  categoryId: string,
-  currentSubs: SubCategory[],
-  subSlug: string
-): Promise<void> => {
-  await updateDoc(doc(db, CATEGORIES_COLLECTION, categoryId), {
-    subcategories: currentSubs.filter((s) => s.slug !== subSlug),
     updatedAt: serverTimestamp(),
   });
 };

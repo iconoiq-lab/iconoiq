@@ -175,7 +175,7 @@ const ProductForm = () => {
     // twice and rendered "Category OneCategory One" in the trigger). Both are no-ops
     // once the collection is clean.
     seedDefaultCategories().then(() => healDuplicateCategories());
-    const unsub = subscribeToCategories(setCategories);
+    const unsub = subscribeToCategories(setCategories, { includeHidden: true });
     return unsub;
   }, []);
 
@@ -1007,7 +1007,7 @@ const ProductForm = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}{cat.hidden ? ' (hidden)' : ''}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

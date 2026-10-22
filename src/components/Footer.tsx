@@ -22,6 +22,7 @@ import {
 import {
   subscribeToCategories,
   DEFAULT_CATEGORIES,
+  toSlug,
   type Category,
 } from "@/services/categoryService";
 import { BRAND } from "@/config/brand";
@@ -147,6 +148,8 @@ const Footer = () => {
   const support = useCustomerSupport();
   const settings = useMemo(() => withSupportContact(footerSettings, support), [footerSettings, support]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES as Category[]);
+  // Slugs of categories hidden in Admin > Categories: their footer links are left out.
+  const [hiddenSlugs, setHiddenSlugs] = useState<Set<string>>(new Set());
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapTimer = useRef<number>();
   useEffect(() => () => window.clearTimeout(mapTimer.current), []);
@@ -159,8 +162,10 @@ const Footer = () => {
   // Same query the category strip listens to, so Firestore serves both from one listener.
   useEffect(() => {
     const unsub = subscribeToCategories((cats) => {
-      if (cats.length) setCategories(cats);
-    });
+      const shown = cats.filter((c) => !c.hidden);
+      if (shown.length) setCategories(shown);
+      setHiddenSlugs(new Set(cats.filter((c) => c.hidden).flatMap((c) => [c.slug, toSlug(c.name)])));
+    }, { includeHidden: true });
     return unsub;
   }, []);
 
@@ -177,7 +182,7 @@ const Footer = () => {
 
   const activeSocials = (settings.socialLinks || []).filter((s) => s.active && s.url);
   const shopLinks = (settings.shopLinks || []).filter(Boolean);
-  const categoryLinks = (settings.categoryLinks || []).filter(Boolean);
+  const categoryLinks = (settings.categoryLinks || []).filter((name) => name && !hiddenSlugs.has(toSlug(name)));
   const hasContact =
     (settings.addressLines?.length ?? 0) > 0 ||
     Boolean(settings.phones?.[0] || settings.emails?.[0] || settings.businessHours);

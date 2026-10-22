@@ -40,6 +40,7 @@ import {
   LayoutPanelTop,
   GalleryHorizontal,
   type LucideIcon,
+  FolderTree,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -152,6 +153,7 @@ const AdminLayout = () => {
   const mainNavItems: NavItem[] = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/products', icon: Package, label: 'Products' },
+    { path: '/admin/categories', icon: FolderTree, label: 'Categories' },
     { path: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
     // Delivery-partner management: only shown when the delivery system is enabled.
     ...(isOn('deliveryPartners')

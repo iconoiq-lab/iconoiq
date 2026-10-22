@@ -46,7 +46,7 @@ const AdminShowcases = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [showcaseToDelete, setShowcaseToDelete] = useState<Showcase | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  useEffect(() => subscribeToCategories(setCategories), []);
+  useEffect(() => subscribeToCategories(setCategories, { includeHidden: true }), []);
 
   // Form state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

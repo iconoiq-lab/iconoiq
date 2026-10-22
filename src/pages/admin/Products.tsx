@@ -163,7 +163,7 @@ const Products = () => {
     // Admin screens are the only place with write access, so this is where the
     // duplicate category documents left by the old seeding get merged away.
     healDuplicateCategories();
-    const unsub = subscribeToCategories(setCategories);
+    const unsub = subscribeToCategories(setCategories, { includeHidden: true });
     return unsub;
   }, []);
 
@@ -539,7 +539,7 @@ const Products = () => {
                 </SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={c.name}>
-                    <FilterOption label={c.name} count={categoryCounts.get(c.name) || 0} />
+                    <FilterOption label={c.hidden ? `${c.name} (hidden)` : c.name} count={categoryCounts.get(c.name) || 0} />
                   </SelectItem>
                 ))}
               </SelectContent>
