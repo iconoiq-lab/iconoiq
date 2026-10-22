@@ -7,7 +7,7 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-10-22 (step 2 done: Admin > Categories built here, ported to the template and the other client store; committed locally in all three, NOT deployed).
+Last updated: 2026-10-22 (template port done: the card change, `useAutoScroll` step mode and the 2026-10-22 fixes are committed in the template, `08936f3`..`c6404d6`; NOT deployed anywhere).
 
 ## State
 
@@ -15,7 +15,8 @@ Last updated: 2026-10-22 (step 2 done: Admin > Categories built here, ported to 
 - **Done:** Phases 0-3 (look "Temple Modern"); Firebase `iconoiq-85b53` with rules, 12 indexes and the dummy catalogue (`node scripts/seed-iconoiq.mjs`, all `demo: true`); Cloudflare R2 + analytics token; Vercel vars; domain iconoiq.com on Vercel (www). Details in the archive file.
 - **Phase 5 open:** Razorpay keys (KYC in progress) and a test order; DNS move to Cloudflare waits on the owner switching GoDaddy's nameservers to gene/trey.ns.cloudflare.com; after that: R2 custom domain media.iconoiq.com, `CLOUDFLARE_ZONE_ID`, cache purge on the token, `R2_PUBLIC_URL`, `scripts/rewrite-media-urls.mjs`, and the `vercel.json` `/catalog/products.json` rewrite moved to media.iconoiq.com.
 - **Not deployed yet (2026-10-22):** real-user test fixes (report `docs/qa/real-user-test-2026-10-22.md`; list in the archive file), step 1c's admin fixes and Admin > Categories. Same changes in the other client store's repo.
-- **Admin > Categories (2026-10-22, `6cb5782`):** `/admin/categories` adds, renames, reorders (Up/Down), hides and removes categories and subcategories. Spec `docs/specs/2026-10-22-categories-admin.md`; pure helpers `src/lib/categoryTree.ts` (`tests/categoryTree.test.ts`). Live round trip on iconoiq-85b53 passed with a throwaway category (removed; the 6 real ones untouched). Same code committed in the template and the other client store (`16830d0`, build + tests only, no live run there). Not deployed.
+- **Admin > Categories (2026-10-22, `6cb5782`):** `/admin/categories`; spec `docs/specs/2026-10-22-categories-admin.md`. Live round trip on iconoiq-85b53 passed. Also in the template and the other client store. Not deployed.
+- **Template port (2026-10-22):** the template now has the Detailed card (cart button + Buy now, View cart pill), `useAutoScroll` step mode and every 2026-10-22 fix (commits `08936f3`, `617709e`, `d4ff07c`, `c6404d6` there; its `check.mjs` passed). Its `check.mjs` also warns in a client copy whose `vercel.json` lacks the `/catalog/products.json` rewrite. Not ported: this store's "Free delivery" card detail line and its header, top-deals and category-bar look choices. `siteSettings` is readable by everyone, so the alert number in `siteSettings/adminNotification` is public (it was already, since order alerts read it from there).
 - **Rewards:** turned on in Admin (owner's yes, 2026-10-22).
 - **Admins:** admin@iconoiq.com (password equals the email: the owner must change it) and iconoiq@gmail.com (client sets a password with "Forgot password"). The order-alert WhatsApp number is empty.
 - **Test data in iconoiq-85b53 (remove before launch):** shopper `preview.shopper@iconoiq-test.invalid` (login in `scripts/qa/shopper.local`, git-ignored), 13 fixture orders and a temporary admin from `node scripts/qa/ui-fixtures.mjs seed`. Remove with `node scripts/qa/ui-fixtures.mjs remove`, then delete the shopper in Firebase Auth and `users/`.
@@ -28,12 +29,11 @@ Last updated: 2026-10-22 (step 2 done: Admin > Categories built here, ported to 
 |---|---|---|---|
 | 1 | **Deploy, only on the owner's yes:** `git push origin main` (Vercel builds it). Then on www.iconoiq.com: Admin > Settings shows the alert number field from the store setting; cart says "Calculated at address" before an address; the Razorpay screen shows the logo once keys exist. The other store deploys from its own repo on a separate yes | No | Medium |
 | 2 | After the deploy: on www.iconoiq.com open Admin > Categories, move one category and back, and check the menu strip follows; the other store gets the same check after its own deploy | No | Medium |
-| 3 | Port to the template (`Desktop/Ecommerce Template`): the card change (cart button + Buy now, View cart pill), the 2026-10-22 fixes (checkout address, payment error messages, silver-rate gate, Razorpay logo, "Calculated at address", Admin Settings alert number), the `useAutoScroll` step mode, and a note in `docs/setup/MEDIA_STORAGE.md` + PHASE5 that each store's `vercel.json` needs its own `/catalog/products.json` rewrite | No | High |
-| 4 | Phase 5 when the Razorpay keys arrive: keys into `.env` and Vercel, then a test order end to end (`docs/setup/`) | No | High |
-| 5 | Before launch: remove the test data (above); owner changes the admin@iconoiq.com password and sets the alert WhatsApp number (Admin > Settings); social links; COD yes/no (some COD code exists in `orderStatus.ts`/`orderService.ts`) | No | Medium |
-| 6 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
+| 3 | Phase 5 when the Razorpay keys arrive: keys into `.env` and Vercel, then a test order end to end (`docs/setup/`) | No | High |
+| 4 | Before launch: remove the test data (above); owner changes the admin@iconoiq.com password and sets the alert WhatsApp number (Admin > Settings); social links; COD yes/no (some COD code exists in `orderStatus.ts`/`orderService.ts`) | No | Medium |
+| 5 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 3 (port the 2026-10-22 fixes to the template).` (Step 1 only on the owner's deploy yes.)
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (deploy), only after the owner's yes.` Step 3 waits on the Razorpay keys.
 
 ## Waiting on the client or the user
 
