@@ -11,6 +11,8 @@ Last updated: 2026-10-22 (template port done: the card change, `useAutoScroll` s
 
 ## State
 
+- **2026-11-02, in progress: Academy & Dealership Programme** (client PLANS.pdf). Spec: `docs/specs/academy-dealership-programme.md` (commit `b06e5ab`). Being built by a builder agent; if the chat ended mid-build, check `git log` for its commits, then run `npm test` + `node scripts/check.mjs` and finish what's missing against the spec. Owner said: do NOT deploy yet. Browser "javani spiritual hub" = deviceId a9ed28d9 (not logged into Vercel; Razorpay blocked for the extension).
+
 - **Branch:** main, local commits ahead of `origin` (github.com/iconoiq-lab/iconoiq; Vercel `javani1/iconoiq` deploys from it, so push = deploy). The template is the `template` remote.
 - **Done:** Phases 0-3 (look "Temple Modern"); Firebase `iconoiq-85b53` with rules, 12 indexes and the dummy catalogue (`node scripts/seed-iconoiq.mjs`, all `demo: true`); Cloudflare R2 + analytics token; Vercel vars; domain iconoiq.com on Vercel (www). Details in the archive file.
 - **Phase 5 open:** Razorpay keys (KYC in progress) and a test order; DNS move to Cloudflare waits on the owner switching GoDaddy's nameservers to gene/trey.ns.cloudflare.com; after that: R2 custom domain media.iconoiq.com, `CLOUDFLARE_ZONE_ID`, cache purge on the token, `R2_PUBLIC_URL`, `scripts/rewrite-media-urls.mjs`, and the `vercel.json` `/catalog/products.json` rewrite moved to media.iconoiq.com.
