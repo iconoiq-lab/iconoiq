@@ -71,8 +71,11 @@ before(async () => {
   await fetch(`http://${HOST}/emulator/v1/projects/${PROJECT}/databases/(default)/documents`, { method: 'DELETE' });
   await seed('users/boss', { role: 'admin' });
   await seed('partnerSettings/main', { enabled: true });
-  await seed('partners/ravi', { uid: 'ravi', status: 'approved', code: 'RAVI3210', name: 'Ravi', lifetimeSales: 35000 });
-  await seed('partners/mira', { uid: 'mira', status: 'approved', code: 'MIRA1111', name: 'Mira', lifetimeSales: 0 });
+  await seed('partners/ravi', { uid: 'ravi', status: 'approved', code: 'RAVI3210', name: 'Ravi', silverGrams: 3 });
+  await seed('partnerPrivate/ravi', { lifetimeSales: 35000 });
+  await seed('partnerPrivate/ravi/orders/o1', { sales: 35000 });
+  // A sales figure on the partner's own doc is ignored: unlocks read partnerPrivate (Mira has none).
+  await seed('partners/mira', { uid: 'mira', status: 'approved', code: 'MIRA1111', name: 'Mira', lifetimeSales: 999999 });
   await seed('partnerCodes/RAVI3210', { uid: 'ravi', active: true });
   await seed('partners/ravi/earnings/o1', { amount: 150, state: 'active' });
   await seed('partners/ravi/payouts/p1', { amount: 150, note: 'UPI' });
@@ -112,6 +115,17 @@ test('a partner cannot read another partner, their earnings or list codes', { sk
   await denied(getDocs(collection(mira, 'partners')), 'list partners');
   await denied(getDocs(collection(mira, 'partnerCodes')), 'list codes');
   assert.equal((await getDoc(doc(stranger, 'partnerCodes/RAVI3210'))).data()?.uid, 'ravi', 'one code can be looked up');
+});
+
+test('the sales value is admin-only: no partner reads or writes partnerPrivate', { skip }, async () => {
+  await denied(getDoc(doc(ravi, 'partnerPrivate/ravi')), 'own lifetime sales');
+  await denied(getDocs(collection(ravi, 'partnerPrivate/ravi/orders')), 'own per-order sales');
+  await denied(getDoc(doc(mira, 'partnerPrivate/ravi')), 'another partner');
+  await denied(setDoc(doc(ravi, 'partnerPrivate/ravi'), { lifetimeSales: 999999 }), 'raise own sales');
+  await denied(setDoc(doc(ravi, 'partnerPrivate/ravi/orders/x'), { sales: 999999 }), 'add an order');
+  await denied(setDoc(doc(admin, 'partnerPrivate/ravi'), { lifetimeSales: 1 }), 'even the admin: server only');
+  assert.equal((await getDoc(doc(admin, 'partnerPrivate/ravi'))).data()?.lifetimeSales, 35000, 'the admin reads it');
+  assert.equal((await getDocs(collection(admin, 'partnerPrivate'))).size >= 1, true, 'the admin lists it');
 });
 
 test('a payout is confirmed once, by its partner, with the server time only', { skip }, async () => {

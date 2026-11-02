@@ -252,7 +252,7 @@ function PartnerList({ rows, adminUid }: { rows: PartnerRecord[]; adminUid: stri
   const totals = useMemo(
     () => ({
       active: rows.filter((r) => r.status === 'approved').length,
-      sales: rows.reduce((t, r) => t + r.lifetimeSales, 0),
+      sales: rows.reduce((t, r) => t + (r.lifetimeSales ?? 0), 0),
       earned: rows.reduce((t, r) => t + r.earnedTotal, 0),
     }),
     [rows],
@@ -283,7 +283,7 @@ function PartnerList({ rows, adminUid }: { rows: PartnerRecord[]; adminUid: stri
                 {r.tierOverride && ' (set by admin)'}
               </span>
               <dl className="flex gap-6 text-right text-sm tabular-nums">
-                <div><dt className="text-[11px] text-muted-foreground">Sales</dt><dd className="text-foreground">{formatINR(r.lifetimeSales)}</dd></div>
+                <div><dt className="text-[11px] text-muted-foreground">Sales</dt><dd className="text-foreground">{formatINR(r.lifetimeSales ?? 0)}</dd></div>
                 <div><dt className="text-[11px] text-muted-foreground">Earned</dt><dd className="text-foreground">{formatINR(r.earnedTotal)}</dd></div>
               </dl>
               <Button size="sm" variant="outline" onClick={() => setOpen(r.uid)} aria-label={`Manage ${r.name}`}>Manage</Button>
@@ -330,7 +330,7 @@ function PartnerDialog({ r, adminUid, onClose }: { r: PartnerRecord; adminUid: s
     }
   };
 
-  const autoTier: PartnerTier | null = settings ? partnerTierFor(r.lifetimeSales, settings, null) : null;
+  const autoTier: PartnerTier | null = settings ? partnerTierFor(r.lifetimeSales ?? 0, settings, null) : null;
   const unlocked = money ? unlockedEarnings(money.earnings, nowMs) : 0;
   const sent = money ? money.payouts.reduce((t, p) => t + p.amount, 0) : 0;
   const received = money ? receivedTotal(money.payouts) : 0;

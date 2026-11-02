@@ -667,7 +667,21 @@ service cloud.firestore {
     // Money lives on the server: api/create-order.ts decides the code's
     // discount, api/notify-order.ts (reconcile-rewards) writes the earnings and
     // the totals on partners/<uid> with the Admin SDK. The browser never writes
-    // totals, tiers, rates or earnings.
+    // totals, tiers, rates or earnings. ICONOIQ's sales value (lifetime and per
+    // order) lives only on partnerPrivate/<uid>, never on anything the partner
+    // can read (spec decision 6); partners/<uid> carries only derived values
+    // (tier, silverGrams, perksUnlocked).
+
+    // Admin reads; only the server (Admin SDK) writes. The claim rules below
+    // get() it, which works whatever the reader's own access.
+    match /partnerPrivate/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+      match /{rest=**} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+    }
 
     // The programme's settings (rates, thresholds, perk rules). Public: the
     // checkout and the /dealer page read them. Only an admin writes.
@@ -740,10 +754,15 @@ service cloud.firestore {
       // Perk claims: the partner requests, the admin fulfils. The document id
       // is fixed per claim (see claimId in src/lib/partner.ts) and a claim is
       // never updated or deleted by the partner, so each one can be made once.
-      // The unlock is checked here against the server-written lifetimeSales.
+      // The unlock is checked here against the server-written lifetimeSales
+      // on partnerPrivate/<uid>.
       match /claims/{claimId} {
         function partnerDoc() {
           return get(/databases/$(database)/documents/partners/$(uid)).data;
+        }
+        function lifetimeSales() {
+          let path = /databases/$(database)/documents/partnerPrivate/$(uid);
+          return exists(path) ? get(path).data.get('lifetimeSales', 0) : 0;
         }
         function settings() {
           return get(/databases/$(database)/documents/partnerSettings/main).data;
@@ -765,7 +784,7 @@ service cloud.firestore {
           };
         }
         function unlocked(perk) {
-          return partnerDoc().get('lifetimeSales', 0)
+          return lifetimeSales()
             >= settings().get(['perks', perk, 'unlockAt'], perkDefaults()[perk]['unlockAt']);
         }
         function onceClaim(d) {
@@ -798,7 +817,7 @@ service cloud.firestore {
             && d.keys().hasOnly(['perk', 'from', 'to', 'prev', 'status', 'createdAt'])
             && d.from is int && d.to is int && d.to > d.from
             && claimId == 'silver_' + string(d.from)
-            && d.to * settings().get('silverStep', 10000) <= partnerDoc().get('lifetimeSales', 0)
+            && d.to * settings().get('silverStep', 10000) <= lifetimeSales()
             && ((d.from == 0 && !('prev' in d))
               || (d.prev is int
                 && get(/databases/$(database)/documents/partners/$(uid)/claims/$('silver_' + string(d.prev))).data.to == d.from));

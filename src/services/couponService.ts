@@ -23,7 +23,6 @@ import {
   cleanPartnerCode,
   normalisePartnerSettings,
   partnerDiscountPercent,
-  partnerTierFor,
   type PartnerSettings,
 } from '@/lib/partner';
 
@@ -305,9 +304,9 @@ async function partnerCodeAsCoupon(raw: string, cartTotal: number, userId?: stri
   let percent = partnerDiscountPercent(false, 'silver', settings);
   if (family) {
     const me = await getDoc(doc(db, 'partners', userId));
-    const p = me.exists() ? (me.data() as { status?: string; code?: string; lifetimeSales?: number; tierOverride?: unknown }) : null;
+    const p = me.exists() ? (me.data() as { status?: string; code?: string; tier?: unknown; tierOverride?: unknown }) : null;
     if (!p || p.status !== 'approved' || p.code !== code) return null;
-    percent = partnerDiscountPercent(true, partnerTierFor(Number(p.lifetimeSales) || 0, settings, p.tierOverride), settings);
+    percent = partnerDiscountPercent(true, p.tierOverride === 'gold' || p.tierOverride === 'silver' ? p.tierOverride : p.tier === 'gold' ? 'gold' : 'silver', settings);
   }
   const coupon: Coupon = {
     code,

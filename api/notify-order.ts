@@ -584,7 +584,8 @@ function partnerMonthKey(ms: number): string {
 /** One credited order, as partners/{uid}/earnings/{orderId} holds it. */
 interface PartnerEarningLike {
   amount: number;
-  sales: number;
+  /** The order's sales value: kept on partnerPrivate/<uid>/orders/<id>, never on the earning (spec decision 6). */
+  sales?: number;
   units: number;
   state: 'held' | 'active' | 'void';
   family?: boolean;
@@ -636,6 +637,70 @@ function partnerFieldsFromNote(note: unknown): Record<string, string | number | 
     partnerUnits: Math.floor(num(parts[3])),
     partnerFamily: parts[4] === '1',
     partnerSavings: num(parts[5]),
+  };
+}
+
+type PerkId =
+  | 'catalogue'
+  | 'photos'
+  | 'pamphlets'
+  | 'masterclass'
+  | 'passGroup'
+  | 'passSolo'
+  | 'promoTeam'
+  | 'onlinePromo'
+  | 'standee'
+  | 'uniforms'
+  | 'trip';
+
+interface PerkRule {
+  /** Rupees of lifetime delivered sales; 0 = from approval. */
+  unlockAt: number;
+  /** For counted perks: how many claims. */
+  count: number;
+}
+
+/** The client's PLANS.pdf. Keep in step with perkDefaults() in firestore.rules (tests/partnerRules.test.ts). */
+const DEFAULT_PERK_RULES: Record<PerkId, PerkRule> = {
+  catalogue: { unlockAt: 0, count: 1 },
+  photos: { unlockAt: 0, count: 1 },
+  pamphlets: { unlockAt: 10_000, count: 1 },
+  masterclass: { unlockAt: 20_000, count: 6 },
+  passGroup: { unlockAt: 30_000, count: 20 },
+  passSolo: { unlockAt: 30_000, count: 4 },
+  promoTeam: { unlockAt: 30_000, count: 1 },
+  onlinePromo: { unlockAt: 30_000, count: 1 },
+  standee: { unlockAt: 50_000, count: 1 },
+  uniforms: { unlockAt: 100_000, count: 1 },
+  trip: { unlockAt: 100_000, count: 1 },
+};
+
+const DEFAULT_SILVER_STEP = 10_000;
+
+/** Grams of silver earned: 1 g per full silverStep of lifetime sales. */
+const silverGrams = (lifetimeSales: number, step = DEFAULT_SILVER_STEP) =>
+  step > 0 ? Math.max(0, Math.floor((Number(lifetimeSales) || 0) / step)) : 0;
+
+/**
+ * What the partner may see on partners/<uid> (spec decision 6): the tier, the
+ * silver grams earned and which perks are unlocked. The sales value itself
+ * stays on partnerPrivate/<uid>, which only the admin and the server read.
+ */
+interface PartnerView {
+  tier: PartnerTier;
+  silverGrams: number;
+  perksUnlocked: PerkId[];
+}
+
+function partnerView(lifetimeSales: number, raw: Record<string, unknown> | null | undefined, override?: unknown): PartnerView {
+  const sales = Number(lifetimeSales) || 0;
+  const perks = (raw?.perks && typeof raw.perks === 'object' ? raw.perks : {}) as Record<string, { unlockAt?: unknown } | undefined>;
+  const step = Math.round(partnerNum(raw?.silverStep, DEFAULT_SILVER_STEP, 100, 10_000_000));
+  const ids = Object.keys(DEFAULT_PERK_RULES) as PerkId[];
+  return {
+    tier: partnerTierFor(sales, normalisePartnerMoney(raw as Partial<PartnerMoneySettings> | null | undefined), override),
+    silverGrams: silverGrams(sales, step),
+    perksUnlocked: ids.filter((id) => sales >= Math.round(partnerNum(perks[id]?.unlockAt, DEFAULT_PERK_RULES[id].unlockAt, 0, 1_000_000_000))),
   };
 }
 // <<< partner-core
@@ -1140,8 +1205,10 @@ export async function reconcileRewards(
  *     ends, restored if it is reopened. Unlocks after the return window
  *     (unlockAtMs). A family order (the partner's own code) earns 0 and
  *     records the savings.
- *   partners/<puid> totals (lifetimeSales, unitsSold, earnedTotal,
- *     familySavings) and tier, recomputed from every earning.
+ *   partnerPrivate/<puid> lifetimeSales and orders/<rzp> sales (admin and
+ *     server only), and partners/<puid> unitsSold, earnedTotal,
+ *     familySavings, tier, silverGrams and perksUnlocked, recomputed from
+ *     every earning. The partner never sees a sales value (spec decision 6).
  * The figures come from the payment record (written from create-order's
  * rw_partner note), never from the order or the browser.
  */
@@ -1156,13 +1223,24 @@ export async function reconcilePartner(
   const changed: string[] = [];
   const puid = String(payment.partnerUid);
   const partnerRef = db.collection('partners').doc(puid);
+  // The sales value is ICONOIQ's figure, never the partner's to see (spec
+  // decision 6): it lives on partnerPrivate/<puid> (admin and server only).
+  const privateRef = db.collection('partnerPrivate').doc(puid);
+  const salesOf = privateRef.collection('orders');
   const [partnerSnap, settingsSnap] = await Promise.all([
     partnerRef.get(),
     db.collection('partnerSettings').doc('main').get(),
   ]);
   const partner = partnerSnap.data();
   if (!partner) return { changed };
-  const s = normalisePartnerMoney(settingsSnap.exists ? (settingsSnap.data() as Partial<PartnerMoneySettings>) : null);
+  const rawSettings = settingsSnap.exists ? (settingsSnap.data() as Record<string, any>) : null;
+  const s = normalisePartnerMoney(rawSettings);
+  // Every earning with its private sales value, for the totals.
+  const allRows = async () => {
+    const [eSnap, sSnap] = await Promise.all([earnings.get(), salesOf.get()]);
+    const sales = new Map(sSnap.docs.map((d) => [d.id, Number(d.data()?.sales) || 0]));
+    return eSnap.docs.map((d) => ({ ...(d.data() as PartnerEarningLike), sales: sales.get(d.id) || 0 }));
+  };
   const status = String(order.status || '');
   const ended = ENDED_STATUSES.includes(status);
   const returnOpen = isReturnOpen(order);
@@ -1175,12 +1253,13 @@ export async function reconcilePartner(
   if (!e) {
     // Credited once, on delivery, only for an approved partner.
     if (reachedCustomer && !ended && partner.status === 'approved') {
-      const rows = (await earnings.get()).docs.map((d) => d.data() as PartnerEarningLike);
-      const before = partnerTotals(rows).lifetimeSales;
+      const before = partnerTotals(await allRows()).lifetimeSales;
       const tier = partnerTierFor(before, s, partner.tierOverride);
       const rate = family ? 0 : partnerRate(tier, s);
       const sales = money(payment.partnerSales);
       const deliveredMs = millis(order.deliveredAt) || now.toMillis();
+      // The private sales value first: an earning never exists without it.
+      await salesOf.doc(rzp).set({ sales, orderId, createdAt: now });
       const wrote = await createOnce(ref, {
         orderId,
         razorpayOrderId: rzp,
@@ -1188,7 +1267,6 @@ export async function reconcilePartner(
         amount: family ? 0 : partnerCommission(sales, rate),
         rate,
         tier,
-        sales,
         units: whole(payment.partnerUnits),
         family,
         savings: family ? money(payment.partnerSavings) : 0,
@@ -1218,12 +1296,18 @@ export async function reconcilePartner(
     }
   }
 
-  // Totals and tier from every earning, so a repeat or a reversal is always exact.
-  if (changed.length || partner.lifetimeSales === undefined) {
-    const rows = (await earnings.get()).docs.map((d) => d.data() as PartnerEarningLike);
-    const totals = partnerTotals(rows);
-    const tier = partnerTierFor(totals.lifetimeSales, s, partner.tierOverride);
-    await partnerRef.update({ ...totals, tier, totalsAt: now });
+  // Totals and tier from every earning, so a repeat or a reversal is always
+  // exact. The sales value goes on the private doc; the partner's own doc gets
+  // only what they may see (partnerView: tier, silver grams, unlocked perks).
+  if (changed.length || partner.perksUnlocked === undefined) {
+    const { lifetimeSales, ...totals } = partnerTotals(await allRows());
+    await privateRef.set({ lifetimeSales, totalsAt: now }, { merge: true });
+    await partnerRef.update({
+      ...totals,
+      ...partnerView(lifetimeSales, rawSettings, partner.tierOverride),
+      lifetimeSales: admin.firestore.FieldValue.delete(),
+      totalsAt: now,
+    });
     changed.push('partner:totals');
   }
   return { changed };

@@ -17,6 +17,7 @@ import {
   partnerSalesValue,
   partnerTierFor,
   partnerTotals,
+  partnerView,
   perkStates,
   receivedTotal,
   settledAmount,
@@ -118,8 +119,8 @@ test('silver grams = floor(lifetimeSales / 10,000)', () => {
     { id: 'silver_0', perk: 'silver', from: 0, to: 2, status: 'fulfilled' },
     { id: 'silver_2', perk: 'silver', from: 2, to: 3, status: 'requested' },
   ];
-  assert.deepEqual(silverPot(55000, 10000, claims), { earned: 5, claimed: 3, unclaimed: 2, lastFrom: 2 });
-  assert.deepEqual(silverPot(5000, 10000, []), { earned: 0, claimed: 0, unclaimed: 0, lastFrom: null });
+  assert.deepEqual(silverPot(5, claims), { earned: 5, claimed: 3, unclaimed: 2, lastFrom: 2 });
+  assert.deepEqual(silverPot(0, []), { earned: 0, claimed: 0, unclaimed: 0, lastFrom: null });
 });
 
 test('perks: unlock at the threshold, counted and monthly claims', () => {
@@ -129,7 +130,7 @@ test('perks: unlock at the threshold, counted and monthly claims', () => {
     { id: 'masterclass_3', perk: 'masterclass', index: 3, status: 'fulfilled' },
     { id: 'promoTeam_2026-10', perk: 'promoTeam', month: '2026-10', status: 'fulfilled' },
   ];
-  const at = (sales: number) => Object.fromEntries(perkStates(sales, S, claims, NOW).map((p) => [p.def.id, p]));
+  const at = (sales: number) => Object.fromEntries(perkStates(partnerView(sales, S).perksUnlocked, S, claims, NOW).map((p) => [p.def.id, p]));
   const low = at(9999);
   assert.equal(low.catalogue.unlocked, true);
   assert.equal(low.catalogue.left, 0, 'one-time perk already redeemed');
@@ -151,6 +152,19 @@ test('perks: unlock at the threshold, counted and monthly claims', () => {
   assert.equal(claimId('masterclass', { index: 2 }), 'masterclass_2');
   assert.equal(claimId('promoTeam', { month: '2026-11' }), 'promoTeam_2026-11');
   assert.equal(claimId('standee'), 'standee');
+});
+
+test('partnerView: only derived values for the partner doc, never the sales figure', () => {
+  const v = partnerView(35000, S);
+  assert.deepEqual(Object.keys(v).sort(), ['perksUnlocked', 'silverGrams', 'tier']);
+  assert.equal(v.tier, 'silver');
+  assert.equal(v.silverGrams, 3);
+  assert.deepEqual(v.perksUnlocked, ['catalogue', 'photos', 'pamphlets', 'masterclass', 'passGroup', 'passSolo', 'promoTeam', 'onlinePromo']);
+  assert.equal(partnerView(200000, S).tier, 'gold');
+  assert.equal(partnerView(0, S, 'gold').tier, 'gold', 'the admin override wins');
+  const custom = partnerView(25000, { perks: { masterclass: { unlockAt: 30000 } }, silverStep: 5000 });
+  assert.equal(custom.perksUnlocked.includes('masterclass'), false, 'the admin-set threshold applies');
+  assert.equal(custom.silverGrams, 5, 'the admin-set silver step applies');
 });
 
 test('settled = unlocked earnings − payouts confirmed received', () => {

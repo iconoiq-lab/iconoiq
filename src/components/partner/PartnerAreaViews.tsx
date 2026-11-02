@@ -21,7 +21,6 @@ import {
   monthLabel,
   partnerMonthKey,
   partnerRate,
-  partnerTierFor,
   perkStates,
   settledAmount,
   silverPot,
@@ -117,7 +116,7 @@ const Stat = ({ label, value, hint }: { label: string; value: string; hint?: str
 );
 
 const AccountTab = ({ record, settings, earnings, payouts, nowMs, busy, onReceived }: PartnerAreaViewProps) => {
-  const rate = partnerRate(partnerTierFor(record.lifetimeSales, settings, record.tierOverride), settings);
+  const rate = partnerRate(record.tierOverride ?? record.tier, settings);
   const month = partnerMonthKey(nowMs);
   const byMonth = useMemo(() => earningsByMonth(earnings), [earnings]);
   const thisMonth = byMonth.find((m) => m.month === month)?.amount ?? 0;
@@ -315,8 +314,8 @@ const PerkCard = ({
 
 const SupportTab = ({ record, settings, claims, nowMs, busy, onRedeem, active }: PartnerAreaViewProps & { active: boolean }) => {
   const states = useMemo(
-    () => perkStates(record.lifetimeSales, settings, claims, nowMs).filter((s) => s.def.tab === 'support'),
-    [record.lifetimeSales, settings, claims, nowMs],
+    () => perkStates(record.perksUnlocked, settings, claims, nowMs).filter((s) => s.def.tab === 'support'),
+    [record.perksUnlocked, settings, claims, nowMs],
   );
   // Unlocked first, then by threshold; a perk's own sales number is never shown.
   const sorted = [...states].sort((a, b) => Number(b.unlocked) - Number(a.unlocked) || a.rule.unlockAt - b.rule.unlockAt);
@@ -338,10 +337,10 @@ const SupportTab = ({ record, settings, claims, nowMs, busy, onRedeem, active }:
 // ─── My claims ─────────────────────────────────────────────────────────────
 
 const ClaimsTab = ({ record, settings, claims, nowMs, busy, onRedeem, onClaimSilver, active }: PartnerAreaViewProps & { active: boolean }) => {
-  const rate = partnerRate(partnerTierFor(record.lifetimeSales, settings, record.tierOverride), settings);
-  const trip = perkStates(record.lifetimeSales, settings, claims, nowMs).find((s) => s.def.id === 'trip')!;
+  const rate = partnerRate(record.tierOverride ?? record.tier, settings);
+  const trip = perkStates(record.perksUnlocked, settings, claims, nowMs).find((s) => s.def.id === 'trip')!;
   const tripClaim = claims.find((c) => c.perk === 'trip');
-  const pot = silverPot(record.lifetimeSales, settings.silverStep, claims);
+  const pot = silverPot(record.silverGrams, claims);
   const pending = claims.filter((c) => c.status === 'requested').sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
   const fulfilled = claims.filter((c) => c.status === 'fulfilled').sort((a, b) => (b.fulfilledAtMs || 0) - (a.fulfilledAtMs || 0));
 

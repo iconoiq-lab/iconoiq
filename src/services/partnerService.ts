@@ -23,6 +23,8 @@ import {
   claimId,
   cleanPartnerCode,
   normalisePartnerSettings,
+  partnerView,
+  DEFAULT_PERK_RULES,
   type ClaimLike,
   type EarningRow,
   type PartnerSettings,
@@ -37,6 +39,8 @@ import { getCouponByCode } from '@/services/couponService';
  * partners/<uid> is the application and, once approved, the partner record.
  * The server (api/notify-order.ts) writes the earnings and the totals; this
  * file never writes money the partner earns. firestore.rules enforce it.
+ * ICONOIQ's sales value lives on partnerPrivate/<uid> (admin and server only,
+ * spec decision 6); the partner's doc carries only derived values.
  */
 
 export type PartnerStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
@@ -59,8 +63,11 @@ export interface PartnerRecord extends PartnerApplicationInput {
   approvedAtMs: number;
   reviewedAtMs: number;
   reviewNote: string;
-  /** Server-maintained. Used for unlocks, never shown to the partner. */
-  lifetimeSales: number;
+  /** Server-maintained, derived from the private sales value (spec decision 6). */
+  silverGrams: number;
+  perksUnlocked: PerkId[];
+  /** Admin screens only, from partnerPrivate/<uid>. Never on the partner's own doc. */
+  lifetimeSales?: number;
   unitsSold: number;
   earnedTotal: number;
   familySavings: number;
@@ -101,7 +108,8 @@ function toRecord(id: string, d: DocumentData): PartnerRecord {
     approvedAtMs: ms(d.approvedAt),
     reviewedAtMs: ms(d.reviewedAt),
     reviewNote: str(d.reviewNote),
-    lifetimeSales: num(d.lifetimeSales),
+    silverGrams: num(d.silverGrams),
+    perksUnlocked: Array.isArray(d.perksUnlocked) ? d.perksUnlocked.filter((p: unknown): p is PerkId => typeof p === 'string' && p in DEFAULT_PERK_RULES) : [],
     unitsSold: num(d.unitsSold),
     earnedTotal: num(d.earnedTotal),
     familySavings: num(d.familySavings),
@@ -112,7 +120,6 @@ const toEarning = (id: string, d: DocumentData): EarningRow => ({
   id,
   amount: num(d.amount),
   rate: num(d.rate),
-  sales: num(d.sales),
   units: num(d.units),
   family: d.family === true,
   savings: num(d.savings),
@@ -228,12 +235,26 @@ export async function claimSilver(uid: string, pot: { earned: number; claimed: n
 
 // ─── Admin ─────────────────────────────────────────────────────────────────
 
+/** Every partner, with the private sales value merged in (admin only). */
 export function subscribePartners(onNext: (rows: PartnerRecord[]) => void, onError: (e: Error) => void) {
-  return onSnapshot(
-    collection(db, 'partners'),
-    (s) => onNext(s.docs.map((d) => toRecord(d.id, d.data(est))).sort((a, b) => b.appliedAtMs - a.appliedAtMs)),
+  let docs: DocumentSnapshot[] | null = null;
+  let sales: Map<string, number> | null = null;
+  const emit = () => {
+    if (!docs || !sales) return;
+    const s = sales;
+    onNext(
+      docs
+        .map((d) => ({ ...toRecord(d.id, d.data(est) ?? {}), lifetimeSales: s.get(d.id) ?? 0 }))
+        .sort((a, b) => b.appliedAtMs - a.appliedAtMs),
+    );
+  };
+  const off1 = onSnapshot(collection(db, 'partners'), (s) => { docs = s.docs; emit(); }, onError);
+  const off2 = onSnapshot(
+    collection(db, 'partnerPrivate'),
+    (s) => { sales = new Map(s.docs.map((d) => [d.id, num(d.data().lifetimeSales)])); emit(); },
     onError,
   );
+  return () => { off1(); off2(); };
 }
 
 export function subscribePendingPartnerCount(onNext: (n: number) => void, onError: (e: Error) => void) {
@@ -314,8 +335,30 @@ export async function reviewPartner(record: PartnerRecord, action: 'reject' | 's
 }
 
 /** Force a tier (null = automatic from lifetime sales). The server applies it from the next delivered order. */
-export const setPartnerTierOverride = (uid: string, tier: PartnerTier | null) =>
-  updateDoc(partnerRef(uid), { tierOverride: tier, ...(tier ? { tier } : {}), updatedAt: serverTimestamp() });
+export async function setPartnerTierOverride(uid: string, tier: PartnerTier | null) {
+  const [priv, raw] = await Promise.all([getDoc(doc(db, 'partnerPrivate', uid)), getDoc(settingsRef)]);
+  const view = partnerView(num(priv.data()?.lifetimeSales), raw.exists() ? raw.data() : null, tier);
+  await updateDoc(partnerRef(uid), { tierOverride: tier, tier: view.tier, updatedAt: serverTimestamp() });
+}
+
+/**
+ * After the admin changes the thresholds, re-derive what every partner sees
+ * (tier, silver grams, unlocked perks) from the private sales value, so the
+ * partner screens never wait for the next delivered order.
+ */
+export async function refreshPartnerViews() {
+  const [partners, priv, raw] = await Promise.all([getDocs(collection(db, 'partners')), getDocs(collection(db, 'partnerPrivate')), getDoc(settingsRef)]);
+  const settings = raw.exists() ? raw.data() : null;
+  const sales = new Map(priv.docs.map((d) => [d.id, num(d.data().lifetimeSales)]));
+  const approved = partners.docs.filter((d) => d.data().status === 'approved');
+  for (let i = 0; i < approved.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const d of approved.slice(i, i + 400)) {
+      batch.update(d.ref, { ...partnerView(sales.get(d.id) ?? 0, settings, d.data().tierOverride), updatedAt: serverTimestamp() });
+    }
+    await batch.commit();
+  }
+}
 
 /** Record money sent to a partner. The partner then confirms it with Received. */
 export async function recordPayout(uid: string, input: { amount: number; paidOnMs: number; note: string }, adminUid: string) {
@@ -338,4 +381,5 @@ export async function loadPartnerSettings(): Promise<PartnerSettings> {
 
 export async function savePartnerSettings(settings: PartnerSettings) {
   await setDoc(settingsRef, { ...normalisePartnerSettings(settings), updatedAt: serverTimestamp() }, { merge: true });
+  await refreshPartnerViews();
 }

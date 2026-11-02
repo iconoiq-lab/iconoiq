@@ -118,7 +118,7 @@ const PartnerArea: React.FC = () => {
           uid && run(`${perk}:${opts.index ?? opts.month ?? ''}`, () => requestPerk(uid, perk, opts), 'Request sent to our team')
         }
         onClaimSilver={() =>
-          uid && run('silver', () => claimSilver(uid, silverPot(record.lifetimeSales, partner.settings.silverStep, claims)), 'Silver coins claimed')
+          uid && run('silver', () => claimSilver(uid, silverPot(record.silverGrams, claims)), 'Silver coins claimed')
         }
       />
     );

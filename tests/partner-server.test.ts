@@ -30,13 +30,15 @@ function order(db: FakeFirestore, rzp: string, sales: number, status: string, ex
   db.applySet(`orders/${rzp}`, { userId: uid, orderId: `ORD-${rzp}`, razorpayOrderId: rzp, status, paymentStatus: 'paid', total: sales, deliveredAt: T(Date.now()) }, false);
 }
 const reconcile = (db: FakeFirestore, rzp: string) => reconcileRewards(asDb(db), rzp, db.read(`orders/${rzp}`)!);
+const sales = (db: FakeFirestore) => db.read(`partnerPrivate/${PUID}`)?.lifetimeSales;
 const setStatus = (db: FakeFirestore, rzp: string, status: string) => db.applyUpdate(`orders/${rzp}`, { status });
 
 test('create-order: a partner code is resolved on the server; family use gets the tier percent', async () => {
   const db = shop({ enabled: true, customerDiscountPercent: 5 });
   assert.deepEqual(await resolvePartnerCode('RAVI3210', CUST, 2000, asCo(db)), { partnerUid: PUID, code: 'RAVI3210', family: false, percent: 5, discount: 100 });
   assert.deepEqual(await resolvePartnerCode('RAVI3210', PUID, 2000, asCo(db)), { partnerUid: PUID, code: 'RAVI3210', family: true, percent: 15, discount: 300 });
-  db.applyUpdate(`partners/${PUID}`, { lifetimeSales: 250000 });
+  db.applyUpdate(`partners/${PUID}`, { lifetimeSales: 0 }); // ignored: the figure is private
+  db.applySet(`partnerPrivate/${PUID}`, { lifetimeSales: 250000 }, false);
   assert.equal((await resolvePartnerCode('RAVI3210', PUID, 2000, asCo(db)))!.percent, 30, 'Gold partner: 30% family discount');
 });
 
@@ -71,7 +73,12 @@ test('reconcile: nothing until delivered; then 15% credited once, held until the
   assert.equal(e.state, 'active');
   assert.ok(e.unlockAt.toMillis() >= Date.now() + 6 * 86_400_000, 'unlocks after the 7-day return window');
   const p = db.read(`partners/${PUID}`)!;
-  assert.deepEqual([p.lifetimeSales, p.unitsSold, p.earnedTotal, p.tier], [1000, 2, 150, 'silver']);
+  assert.deepEqual([sales(db), p.unitsSold, p.earnedTotal, p.tier], [1000, 2, 150, 'silver']);
+  // Spec decision 6: no sales value anywhere the partner can read.
+  assert.equal(p.lifetimeSales, undefined, 'not on the partner doc');
+  assert.equal(e.sales, undefined, 'not on the earning');
+  assert.equal(db.read(`partnerPrivate/${PUID}/orders/o1`)!.sales, 1000, 'kept privately per order');
+  assert.deepEqual([p.silverGrams, p.perksUnlocked], [0, ['catalogue', 'photos']]);
   const o = db.read('orders/o1')!;
   assert.deepEqual([o.partnerUid, o.partnerCode, o.partnerFamily], [PUID, 'RAVI3210', false]);
 });
@@ -83,16 +90,16 @@ test('reconcile: a return holds, a refund voids and removes the sales, reopening
   setStatus(db, 'o1', 'returnRequested');
   await reconcile(db, 'o1');
   assert.equal(db.read(`partners/${PUID}/earnings/o1`)!.state, 'held');
-  assert.equal(db.read(`partners/${PUID}`)!.lifetimeSales, 1000, 'still counts while the return is open');
+  assert.equal(sales(db), 1000, 'still counts while the return is open');
   setStatus(db, 'o1', 'refunded');
   await reconcile(db, 'o1');
   assert.equal(db.read(`partners/${PUID}/earnings/o1`)!.state, 'void');
-  assert.equal(db.read(`partners/${PUID}`)!.lifetimeSales, 0);
+  assert.equal(sales(db), 0);
   assert.equal(db.read(`partners/${PUID}`)!.earnedTotal, 0);
   setStatus(db, 'o1', 'delivered');
   await reconcile(db, 'o1');
   assert.equal(db.read(`partners/${PUID}/earnings/o1`)!.state, 'active');
-  assert.equal(db.read(`partners/${PUID}`)!.lifetimeSales, 1000);
+  assert.equal(sales(db), 1000);
 });
 
 test('reconcile: Gold applies only to orders delivered after the threshold is passed', async () => {
@@ -103,6 +110,8 @@ test('reconcile: Gold applies only to orders delivered after the threshold is pa
   await reconcile(db, 'cross');
   assert.equal(db.read(`partners/${PUID}/earnings/cross`)!.rate, 15, 'the order that crosses the line is still Silver');
   assert.equal(db.read(`partners/${PUID}`)!.tier, 'gold');
+  assert.equal(db.read(`partners/${PUID}`)!.silverGrams, 20);
+  assert.equal(db.read(`partners/${PUID}`)!.perksUnlocked.includes('trip'), true);
   order(db, 'next', 1000, 'delivered');
   await reconcile(db, 'next');
   assert.equal(db.read(`partners/${PUID}/earnings/next`)!.rate, 30);
@@ -126,7 +135,7 @@ test('reconcile: a family order earns nothing, records the savings and adds no s
   const e = db.read(`partners/${PUID}/earnings/f1`)!;
   assert.deepEqual([e.amount, e.family, e.savings], [0, true, 300]);
   const p = db.read(`partners/${PUID}`)!;
-  assert.deepEqual([p.lifetimeSales, p.familySavings, p.earnedTotal], [0, 300, 0]);
+  assert.deepEqual([sales(db), p.familySavings, p.earnedTotal], [0, 300, 0]);
 });
 
 test('reconcile: a partner who is not approved is not credited', async () => {

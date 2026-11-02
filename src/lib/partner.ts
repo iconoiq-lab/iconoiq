@@ -109,7 +109,8 @@ function partnerMonthKey(ms: number): string {
 /** One credited order, as partners/{uid}/earnings/{orderId} holds it. */
 interface PartnerEarningLike {
   amount: number;
-  sales: number;
+  /** The order's sales value: kept on partnerPrivate/<uid>/orders/<id>, never on the earning (spec decision 6). */
+  sales?: number;
   units: number;
   state: 'held' | 'active' | 'void';
   family?: boolean;
@@ -163,9 +164,73 @@ function partnerFieldsFromNote(note: unknown): Record<string, string | number | 
     partnerSavings: num(parts[5]),
   };
 }
+
+type PerkId =
+  | 'catalogue'
+  | 'photos'
+  | 'pamphlets'
+  | 'masterclass'
+  | 'passGroup'
+  | 'passSolo'
+  | 'promoTeam'
+  | 'onlinePromo'
+  | 'standee'
+  | 'uniforms'
+  | 'trip';
+
+interface PerkRule {
+  /** Rupees of lifetime delivered sales; 0 = from approval. */
+  unlockAt: number;
+  /** For counted perks: how many claims. */
+  count: number;
+}
+
+/** The client's PLANS.pdf. Keep in step with perkDefaults() in firestore.rules (tests/partnerRules.test.ts). */
+const DEFAULT_PERK_RULES: Record<PerkId, PerkRule> = {
+  catalogue: { unlockAt: 0, count: 1 },
+  photos: { unlockAt: 0, count: 1 },
+  pamphlets: { unlockAt: 10_000, count: 1 },
+  masterclass: { unlockAt: 20_000, count: 6 },
+  passGroup: { unlockAt: 30_000, count: 20 },
+  passSolo: { unlockAt: 30_000, count: 4 },
+  promoTeam: { unlockAt: 30_000, count: 1 },
+  onlinePromo: { unlockAt: 30_000, count: 1 },
+  standee: { unlockAt: 50_000, count: 1 },
+  uniforms: { unlockAt: 100_000, count: 1 },
+  trip: { unlockAt: 100_000, count: 1 },
+};
+
+const DEFAULT_SILVER_STEP = 10_000;
+
+/** Grams of silver earned: 1 g per full silverStep of lifetime sales. */
+const silverGrams = (lifetimeSales: number, step = DEFAULT_SILVER_STEP) =>
+  step > 0 ? Math.max(0, Math.floor((Number(lifetimeSales) || 0) / step)) : 0;
+
+/**
+ * What the partner may see on partners/<uid> (spec decision 6): the tier, the
+ * silver grams earned and which perks are unlocked. The sales value itself
+ * stays on partnerPrivate/<uid>, which only the admin and the server read.
+ */
+interface PartnerView {
+  tier: PartnerTier;
+  silverGrams: number;
+  perksUnlocked: PerkId[];
+}
+
+function partnerView(lifetimeSales: number, raw: Record<string, unknown> | null | undefined, override?: unknown): PartnerView {
+  const sales = Number(lifetimeSales) || 0;
+  const perks = (raw?.perks && typeof raw.perks === 'object' ? raw.perks : {}) as Record<string, { unlockAt?: unknown } | undefined>;
+  const step = Math.round(partnerNum(raw?.silverStep, DEFAULT_SILVER_STEP, 100, 10_000_000));
+  const ids = Object.keys(DEFAULT_PERK_RULES) as PerkId[];
+  return {
+    tier: partnerTierFor(sales, normalisePartnerMoney(raw as Partial<PartnerMoneySettings> | null | undefined), override),
+    silverGrams: silverGrams(sales, step),
+    perksUnlocked: ids.filter((id) => sales >= Math.round(partnerNum(perks[id]?.unlockAt, DEFAULT_PERK_RULES[id].unlockAt, 0, 1_000_000_000))),
+  };
+}
 // <<< partner-core
 
-export type { PartnerTier, PartnerMoneySettings, PartnerEarningLike, PartnerTotals };
+export type { PartnerTier, PartnerMoneySettings, PartnerEarningLike, PartnerTotals, PerkId, PerkRule, PartnerView };
 export {
   DEFAULT_PARTNER_MONEY,
   normalisePartnerMoney,
@@ -178,6 +243,10 @@ export {
   partnerMonthKey,
   partnerTotals,
   partnerFieldsFromNote,
+  DEFAULT_PERK_RULES,
+  DEFAULT_SILVER_STEP,
+  silverGrams,
+  partnerView,
 };
 
 // ─── Screens only ──────────────────────────────────────────────────────────
@@ -201,18 +270,6 @@ export function partnerCodeFor(name: string, phone: string): string {
 /** Candidates when the code is taken: RAVI3210, RAVI32102, RAVI32103, … */
 export const partnerCodeCandidate = (base: string, attempt: number) => (attempt <= 0 ? base : `${base}${attempt + 1}`);
 
-export type PerkId =
-  | 'catalogue'
-  | 'photos'
-  | 'pamphlets'
-  | 'masterclass'
-  | 'passGroup'
-  | 'passSolo'
-  | 'promoTeam'
-  | 'onlinePromo'
-  | 'standee'
-  | 'uniforms'
-  | 'trip';
 
 /** How a perk is claimed: once, a counted number of times, or once per calendar month. */
 export type PerkKind = 'once' | 'count' | 'monthly';
@@ -242,29 +299,8 @@ export const PERKS: PerkDef[] = [
   { id: 'trip', title: 'International trip', body: 'A trip to an Asian country. [NEED: the trip terms]', kind: 'once', tab: 'claims', action: 'Claim: I am eligible' },
 ];
 
-export interface PerkRule {
-  /** Rupees of lifetime delivered sales; 0 = from approval. */
-  unlockAt: number;
-  /** For counted perks: how many claims. */
-  count: number;
-}
 
-/** The client's PLANS.pdf. Keep in step with perkDefaults() in firestore.rules (tests/partnerRules.test.ts). */
-export const DEFAULT_PERK_RULES: Record<PerkId, PerkRule> = {
-  catalogue: { unlockAt: 0, count: 1 },
-  photos: { unlockAt: 0, count: 1 },
-  pamphlets: { unlockAt: 10_000, count: 1 },
-  masterclass: { unlockAt: 20_000, count: 6 },
-  passGroup: { unlockAt: 30_000, count: 20 },
-  passSolo: { unlockAt: 30_000, count: 4 },
-  promoTeam: { unlockAt: 30_000, count: 1 },
-  onlinePromo: { unlockAt: 30_000, count: 1 },
-  standee: { unlockAt: 50_000, count: 1 },
-  uniforms: { unlockAt: 100_000, count: 1 },
-  trip: { unlockAt: 100_000, count: 1 },
-};
 
-export const DEFAULT_SILVER_STEP = 10_000;
 
 export interface PartnerSettings extends PartnerMoneySettings {
   perks: Record<PerkId, PerkRule>;
@@ -296,9 +332,6 @@ export function normalisePartnerSettings(raw: Partial<PartnerSettings> | null | 
   };
 }
 
-/** Grams of silver earned: 1 g per full silverStep of lifetime sales. */
-export const silverGrams = (lifetimeSales: number, step = DEFAULT_SILVER_STEP) =>
-  step > 0 ? Math.max(0, Math.floor((Number(lifetimeSales) || 0) / step)) : 0;
 
 export interface ClaimLike {
   id: string;
@@ -332,12 +365,12 @@ export interface PerkState {
   fulfilled: number;
 }
 
-/** Each perk's state for the screens. lifetimeSales is used, never shown. */
-export function perkStates(lifetimeSales: number, s: PartnerSettings, claims: ClaimLike[], nowMs: number): PerkState[] {
+/** Each perk's state for the screens, from the unlocked perks the server wrote on partners/<uid>. */
+export function perkStates(perksUnlocked: readonly string[], s: PartnerSettings, claims: ClaimLike[], nowMs: number): PerkState[] {
   const month = partnerMonthKey(nowMs);
   return PERKS.map((def) => {
     const rule = s.perks[def.id];
-    const unlocked = (Number(lifetimeSales) || 0) >= rule.unlockAt;
+    const unlocked = perksUnlocked.includes(def.id);
     const mine = claims.filter((c) => c.perk === def.id);
     const scoped = def.kind === 'monthly' ? mine.filter((c) => c.month === month) : mine;
     const total = def.kind === 'count' ? rule.count : 1;
@@ -360,8 +393,8 @@ export function perkStates(lifetimeSales: number, s: PartnerSettings, claims: Cl
 }
 
 /** Silver coins: earned to date, claimed (the chain of silver claims), and waiting to be claimed. */
-export function silverPot(lifetimeSales: number, step: number, claims: ClaimLike[]) {
-  const earned = silverGrams(lifetimeSales, step);
+export function silverPot(silverGramsEarned: number, claims: ClaimLike[]) {
+  const earned = Math.max(0, Math.floor(Number(silverGramsEarned) || 0));
   const chain = claims.filter((c) => c.perk === 'silver');
   const claimed = chain.reduce((m, c) => Math.max(m, Number(c.to) || 0), 0);
   const last = chain.find((c) => (Number(c.to) || 0) === claimed) || null;

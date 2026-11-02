@@ -630,7 +630,8 @@ function partnerMonthKey(ms: number): string {
 /** One credited order, as partners/{uid}/earnings/{orderId} holds it. */
 interface PartnerEarningLike {
   amount: number;
-  sales: number;
+  /** The order's sales value: kept on partnerPrivate/<uid>/orders/<id>, never on the earning (spec decision 6). */
+  sales?: number;
   units: number;
   state: 'held' | 'active' | 'void';
   family?: boolean;
@@ -682,6 +683,70 @@ function partnerFieldsFromNote(note: unknown): Record<string, string | number | 
     partnerUnits: Math.floor(num(parts[3])),
     partnerFamily: parts[4] === '1',
     partnerSavings: num(parts[5]),
+  };
+}
+
+type PerkId =
+  | 'catalogue'
+  | 'photos'
+  | 'pamphlets'
+  | 'masterclass'
+  | 'passGroup'
+  | 'passSolo'
+  | 'promoTeam'
+  | 'onlinePromo'
+  | 'standee'
+  | 'uniforms'
+  | 'trip';
+
+interface PerkRule {
+  /** Rupees of lifetime delivered sales; 0 = from approval. */
+  unlockAt: number;
+  /** For counted perks: how many claims. */
+  count: number;
+}
+
+/** The client's PLANS.pdf. Keep in step with perkDefaults() in firestore.rules (tests/partnerRules.test.ts). */
+const DEFAULT_PERK_RULES: Record<PerkId, PerkRule> = {
+  catalogue: { unlockAt: 0, count: 1 },
+  photos: { unlockAt: 0, count: 1 },
+  pamphlets: { unlockAt: 10_000, count: 1 },
+  masterclass: { unlockAt: 20_000, count: 6 },
+  passGroup: { unlockAt: 30_000, count: 20 },
+  passSolo: { unlockAt: 30_000, count: 4 },
+  promoTeam: { unlockAt: 30_000, count: 1 },
+  onlinePromo: { unlockAt: 30_000, count: 1 },
+  standee: { unlockAt: 50_000, count: 1 },
+  uniforms: { unlockAt: 100_000, count: 1 },
+  trip: { unlockAt: 100_000, count: 1 },
+};
+
+const DEFAULT_SILVER_STEP = 10_000;
+
+/** Grams of silver earned: 1 g per full silverStep of lifetime sales. */
+const silverGrams = (lifetimeSales: number, step = DEFAULT_SILVER_STEP) =>
+  step > 0 ? Math.max(0, Math.floor((Number(lifetimeSales) || 0) / step)) : 0;
+
+/**
+ * What the partner may see on partners/<uid> (spec decision 6): the tier, the
+ * silver grams earned and which perks are unlocked. The sales value itself
+ * stays on partnerPrivate/<uid>, which only the admin and the server read.
+ */
+interface PartnerView {
+  tier: PartnerTier;
+  silverGrams: number;
+  perksUnlocked: PerkId[];
+}
+
+function partnerView(lifetimeSales: number, raw: Record<string, unknown> | null | undefined, override?: unknown): PartnerView {
+  const sales = Number(lifetimeSales) || 0;
+  const perks = (raw?.perks && typeof raw.perks === 'object' ? raw.perks : {}) as Record<string, { unlockAt?: unknown } | undefined>;
+  const step = Math.round(partnerNum(raw?.silverStep, DEFAULT_SILVER_STEP, 100, 10_000_000));
+  const ids = Object.keys(DEFAULT_PERK_RULES) as PerkId[];
+  return {
+    tier: partnerTierFor(sales, normalisePartnerMoney(raw as Partial<PartnerMoneySettings> | null | undefined), override),
+    silverGrams: silverGrams(sales, step),
+    perksUnlocked: ids.filter((id) => sales >= Math.round(partnerNum(perks[id]?.unlockAt, DEFAULT_PERK_RULES[id].unlockAt, 0, 1_000_000_000))),
   };
 }
 // <<< partner-core
@@ -820,11 +885,15 @@ export async function resolvePartnerCode(
   const settings = normalisePartnerMoney(settingsSnap.exists ? (settingsSnap.data() as Partial<PartnerMoneySettings>) : null);
   const link = codeSnap.data();
   if (!settings.enabled || !link || link.active === false || typeof link.uid !== 'string' || !link.uid) return null;
-  const partnerSnap = await withTimeout(db.collection('partners').doc(link.uid).get(), ADMIN_TIMEOUT_MS, 'Partner check');
+  const [partnerSnap, privateSnap] = await withTimeout(
+    Promise.all([db.collection('partners').doc(link.uid).get(), db.collection('partnerPrivate').doc(link.uid).get()]),
+    ADMIN_TIMEOUT_MS,
+    'Partner check',
+  );
   const partner = partnerSnap.data();
   if (!partner || partner.status !== 'approved' || partner.code !== code) return null;
   const family = !!uid && uid === link.uid;
-  const tier = partnerTierFor(Number(partner.lifetimeSales) || 0, settings, partner.tierOverride);
+  const tier = partnerTierFor(Number(privateSnap.data()?.lifetimeSales) || 0, settings, partner.tierOverride);
   const percent = partnerDiscountPercent(family, tier, settings);
   return { partnerUid: link.uid, code, family, percent, discount: partnerDiscount(subtotal, percent) };
 }
