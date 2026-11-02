@@ -1760,6 +1760,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const uid = isAdmin && body.uid ? String(body.uid) : callerUid;
     if (!/^[\w-]{1,128}$/.test(uid)) return res.status(400).json({ error: 'invalid uid' });
     try {
+      // A partner's own call costs one read until an order actually leaves its
+      // window (viewsDueAt null = none pending; missing = never refreshed), so
+      // repeated calls cannot burn the daily Firestore read quota.
+      if (!isAdmin) {
+        const p = (await db.collection('partners').doc(uid).get()).data();
+        if (!p) return res.status(200).json({ ok: true, changed: false });
+        const due = p.viewsDueAt === undefined ? 0 : p.viewsDueAt === null ? null : millis(p.viewsDueAt);
+        if (due === null || due > Date.now()) return res.status(200).json({ ok: true, changed: false });
+      }
       return res.status(200).json({ ok: true, changed: await refreshPartnerTotals(db, uid, admin.firestore.Timestamp.now()) });
     } catch (err) {
       console.error('[notify-order] refresh-partner failed:', err instanceof Error ? err.message : err);
