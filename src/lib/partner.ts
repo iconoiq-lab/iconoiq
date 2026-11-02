@@ -190,7 +190,7 @@ export const cleanPartnerCode = (raw: unknown) => String(raw ?? '').toUpperCase(
 /**
  * The partner's code: the first 4 letters of the name (A–Z, padded with X)
  * and the last 4 digits of the phone (padded with 0). "Ravi Kumar",
- * "98765 43210" → RAVI3210.
+ * "90000 13210" → RAVI3210.
  */
 export function partnerCodeFor(name: string, phone: string): string {
   const letters = String(name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4).padEnd(4, 'X');

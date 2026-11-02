@@ -151,9 +151,9 @@ export function DealerSettingsTabView({
         </p>
         <ol className="mt-3 space-y-3">
           {form.tiers.map((t, i) => (
-            <li key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto] items-end gap-3 rounded-control border border-border bg-muted/30 p-3">
+            <li key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto] items-end gap-3 rounded-card border border-border bg-muted/30 p-3">
               <div>
-                <Label htmlFor={`dl-tier-min-${i}`} className="text-xs">Order of (₹, regular prices)</Label>
+                <Label htmlFor={`dl-tier-min-${i}`} className="text-xs">Order from (₹)</Label>
                 <Input
                   id={`dl-tier-min-${i}`}
                   type="number"

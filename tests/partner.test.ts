@@ -46,7 +46,7 @@ test('defaults follow PLANS.pdf: Silver 15, Gold 30 from 2,00,000, customer disc
 });
 
 test('code: first 4 letters (padded X) + last 4 phone digits', () => {
-  assert.equal(partnerCodeFor('Ravi Kumar', '98765 43210'), 'RAVI3210');
+  assert.equal(partnerCodeFor('Ravi Kumar', '90000 13210'), 'RAVI3210');
   assert.equal(partnerCodeFor('Jo', '+91 90000 00017'), 'JOXX0017');
   assert.equal(partnerCodeFor('Śrī 9 Devi', '12'), 'RDEV0012', 'non A–Z letters and digits in the name are skipped');
   assert.equal(partnerCodeFor('', ''), 'XXXX0000');

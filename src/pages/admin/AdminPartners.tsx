@@ -353,12 +353,17 @@ function PartnerDialog({ r, adminUid, onClose }: { r: PartnerRecord; adminUid: s
             ['Confirmed', received],
             ['To settle', owed],
           ].map(([k, v]) => (
-            <div key={k as string} className="rounded-control bg-muted/60 p-3">
+            <div key={k as string} className="rounded-card bg-muted/60 p-3">
               <p className="text-[11px] text-muted-foreground">{k}</p>
               <p className="font-semibold tabular-nums text-foreground">{money ? formatINR(v as number) : '…'}</p>
             </div>
           ))}
         </section>
+        {money && sent > received && (
+          <p className="text-xs text-muted-foreground">
+            {formatINR(sent - received)} is sent and waiting for the partner's Received. Still to send: {formatINR(Math.max(0, owed - (sent - received)))}.
+          </p>
+        )}
         {loadError && <Notice tone="danger" compact title="Couldn't load money">{loadError}</Notice>}
 
         <section aria-labelledby={`tier-${r.uid}`} className="space-y-2">

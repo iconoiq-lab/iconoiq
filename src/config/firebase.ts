@@ -1,6 +1,6 @@
 import { FirebaseOptions, initializeApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
+import { connectFirestoreEmulator, initializeFirestore } from "firebase/firestore";
 import type { Analytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
 
@@ -21,6 +21,14 @@ export const firebaseConfig: FirebaseOptions = {
   appId: getRequiredEnv('VITE_FIREBASE_APP_ID'),
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+/**
+ * Local emulators for screenshots and manual tests: dev server only, with
+ * VITE_USE_EMULATORS=1. The project id becomes demo-iconoiq, so nothing can
+ * reach a real Firebase project. Production builds never take this path.
+ */
+const USE_EMULATORS = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === '1';
+if (USE_EMULATORS) firebaseConfig.projectId = 'demo-iconoiq';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -53,6 +61,10 @@ export const getSecondaryAuth = (): Auth => {
  * actually clear a stored field, write `null`.
  */
 export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+if (USE_EMULATORS) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:8081', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
 export const storage = getStorage(app);
 /**
  * Google Analytics, loaded after the page is interactive (App.tsx calls
