@@ -275,7 +275,7 @@ function PartnerList({ rows, adminUid }: { rows: PartnerRecord[]; adminUid: stri
             <li key={r.uid} className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
               <div className="min-w-0 flex-1 basis-48">
                 <p className="truncate text-sm font-semibold text-foreground">{r.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{r.business} · <span className="font-mono">{r.code || 'no code'}</span></p>
+                <p className="truncate text-xs text-muted-foreground">{r.business ? `${r.business} · ` : ''}<span className="font-mono">{r.code || 'no code'}</span></p>
               </div>
               <StatusBadge tone={st.tone} label={st.label} />
               <span className="text-xs text-muted-foreground">
@@ -342,7 +342,7 @@ function PartnerDialog({ r, adminUid, onClose }: { r: PartnerRecord; adminUid: s
         <DialogHeader>
           <DialogTitle>{r.name}</DialogTitle>
           <DialogDescription>
-            {r.business} · {r.city}, {r.state} · {r.phone} · code <span className="font-mono">{r.code}</span>
+            {[r.business, `${r.city}, ${r.state}`, r.phone].filter(Boolean).join(' · ')} · code <span className="font-mono">{r.code}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -494,7 +494,7 @@ function ClaimsQueue({ claims, records, adminUid }: { claims: ClaimRow[]; record
                 <div className="min-w-0 flex-1 basis-52">
                   <p className="text-sm font-semibold text-foreground">{claimTitle(c)}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {r ? `${r.name} · ${r.business} · ${r.phone}` : c.partnerUid}
+                    {r ? [r.name, r.business, r.phone].filter(Boolean).join(' · ') : c.partnerUid}
                   </p>
                 </div>
                 <span className="text-xs tabular-nums text-muted-foreground">
