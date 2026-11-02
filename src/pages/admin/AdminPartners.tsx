@@ -14,6 +14,16 @@ import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { StatCard } from '@/components/admin/StatCard';
 import { EmptyState } from '@/components/EmptyState';
 import { FormSkeleton, TableSkeleton } from '@/components/skeletons';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -31,6 +41,7 @@ import { describeError } from '@/lib/errorMessage';
 import { formatINR, formatNumber } from '@/lib/format';
 import {
   PERKS,
+  claimQualifies,
   normalisePartnerSettings,
   partnerCodeFor,
   partnerTierFor,
@@ -48,6 +59,7 @@ import {
   loadPartnerMoney,
   loadPartnerSettings,
   recordPayout,
+  refreshPartnerFigures,
   reviewPartner,
   savePartnerSettings,
   setPartnerTierOverride,
@@ -330,7 +342,7 @@ function PartnerDialog({ r, adminUid, onClose }: { r: PartnerRecord; adminUid: s
     }
   };
 
-  const autoTier: PartnerTier | null = settings ? partnerTierFor(r.lifetimeSales ?? 0, settings, null) : null;
+  const autoTier: PartnerTier | null = settings ? partnerTierFor(r.unlockedSales ?? 0, settings, null) : null;
   const unlocked = money ? unlockedEarnings(money.earnings, nowMs) : 0;
   const sent = money ? money.payouts.reduce((t, p) => t + p.amount, 0) : 0;
   const received = money ? receivedTotal(money.payouts) : 0;
@@ -462,10 +474,39 @@ function PartnerDialog({ r, adminUid, onClose }: { r: PartnerRecord; adminUid: s
 function ClaimsQueue({ claims, records, adminUid }: { claims: ClaimRow[]; records: PartnerRecord[]; adminUid: string }) {
   const [showDone, setShowDone] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [settings, setSettings] = useState<PartnerSettings | null>(null);
+  const [confirm, setConfirm] = useState<{ claim: ClaimRow; needs: number; has: number } | null>(null);
   const byUid = useMemo(() => new Map(records.map((r) => [r.uid, r])), [records]);
   const rows = claims.filter((c) => (showDone ? c.status === 'fulfilled' : c.status === 'requested'));
+  // Partners with a claim waiting, so their unlocked sales are re-derived
+  // once (a return window may have ended, or an order been returned).
+  const waitingUids = useMemo(
+    () => [...new Set(claims.filter((c) => c.status === 'requested').map((c) => c.partnerUid))].sort().join(','),
+    [claims],
+  );
 
-  const fulfil = async (c: ClaimRow) => {
+  useEffect(() => {
+    loadPartnerSettings().then(setSettings).catch(() => setSettings(normalisePartnerSettings(null)));
+  }, []);
+  useEffect(() => {
+    if (waitingUids) waitingUids.split(',').forEach((uid) => void refreshPartnerFigures(uid));
+  }, [waitingUids]);
+
+  const check = (c: ClaimRow) => {
+    const r = byUid.get(c.partnerUid);
+    if (!settings || !r) return null;
+    return { ...claimQualifies(c, r.unlockedSales ?? 0, settings), has: r.unlockedSales ?? 0 };
+  };
+
+  const fulfil = async (c: ClaimRow, confirmed = false) => {
+    // Fresh figures first: never fulfil on a stale "qualifies".
+    await refreshPartnerFigures(c.partnerUid);
+    const q = check(c);
+    if (q && !q.ok && !confirmed) {
+      setConfirm({ claim: c, needs: q.needs, has: q.has });
+      return;
+    }
+    setConfirm(null);
     setBusy(c.path);
     try {
       await fulfilClaim(c.path, adminUid);
@@ -489,6 +530,7 @@ function ClaimsQueue({ claims, records, adminUid }: { claims: ClaimRow[]; record
         <ul className={cn(PANEL, 'divide-y divide-border p-0 sm:p-0')}>
           {rows.map((c) => {
             const r = byUid.get(c.partnerUid);
+            const q = c.status === 'requested' ? check(c) : null;
             return (
               <li key={c.path} className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
                 <div className="min-w-0 flex-1 basis-52">
@@ -497,6 +539,12 @@ function ClaimsQueue({ claims, records, adminUid }: { claims: ClaimRow[]; record
                     {r ? [r.name, r.business, r.phone].filter(Boolean).join(' · ') : c.partnerUid}
                   </p>
                 </div>
+                {q && (
+                  <StatusBadge
+                    tone={q.ok ? 'success' : 'danger'}
+                    label={q.ok ? 'Still qualifies' : `No longer qualifies: ${formatINR(q.has)} of ${formatINR(q.needs)} unlocked`}
+                  />
+                )}
                 <span className="text-xs tabular-nums text-muted-foreground">
                   {c.status === 'fulfilled' ? `Fulfilled ${formatDMY(c.fulfilledAtMs || 0)}` : `Requested ${formatDMY(c.createdAtMs || 0)}`}
                 </span>
@@ -510,6 +558,23 @@ function ClaimsQueue({ claims, records, adminUid }: { claims: ClaimRow[]; record
           })}
         </ul>
       )}
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>This partner no longer qualifies</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm &&
+                `${claimTitle(confirm.claim)} needs ${formatINR(confirm.needs)} of sales past the return window. ` +
+                  `The partner now has ${formatINR(confirm.has)} (an order was returned, or is still inside its return window). ` +
+                  'Fulfil it anyway?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Don't fulfil</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirm && void fulfil(confirm.claim, true)}>Fulfil anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

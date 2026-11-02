@@ -18,6 +18,7 @@ import {
   type DocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { rewardsAction } from '@/services/rewardsService';
 import {
   PARTNER_CODE_RE,
   claimId,
@@ -68,6 +69,10 @@ export interface PartnerRecord extends PartnerApplicationInput {
   perksUnlocked: PerkId[];
   /** Admin screens only, from partnerPrivate/<uid>. Never on the partner's own doc. */
   lifetimeSales?: number;
+  /** Admin only: sales past their return window, what unlocks perks, silver and Gold. */
+  unlockedSales?: number;
+  /** When the next order leaves its return window (0: none waiting). */
+  viewsDueAtMs: number;
   unitsSold: number;
   earnedTotal: number;
   familySavings: number;
@@ -113,6 +118,7 @@ function toRecord(id: string, d: DocumentData): PartnerRecord {
     unitsSold: num(d.unitsSold),
     earnedTotal: num(d.earnedTotal),
     familySavings: num(d.familySavings),
+    viewsDueAtMs: ms(d.viewsDueAt),
   };
 }
 
@@ -238,20 +244,23 @@ export async function claimSilver(uid: string, pot: { earned: number; claimed: n
 /** Every partner, with the private sales value merged in (admin only). */
 export function subscribePartners(onNext: (rows: PartnerRecord[]) => void, onError: (e: Error) => void) {
   let docs: DocumentSnapshot[] | null = null;
-  let sales: Map<string, number> | null = null;
+  let sales: Map<string, { lifetimeSales: number; unlockedSales: number }> | null = null;
   const emit = () => {
     if (!docs || !sales) return;
     const s = sales;
     onNext(
       docs
-        .map((d) => ({ ...toRecord(d.id, d.data(est) ?? {}), lifetimeSales: s.get(d.id) ?? 0 }))
+        .map((d) => ({ ...toRecord(d.id, d.data(est) ?? {}), lifetimeSales: 0, unlockedSales: 0, ...s.get(d.id) }))
         .sort((a, b) => b.appliedAtMs - a.appliedAtMs),
     );
   };
   const off1 = onSnapshot(collection(db, 'partners'), (s) => { docs = s.docs; emit(); }, onError);
   const off2 = onSnapshot(
     collection(db, 'partnerPrivate'),
-    (s) => { sales = new Map(s.docs.map((d) => [d.id, num(d.data().lifetimeSales)])); emit(); },
+    (s) => {
+      sales = new Map(s.docs.map((d) => [d.id, { lifetimeSales: num(d.data().lifetimeSales), unlockedSales: num(d.data().unlockedSales) }]));
+      emit();
+    },
     onError,
   );
   return () => { off1(); off2(); };
@@ -334,10 +343,10 @@ export async function reviewPartner(record: PartnerRecord, action: 'reject' | 's
   await batch.commit();
 }
 
-/** Force a tier (null = automatic from lifetime sales). The server applies it from the next delivered order. */
+/** Force a tier (null = automatic from unlocked sales). The server applies it from the next delivered order. */
 export async function setPartnerTierOverride(uid: string, tier: PartnerTier | null) {
   const [priv, raw] = await Promise.all([getDoc(doc(db, 'partnerPrivate', uid)), getDoc(settingsRef)]);
-  const view = partnerView(num(priv.data()?.lifetimeSales), raw.exists() ? raw.data() : null, tier);
+  const view = partnerView(num(priv.data()?.unlockedSales), raw.exists() ? raw.data() : null, tier);
   await updateDoc(partnerRef(uid), { tierOverride: tier, tier: view.tier, updatedAt: serverTimestamp() });
 }
 
@@ -349,7 +358,7 @@ export async function setPartnerTierOverride(uid: string, tier: PartnerTier | nu
 export async function refreshPartnerViews() {
   const [partners, priv, raw] = await Promise.all([getDocs(collection(db, 'partners')), getDocs(collection(db, 'partnerPrivate')), getDoc(settingsRef)]);
   const settings = raw.exists() ? raw.data() : null;
-  const sales = new Map(priv.docs.map((d) => [d.id, num(d.data().lifetimeSales)]));
+  const sales = new Map(priv.docs.map((d) => [d.id, num(d.data().unlockedSales)]));
   const approved = partners.docs.filter((d) => d.data().status === 'approved');
   for (let i = 0; i < approved.length; i += 400) {
     const batch = writeBatch(db);
@@ -358,6 +367,17 @@ export async function refreshPartnerViews() {
     }
     await batch.commit();
   }
+}
+
+/**
+ * Ask the server to recompute a partner's figures (unlocked sales, tier,
+ * silver grams, perks) now: a return window may have ended since the last
+ * delivered order. Without uid, the caller's own; an admin may pass any.
+ * Never throws; false when the server could not do it.
+ */
+export async function refreshPartnerFigures(uid?: string): Promise<boolean> {
+  const r = await rewardsAction({ action: 'refresh-partner', ...(uid ? { uid } : {}) });
+  return r.ok;
 }
 
 /** Record money sent to a partner. The partner then confirms it with Received. */

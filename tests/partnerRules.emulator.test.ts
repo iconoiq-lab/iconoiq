@@ -72,7 +72,10 @@ before(async () => {
   await seed('users/boss', { role: 'admin' });
   await seed('partnerSettings/main', { enabled: true });
   await seed('partners/ravi', { uid: 'ravi', status: 'approved', code: 'RAVI3210', name: 'Ravi', silverGrams: 3 });
-  await seed('partnerPrivate/ravi', { lifetimeSales: 35000 });
+  await seed('partnerPrivate/ravi', { lifetimeSales: 35000, unlockedSales: 35000 });
+  // Kiran's ₹2L is still inside its return window: counted, not unlocked.
+  await seed('partners/kiran', { uid: 'kiran', status: 'approved', code: 'KIRAN111', name: 'Kiran' });
+  await seed('partnerPrivate/kiran', { lifetimeSales: 200000, unlockedSales: 0 });
   await seed('partnerPrivate/ravi/orders/o1', { sales: 35000 });
   // A sales figure on the partner's own doc is ignored: unlocks read partnerPrivate (Mira has none).
   await seed('partners/mira', { uid: 'mira', status: 'approved', code: 'MIRA1111', name: 'Mira', lifetimeSales: 999999 });
@@ -167,6 +170,16 @@ test('silver coins: a chain that never passes the grams earned', { skip }, async
   await denied(c('silver_1', { from: 1, to: 3, prev: 0 }), 'overlapping the first claim');
   await c('silver_2', { from: 2, to: 3, prev: 0 });
   await denied(c('silver_3', { from: 3, to: 4, prev: 2 }), 'nothing left to claim');
+});
+
+test('claims read unlocked sales only: sales inside the return window unlock nothing', { skip }, async () => {
+  const kiran = as('kiran');
+  const c = (id: string, data: Record<string, unknown>) =>
+    setDoc(doc(kiran, `partners/kiran/claims/${id}`), { status: 'requested', createdAt: serverTimestamp(), ...data });
+  await denied(c('trip', { perk: 'trip' }), 'trip: ₹2L sold but none past the window');
+  await denied(c('pamphlets', { perk: 'pamphlets' }), 'pamphlets: needs ₹10,000 unlocked');
+  await denied(c('silver_0', { perk: 'silver', from: 0, to: 1 }), 'no silver yet');
+  await c('catalogue', { perk: 'catalogue' });
 });
 
 test('orders cannot carry the partner fields from the browser', { skip }, async () => {

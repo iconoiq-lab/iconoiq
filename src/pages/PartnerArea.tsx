@@ -21,6 +21,7 @@ import { silverPot, type EarningRow, type PerkId } from '@/lib/partner';
 import {
   claimSilver,
   confirmPayoutReceived,
+  refreshPartnerFigures,
   requestPerk,
   subscribeClaims,
   subscribeEarnings,
@@ -79,6 +80,13 @@ const PartnerArea: React.FC = () => {
     ];
     return () => offs.forEach((o) => o());
   }, [uid, member]);
+
+  // An order's return window has ended since the figures were last worked
+  // out: ask the server to unlock what it now covers (perks, silver, Gold).
+  const dueAt = partner.record?.viewsDueAtMs ?? 0;
+  useEffect(() => {
+    if (uid && member && dueAt > 0 && dueAt <= Date.now()) void refreshPartnerFigures();
+  }, [uid, member, dueAt]);
 
   const asked = params.get('tab') as PartnerTab | null;
   const tab: PartnerTab = asked && TABS.includes(asked) ? asked : 'account';

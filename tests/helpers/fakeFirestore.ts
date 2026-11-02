@@ -106,13 +106,21 @@ const merged = (cur: Data, data: Data) => {
 
 class FakeTx {
   db: FakeFirestore;
-  reads = new Map<string, number>();
+  /** What each read saw: a document's version, or a collection's members and their versions. */
+  reads = new Map<string, number | string>();
   writes: Write[] = [];
   constructor(db: FakeFirestore) {
     this.db = db;
   }
-  async get(ref: FakeDoc) {
+  async get(ref: FakeDoc): Promise<FakeSnap>;
+  async get(ref: FakeCollection): Promise<{ docs: FakeSnap[]; empty: boolean; size: number }>;
+  async get(ref: FakeDoc | FakeCollection) {
     if (this.writes.length) throw new Error('Firestore transactions require all reads before all writes');
+    if (ref instanceof FakeCollection) {
+      this.reads.set(`coll:${ref.path}`, this.db.stamp(`coll:${ref.path}`));
+      await Promise.resolve();
+      return ref.get();
+    }
     this.reads.set(ref.path, this.db.version(ref.path));
     await Promise.resolve(); // let a racing transaction interleave, like a network round trip
     return new FakeSnap(ref, this.db.read(ref.path));
@@ -153,6 +161,16 @@ export class FakeFirestore {
   version(path: string) {
     return this.versions.get(path) || 0;
   }
+  /** A document's version, or for 'coll:<path>' its members and their versions. */
+  stamp(key: string): number | string {
+    if (!key.startsWith('coll:')) return this.version(key);
+    const prefix = `${key.slice(5)}/`;
+    return [...this.docs.keys()]
+      .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
+      .sort()
+      .map((p) => `${p}@${this.version(p)}`)
+      .join(',');
+  }
   private bump(path: string) {
     this.versions.set(path, this.version(path) + 1);
   }
@@ -190,7 +208,7 @@ export class FakeFirestore {
     for (let attempt = 0; attempt < 5; attempt++) {
       const tx = new FakeTx(this);
       const out = await fn(tx);
-      const stale = [...tx.reads].some(([path, v]) => this.version(path) !== v);
+      const stale = [...tx.reads].some(([key, v]) => this.stamp(key) !== v);
       if (stale) {
         this.retries++;
         continue;

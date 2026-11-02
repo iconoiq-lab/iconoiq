@@ -754,15 +754,16 @@ service cloud.firestore {
       // Perk claims: the partner requests, the admin fulfils. The document id
       // is fixed per claim (see claimId in src/lib/partner.ts) and a claim is
       // never updated or deleted by the partner, so each one can be made once.
-      // The unlock is checked here against the server-written lifetimeSales
-      // on partnerPrivate/<uid>.
+      // The unlock is checked here against the server-written unlockedSales
+      // on partnerPrivate/<uid>: sales past their return window only, so an
+      // order that can still be returned never unlocks a perk or silver.
       match /claims/{claimId} {
         function partnerDoc() {
           return get(/databases/$(database)/documents/partners/$(uid)).data;
         }
-        function lifetimeSales() {
+        function unlockedSales() {
           let path = /databases/$(database)/documents/partnerPrivate/$(uid);
-          return exists(path) ? get(path).data.get('lifetimeSales', 0) : 0;
+          return exists(path) ? get(path).data.get('unlockedSales', 0) : 0;
         }
         function settings() {
           return get(/databases/$(database)/documents/partnerSettings/main).data;
@@ -784,7 +785,7 @@ service cloud.firestore {
           };
         }
         function unlocked(perk) {
-          return lifetimeSales()
+          return unlockedSales()
             >= settings().get(['perks', perk, 'unlockAt'], perkDefaults()[perk]['unlockAt']);
         }
         function onceClaim(d) {
@@ -817,7 +818,7 @@ service cloud.firestore {
             && d.keys().hasOnly(['perk', 'from', 'to', 'prev', 'status', 'createdAt'])
             && d.from is int && d.to is int && d.to > d.from
             && claimId == 'silver_' + string(d.from)
-            && d.to * settings().get('silverStep', 10000) <= lifetimeSales()
+            && d.to * settings().get('silverStep', 10000) <= unlockedSales()
             && ((d.from == 0 && !('prev' in d))
               || (d.prev is int
                 && get(/databases/$(database)/documents/partners/$(uid)/claims/$('silver_' + string(d.prev))).data.to == d.from));

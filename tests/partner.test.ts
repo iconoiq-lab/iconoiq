@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_PARTNER_SETTINGS,
   claimId,
+  claimQualifies,
   cleanPartnerCode,
   earningsByMonth,
   normalisePartnerMoney,
@@ -17,6 +18,7 @@ import {
   partnerSalesValue,
   partnerTierFor,
   partnerTotals,
+  partnerUnlocked,
   partnerView,
   perkStates,
   receivedTotal,
@@ -187,4 +189,35 @@ test('settings: perk thresholds and counts are editable, unknown keys dropped', 
   assert.deepEqual(s.perks.masterclass, { unlockAt: 25000, count: 8 });
   assert.deepEqual(s.perks.standee, { unlockAt: 0, count: 1 }, 'one-time perks always count 1');
   assert.equal('nope' in s.perks, false);
+});
+
+test('partnerUnlocked: only active, non-family sales past their unlockAt', () => {
+  const now = 1_000_000;
+  const rows = [
+    { amount: 0, state: 'active' as const, sales: 1000, unlockAtMs: now - 1 },
+    { amount: 0, state: 'active' as const, sales: 2000, unlockAtMs: now },
+    { amount: 0, state: 'active' as const, sales: 4000, unlockAtMs: now + 500 },
+    { amount: 0, state: 'held' as const, sales: 8000, unlockAtMs: now - 1 },
+    { amount: 0, state: 'void' as const, sales: 16000, unlockAtMs: now - 1 },
+    { amount: 0, state: 'active' as const, sales: 32000, unlockAtMs: now - 1, family: true },
+    { amount: 0, state: 'active' as const, sales: 64000 },
+    { amount: 0, state: 'active' as const, sales: 100, unlockAtMs: now + 200 },
+  ];
+  assert.deepEqual(partnerUnlocked(rows, now), { unlockedSales: 3000, nextUnlockMs: now + 200 });
+  assert.deepEqual(partnerUnlocked([], now), { unlockedSales: 0, nextUnlockMs: null });
+});
+
+test('partnerView from unlocked sales: held sales give no silver, perks or Gold', () => {
+  const v = partnerView(0, null);
+  assert.deepEqual([v.tier, v.silverGrams, v.perksUnlocked], ['silver', 0, ['catalogue', 'photos']]);
+  const g = partnerView(200000, null);
+  assert.deepEqual([g.tier, g.silverGrams, g.perksUnlocked.includes('trip')], ['gold', 20, true]);
+});
+
+test('claimQualifies: perk unlockAt, or silver grams x step, against unlocked sales', () => {
+  const s = DEFAULT_PARTNER_SETTINGS;
+  assert.deepEqual(claimQualifies({ perk: 'trip' }, 100000, s), { ok: true, needs: 100000 });
+  assert.deepEqual(claimQualifies({ perk: 'trip' }, 99999, s), { ok: false, needs: 100000 });
+  assert.deepEqual(claimQualifies({ perk: 'silver', to: 10 }, 60000, s), { ok: false, needs: 100000 });
+  assert.equal(claimQualifies({ perk: 'catalogue' }, 0, s).ok, true);
 });

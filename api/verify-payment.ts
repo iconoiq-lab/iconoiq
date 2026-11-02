@@ -174,6 +174,8 @@ interface PartnerEarningLike {
   state: 'held' | 'active' | 'void';
   family?: boolean;
   savings?: number;
+  /** When the return window ends (ms). Sales count towards unlocks only after it. */
+  unlockAtMs?: number;
 }
 
 interface PartnerTotals {
@@ -208,6 +210,24 @@ function partnerTotals(rows: PartnerEarningLike[]): PartnerTotals {
     earnedTotal: partnerMoney(earnedTotal),
     familySavings: partnerMoney(familySavings),
   };
+}
+/**
+ * Sales that may unlock perks, silver and the Gold tier: delivered orders whose
+ * return window has ended (state active and unlockAt passed). A held order or
+ * one still inside the window could still be returned, so it never counts here;
+ * lifetimeSales (admin display) counts it. nextUnlockMs: when the next active
+ * order leaves its window, so the views can be refreshed then.
+ */
+function partnerUnlocked(rows: PartnerEarningLike[], nowMs: number): { unlockedSales: number; nextUnlockMs: number | null } {
+  let unlockedSales = 0;
+  let nextUnlockMs: number | null = null;
+  for (const r of rows) {
+    if (r.state !== 'active' || r.family) continue;
+    const at = Number(r.unlockAtMs);
+    if (Number.isFinite(at) && at <= nowMs) unlockedSales += Number(r.sales) || 0;
+    else if (Number.isFinite(at) && (nextUnlockMs === null || at < nextUnlockMs)) nextUnlockMs = at;
+  }
+  return { unlockedSales: partnerMoney(unlockedSales), nextUnlockMs };
 }
 /** The payment record's partner fields from the rw_partner note ("uid|CODE|sales|units|f|savings"); {} when absent or malformed. */
 function partnerFieldsFromNote(note: unknown): Record<string, string | number | boolean> {
@@ -267,7 +287,8 @@ const silverGrams = (lifetimeSales: number, step = DEFAULT_SILVER_STEP) =>
 
 /**
  * What the partner may see on partners/<uid> (spec decision 6): the tier, the
- * silver grams earned and which perks are unlocked. The sales value itself
+ * silver grams earned and which perks are unlocked, from unlockedSales
+ * (partnerUnlocked), never from sales still inside the return window. The sales value itself
  * stays on partnerPrivate/<uid>, which only the admin and the server read.
  */
 interface PartnerView {
@@ -276,8 +297,8 @@ interface PartnerView {
   perksUnlocked: PerkId[];
 }
 
-function partnerView(lifetimeSales: number, raw: Record<string, unknown> | null | undefined, override?: unknown): PartnerView {
-  const sales = Number(lifetimeSales) || 0;
+function partnerView(unlockedSales: number, raw: Record<string, unknown> | null | undefined, override?: unknown): PartnerView {
+  const sales = Number(unlockedSales) || 0;
   const perks = (raw?.perks && typeof raw.perks === 'object' ? raw.perks : {}) as Record<string, { unlockAt?: unknown } | undefined>;
   const step = Math.round(partnerNum(raw?.silverStep, DEFAULT_SILVER_STEP, 100, 10_000_000));
   const ids = Object.keys(DEFAULT_PERK_RULES) as PerkId[];

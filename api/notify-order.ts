@@ -590,6 +590,8 @@ interface PartnerEarningLike {
   state: 'held' | 'active' | 'void';
   family?: boolean;
   savings?: number;
+  /** When the return window ends (ms). Sales count towards unlocks only after it. */
+  unlockAtMs?: number;
 }
 
 interface PartnerTotals {
@@ -624,6 +626,24 @@ function partnerTotals(rows: PartnerEarningLike[]): PartnerTotals {
     earnedTotal: partnerMoney(earnedTotal),
     familySavings: partnerMoney(familySavings),
   };
+}
+/**
+ * Sales that may unlock perks, silver and the Gold tier: delivered orders whose
+ * return window has ended (state active and unlockAt passed). A held order or
+ * one still inside the window could still be returned, so it never counts here;
+ * lifetimeSales (admin display) counts it. nextUnlockMs: when the next active
+ * order leaves its window, so the views can be refreshed then.
+ */
+function partnerUnlocked(rows: PartnerEarningLike[], nowMs: number): { unlockedSales: number; nextUnlockMs: number | null } {
+  let unlockedSales = 0;
+  let nextUnlockMs: number | null = null;
+  for (const r of rows) {
+    if (r.state !== 'active' || r.family) continue;
+    const at = Number(r.unlockAtMs);
+    if (Number.isFinite(at) && at <= nowMs) unlockedSales += Number(r.sales) || 0;
+    else if (Number.isFinite(at) && (nextUnlockMs === null || at < nextUnlockMs)) nextUnlockMs = at;
+  }
+  return { unlockedSales: partnerMoney(unlockedSales), nextUnlockMs };
 }
 /** The payment record's partner fields from the rw_partner note ("uid|CODE|sales|units|f|savings"); {} when absent or malformed. */
 function partnerFieldsFromNote(note: unknown): Record<string, string | number | boolean> {
@@ -683,7 +703,8 @@ const silverGrams = (lifetimeSales: number, step = DEFAULT_SILVER_STEP) =>
 
 /**
  * What the partner may see on partners/<uid> (spec decision 6): the tier, the
- * silver grams earned and which perks are unlocked. The sales value itself
+ * silver grams earned and which perks are unlocked, from unlockedSales
+ * (partnerUnlocked), never from sales still inside the return window. The sales value itself
  * stays on partnerPrivate/<uid>, which only the admin and the server read.
  */
 interface PartnerView {
@@ -692,8 +713,8 @@ interface PartnerView {
   perksUnlocked: PerkId[];
 }
 
-function partnerView(lifetimeSales: number, raw: Record<string, unknown> | null | undefined, override?: unknown): PartnerView {
-  const sales = Number(lifetimeSales) || 0;
+function partnerView(unlockedSales: number, raw: Record<string, unknown> | null | undefined, override?: unknown): PartnerView {
+  const sales = Number(unlockedSales) || 0;
   const perks = (raw?.perks && typeof raw.perks === 'object' ? raw.perks : {}) as Record<string, { unlockAt?: unknown } | undefined>;
   const step = Math.round(partnerNum(raw?.silverStep, DEFAULT_SILVER_STEP, 100, 10_000_000));
   const ids = Object.keys(DEFAULT_PERK_RULES) as PerkId[];
@@ -1225,22 +1246,14 @@ export async function reconcilePartner(
   const partnerRef = db.collection('partners').doc(puid);
   // The sales value is ICONOIQ's figure, never the partner's to see (spec
   // decision 6): it lives on partnerPrivate/<puid> (admin and server only).
-  const privateRef = db.collection('partnerPrivate').doc(puid);
-  const salesOf = privateRef.collection('orders');
+  const salesOf = db.collection('partnerPrivate').doc(puid).collection('orders');
   const [partnerSnap, settingsSnap] = await Promise.all([
     partnerRef.get(),
     db.collection('partnerSettings').doc('main').get(),
   ]);
   const partner = partnerSnap.data();
   if (!partner) return { changed };
-  const rawSettings = settingsSnap.exists ? (settingsSnap.data() as Record<string, any>) : null;
-  const s = normalisePartnerMoney(rawSettings);
-  // Every earning with its private sales value, for the totals.
-  const allRows = async () => {
-    const [eSnap, sSnap] = await Promise.all([earnings.get(), salesOf.get()]);
-    const sales = new Map(sSnap.docs.map((d) => [d.id, Number(d.data()?.sales) || 0]));
-    return eSnap.docs.map((d) => ({ ...(d.data() as PartnerEarningLike), sales: sales.get(d.id) || 0 }));
-  };
+  const s = normalisePartnerMoney(settingsSnap.exists ? (settingsSnap.data() as Partial<PartnerMoneySettings>) : null);
   const status = String(order.status || '');
   const ended = ENDED_STATUSES.includes(status);
   const returnOpen = isReturnOpen(order);
@@ -1249,11 +1262,20 @@ export async function reconcilePartner(
   const ref = earnings.doc(rzp);
   const e = (await ref.get()).data();
   const family = payment.partnerFamily === true;
+  // Back to active: the sales count towards unlocks only once the customer
+  // can no longer return the order (never earlier than the existing unlockAt).
+  const windowFrom = () => {
+    const at = Math.max(millis(e?.unlockAt), millis(order.deliveredAt) > 0 ? millis(order.deliveredAt) + RETURN_WINDOW_DAYS * DAY_MS : 0);
+    return at > millis(e?.unlockAt) ? { unlockAt: admin.firestore.Timestamp.fromMillis(at) } : {};
+  };
 
   if (!e) {
     // Credited once, on delivery, only for an approved partner.
     if (reachedCustomer && !ended && partner.status === 'approved') {
-      const before = partnerTotals(await allRows()).lifetimeSales;
+      // The tier from sales past their return window only: a held order (or
+      // one that can still be returned) never lifts this order to Gold.
+      const [eSnap, sSnap] = await Promise.all([earnings.get(), salesOf.get()]);
+      const before = partnerUnlocked(partnerRows(eSnap.docs, sSnap.docs), now.toMillis()).unlockedSales;
       const tier = partnerTierFor(before, s, partner.tierOverride);
       const rate = family ? 0 : partnerRate(tier, s);
       const sales = money(payment.partnerSales);
@@ -1285,32 +1307,90 @@ export async function reconcilePartner(
     }
   } else if (e.state === 'void') {
     if (e.voidedBy === 'server' && reachedCustomer) {
-      await ref.update({ state: status === 'delivered' ? 'active' : 'held', restoredAt: now });
+      await ref.update({ state: status === 'delivered' ? 'active' : 'held', restoredAt: now, ...windowFrom() });
       changed.push(`partner:${ref.id}:restore`);
     }
   } else {
     const want = status === 'delivered' ? 'active' : 'held';
     if (e.state !== want) {
-      await ref.update({ state: want });
+      await ref.update({ state: want, ...(want === 'active' ? windowFrom() : {}) });
       changed.push(`partner:${ref.id}:${want === 'held' ? 'hold' : 'release'}`);
     }
   }
 
-  // Totals and tier from every earning, so a repeat or a reversal is always
-  // exact. The sales value goes on the private doc; the partner's own doc gets
-  // only what they may see (partnerView: tier, silver grams, unlocked perks).
-  if (changed.length || partner.perksUnlocked === undefined) {
-    const { lifetimeSales, ...totals } = partnerTotals(await allRows());
-    await privateRef.set({ lifetimeSales, totalsAt: now }, { merge: true });
-    await partnerRef.update({
+  // Totals, tier and unlocks on every reconcile: a return window may have
+  // ended since the last one, and a reversal must come off at once.
+  if (await refreshPartnerTotals(db, puid, now)) changed.push('partner:totals');
+  return { changed };
+}
+
+type Snap = admin.firestore.QueryDocumentSnapshot;
+/** Every earning joined with its private sales value (by document id). */
+function partnerRows(earningDocs: Snap[], salesDocs: Snap[]): PartnerEarningLike[] {
+  const sales = new Map(salesDocs.map((d) => [d.id, Number(d.data()?.sales) || 0]));
+  return earningDocs.map((d) => {
+    const e = d.data() as PartnerEarningLike & { unlockAt?: unknown };
+    return { ...e, sales: sales.get(d.id) || 0, unlockAtMs: e.unlockAt ? millis(e.unlockAt) : undefined };
+  });
+}
+
+/**
+ * Recompute a partner's figures from every earning, in one transaction (two
+ * reconciles at once cannot undercount):
+ *   partnerPrivate/<puid>: lifetimeSales (admin display, includes orders still
+ *     inside the return window) and unlockedSales (only orders past it: what
+ *     the rules, the tier and the unlocks use).
+ *   partners/<puid>: unitsSold, earnedTotal, familySavings and partnerView
+ *     (tier, silverGrams, perksUnlocked) from unlockedSales, plus viewsDueAt,
+ *     when the next order leaves its window (the partner area asks for a
+ *     refresh then). Never a sales value (spec decision 6).
+ * Writes only when something changed; returns whether it wrote.
+ */
+export async function refreshPartnerTotals(
+  db: admin.firestore.Firestore,
+  puid: string,
+  now: admin.firestore.Timestamp,
+): Promise<boolean> {
+  const partnerRef = db.collection('partners').doc(puid);
+  const privateRef = db.collection('partnerPrivate').doc(puid);
+  const settingsRef = db.collection('partnerSettings').doc('main');
+  return db.runTransaction(async (tx) => {
+    const [pSnap, privSnap, setSnap, eSnap, sSnap] = await Promise.all([
+      tx.get(partnerRef),
+      tx.get(privateRef),
+      tx.get(settingsRef),
+      tx.get(partnerRef.collection('earnings')),
+      tx.get(privateRef.collection('orders')),
+    ]);
+    const partner = pSnap.data();
+    if (!partner) return false;
+    const rows = partnerRows(eSnap.docs, sSnap.docs);
+    const { lifetimeSales, ...totals } = partnerTotals(rows);
+    const { unlockedSales, nextUnlockMs } = partnerUnlocked(rows, now.toMillis());
+    const raw = setSnap.exists ? (setSnap.data() as Record<string, unknown>) : null;
+    const view = partnerView(unlockedSales, raw, partner.tierOverride);
+    const priv = privSnap.data() || {};
+    const dueMs = partner.viewsDueAt ? millis(partner.viewsDueAt) : null;
+    const same =
+      priv.lifetimeSales === lifetimeSales &&
+      priv.unlockedSales === unlockedSales &&
+      partner.lifetimeSales === undefined &&
+      dueMs === nextUnlockMs &&
+      (Object.keys(totals) as (keyof typeof totals)[]).every((k) => partner[k] === totals[k]) &&
+      partner.tier === view.tier &&
+      partner.silverGrams === view.silverGrams &&
+      JSON.stringify(partner.perksUnlocked) === JSON.stringify(view.perksUnlocked);
+    if (same) return false;
+    tx.set(privateRef, { lifetimeSales, unlockedSales, totalsAt: now }, { merge: true });
+    tx.update(partnerRef, {
       ...totals,
-      ...partnerView(lifetimeSales, rawSettings, partner.tierOverride),
+      ...view,
+      viewsDueAt: nextUnlockMs === null ? null : admin.firestore.Timestamp.fromMillis(nextUnlockMs),
       lifetimeSales: admin.firestore.FieldValue.delete(),
       totalsAt: now,
     });
-    changed.push('partner:totals');
-  }
-  return { changed };
+    return true;
+  });
 }
 
 /**
@@ -1605,7 +1685,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     orderId?: string;
     /** release-holds: only this checkout's hold (the customer closed the payment window). */
     razorpayOrderId?: string;
-    /** release-holds, admins only: whose holds to release (default: the caller's). */
+    /** release-holds and refresh-partner, admins only: whose holds or figures (default: the caller's). */
     uid?: string;
     audience?: 'customer' | 'admins' | 'delivery';
     title?: string;
@@ -1622,11 +1702,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const isReconcile = body.action === 'reconcile-rewards';
   const isRelease = body.action === 'release-holds';
   const isScratch = body.action === 'scratch-card';
-  if (!orderId && !isRelease) return res.status(400).json({ error: 'orderId is required' });
+  const isPartnerRefresh = body.action === 'refresh-partner';
+  if (!orderId && !isRelease && !isPartnerRefresh) return res.status(400).json({ error: 'orderId is required' });
   // An order id (and a card id, a document id under the caller's own user
   // document) is one path segment: a slash would reach another document.
   if (orderId && !/^[\w-]{1,128}$/.test(orderId)) return res.status(400).json({ error: 'invalid orderId' });
-  if (!isReconcile && !isRelease && !isScratch) {
+  if (!isReconcile && !isRelease && !isScratch && !isPartnerRefresh) {
     if (!audience || !['customer', 'admins', 'delivery'].includes(audience)) {
       return res.status(400).json({ error: 'audience must be customer|admins|delivery' });
     }
@@ -1669,6 +1750,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (err: any) {
       // Holds stay in place until Razorpay can confirm the payment never happened.
       return res.status(503).json({ error: 'Could not check the payment with Razorpay', detail: err?.message || String(err) });
+    }
+  }
+
+  if (isPartnerRefresh) {
+    // Re-derive a partner's unlocks once a return window has ended (the
+    // partner area calls this when viewsDueAt has passed; the admin before a
+    // claim is fulfilled). Only the caller's own figures, or any for an admin.
+    const uid = isAdmin && body.uid ? String(body.uid) : callerUid;
+    if (!/^[\w-]{1,128}$/.test(uid)) return res.status(400).json({ error: 'invalid uid' });
+    try {
+      return res.status(200).json({ ok: true, changed: await refreshPartnerTotals(db, uid, admin.firestore.Timestamp.now()) });
+    } catch (err) {
+      console.error('[notify-order] refresh-partner failed:', err instanceof Error ? err.message : err);
+      return res.status(503).json({ error: 'refresh_failed' });
     }
   }
 
