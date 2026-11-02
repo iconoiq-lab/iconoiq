@@ -452,7 +452,8 @@ service cloud.firestore {
             'delivery_otp', 'otp_verified', 'cancelledAt', 'cancelledBy',
             'returnStatus', 'returnRequestedAt', 'returnApprovedAt', 'returnScheduledAt', 'returnCancelled',
             'pointsEarned', 'pointsEarnedState', 'pointsUnlockAt', 'paymentVerifiedAt',
-            'refundReceiptUrl', 'paymentCollectedAt', 'paymentCollectedBy'
+            'refundReceiptUrl', 'paymentCollectedAt', 'paymentCollectedBy',
+            'partnerCode', 'partnerUid', 'partnerFamily'
           ]);
       }
       
@@ -641,6 +642,178 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/dealers/$(request.auth.uid))
           && get(/databases/$(database)/documents/dealers/$(request.auth.uid)).data.status == 'approved');
       allow write: if isAdmin();
+    }
+
+    // --- STOCKIST SALES LOG ---
+    // An approved dealer (stockist) logs what they sold from their stock, for
+    // their inventory page. Not money for the store: the admin only reads it.
+    match /dealers/{uid}/sales/{saleId} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid)
+        && get(/databases/$(database)/documents/dealers/$(uid)).data.status == 'approved'
+        && request.resource.data.keys().hasOnly(['productId', 'name', 'qty', 'unitPrice', 'at', 'createdAt'])
+        && request.resource.data.keys().hasAll(['productId', 'name', 'qty', 'unitPrice', 'at', 'createdAt'])
+        && request.resource.data.productId is string && request.resource.data.productId.size() > 0 && request.resource.data.productId.size() <= 128
+        && request.resource.data.name is string && request.resource.data.name.size() <= 200
+        && request.resource.data.qty is int && request.resource.data.qty >= 1 && request.resource.data.qty <= 100000
+        && request.resource.data.unitPrice is number && request.resource.data.unitPrice >= 0 && request.resource.data.unitPrice <= 10000000
+        && request.resource.data.at is timestamp && request.resource.data.at <= request.time + duration.value(1, 'd')
+        && request.resource.data.createdAt == request.time;
+      allow delete: if isOwner(uid) || isAdmin();
+      allow update: if false;
+    }
+
+    // --- ACADEMY PARTNER PROGRAMME (docs/specs/academy-dealership-programme.md) ---
+    // Money lives on the server: api/create-order.ts decides the code's
+    // discount, api/notify-order.ts (reconcile-rewards) writes the earnings and
+    // the totals on partners/<uid> with the Admin SDK. The browser never writes
+    // totals, tiers, rates or earnings.
+
+    // The programme's settings (rates, thresholds, perk rules). Public: the
+    // checkout and the /dealer page read them. Only an admin writes.
+    match /partnerSettings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Code -> partner, for unique codes and the checkout lookup. One document
+    // at a time (a code someone typed); never listed. Only an admin writes.
+    match /partnerCodes/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /partners/{uid} {
+      function partnerAppKeys() {
+        return ['name', 'business', 'phone', 'city', 'state'];
+      }
+      function validPartnerApp(d) {
+        return d.name is string && d.name.size() >= 2 && d.name.size() <= 60
+          && d.business is string && d.business.size() <= 80
+          && d.phone is string && d.phone.matches('^[+]?[0-9][0-9 ]{9,14}$')
+          && d.city is string && d.city.size() >= 2 && d.city.size() <= 60
+          && d.state is string && d.state.size() >= 2 && d.state.size() <= 40;
+      }
+      // The owner reads their own record (code, tier, totals); nobody else but an admin.
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      // An application: the five fields, pending, no code, tier or totals.
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(partnerAppKeys().concat(['uid', 'status', 'appliedAt', 'updatedAt']))
+        && request.resource.data.keys().hasAll(partnerAppKeys().concat(['uid', 'status', 'appliedAt']))
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.appliedAt == request.time
+        && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time)
+        && validPartnerApp(request.resource.data);
+      // A rejected applicant may apply again; only the application fields change.
+      allow update: if isAdmin()
+        || (isOwner(uid)
+          && resource.data.status == 'rejected'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(partnerAppKeys().concat(['status', 'appliedAt', 'updatedAt']))
+          && request.resource.data.appliedAt == request.time
+          && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time)
+          && validPartnerApp(request.resource.data));
+      allow delete: if isAdmin() || (isOwner(uid) && resource.data.status == 'pending');
+
+      // Commission per order: written by the server only.
+      match /earnings/{rzp} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+
+      // Payouts: the admin records them; the partner confirms one ONCE by
+      // setting receivedAt to the server time, and nothing else.
+      match /payouts/{payoutId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, delete: if isAdmin();
+        allow update: if isAdmin()
+          || (isOwner(uid)
+            && !('receivedAt' in resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['receivedAt'])
+            && request.resource.data.receivedAt == request.time);
+      }
+
+      // Perk claims: the partner requests, the admin fulfils. The document id
+      // is fixed per claim (see claimId in src/lib/partner.ts) and a claim is
+      // never updated or deleted by the partner, so each one can be made once.
+      // The unlock is checked here against the server-written lifetimeSales.
+      match /claims/{claimId} {
+        function partnerDoc() {
+          return get(/databases/$(database)/documents/partners/$(uid)).data;
+        }
+        function settings() {
+          return get(/databases/$(database)/documents/partnerSettings/main).data;
+        }
+        // Keep in step with DEFAULT_PERK_RULES in src/lib/partner.ts (tests/partnerRules.test.ts).
+        function perkDefaults() {
+          return {
+            'catalogue': {'unlockAt': 0, 'count': 1},
+            'photos': {'unlockAt': 0, 'count': 1},
+            'pamphlets': {'unlockAt': 10000, 'count': 1},
+            'masterclass': {'unlockAt': 20000, 'count': 6},
+            'passGroup': {'unlockAt': 30000, 'count': 20},
+            'passSolo': {'unlockAt': 30000, 'count': 4},
+            'promoTeam': {'unlockAt': 30000, 'count': 1},
+            'onlinePromo': {'unlockAt': 30000, 'count': 1},
+            'standee': {'unlockAt': 50000, 'count': 1},
+            'uniforms': {'unlockAt': 100000, 'count': 1},
+            'trip': {'unlockAt': 100000, 'count': 1}
+          };
+        }
+        function unlocked(perk) {
+          return partnerDoc().get('lifetimeSales', 0)
+            >= settings().get(['perks', perk, 'unlockAt'], perkDefaults()[perk]['unlockAt']);
+        }
+        function onceClaim(d) {
+          return d.perk in ['catalogue', 'photos', 'pamphlets', 'onlinePromo', 'standee', 'uniforms', 'trip']
+            && claimId == d.perk
+            && d.keys().hasOnly(['perk', 'status', 'createdAt']);
+        }
+        function countClaim(d) {
+          return d.perk in ['masterclass', 'passGroup', 'passSolo']
+            && d.keys().hasOnly(['perk', 'index', 'status', 'createdAt'])
+            && d.index is int && d.index >= 1
+            && d.index <= settings().get(['perks', d.perk, 'count'], perkDefaults()[d.perk]['count'])
+            && claimId == d.perk + '_' + string(d.index);
+        }
+        // One promotion-team request per calendar month (India time).
+        function monthlyClaim(d) {
+          let ist = request.time + duration.value(330, 'm');
+          return d.perk == 'promoTeam'
+            && d.keys().hasOnly(['perk', 'month', 'status', 'createdAt'])
+            && d.month is string && d.month.matches('^[0-9]{4}-[0-9]{2}$')
+            && int(d.month.split('-')[0]) == ist.year()
+            && int(d.month.split('-')[1]) == ist.month()
+            && claimId == 'promoTeam_' + d.month;
+        }
+        // Silver coins: a chain. Each claim covers grams [from, to); the first
+        // starts at 0, every next one starts where the previous (prev) ended,
+        // and to never passes the grams earned (1 g per silverStep of sales).
+        function silverClaim(d) {
+          return d.perk == 'silver'
+            && d.keys().hasOnly(['perk', 'from', 'to', 'prev', 'status', 'createdAt'])
+            && d.from is int && d.to is int && d.to > d.from
+            && claimId == 'silver_' + string(d.from)
+            && d.to * settings().get('silverStep', 10000) <= partnerDoc().get('lifetimeSales', 0)
+            && ((d.from == 0 && !('prev' in d))
+              || (d.prev is int
+                && get(/databases/$(database)/documents/partners/$(uid)/claims/$('silver_' + string(d.prev))).data.to == d.from));
+        }
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid)
+          && partnerDoc().status == 'approved'
+          && settings().get('enabled', false) == true
+          && request.resource.data.status == 'requested'
+          && request.resource.data.createdAt == request.time
+          && (silverClaim(request.resource.data)
+            || ((onceClaim(request.resource.data) || countClaim(request.resource.data) || monthlyClaim(request.resource.data))
+              && unlocked(request.resource.data.perk)));
+        allow update, delete: if isAdmin();
+      }
     }
 
     // --- USER FCM TOKENS (web push) ---

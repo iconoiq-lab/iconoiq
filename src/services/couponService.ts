@@ -17,6 +17,15 @@ import {
   getCountFromServer,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { FEATURES } from '@/config/features';
+import {
+  PARTNER_CODE_RE,
+  cleanPartnerCode,
+  normalisePartnerSettings,
+  partnerDiscountPercent,
+  partnerTierFor,
+  type PartnerSettings,
+} from '@/lib/partner';
 
 export type CouponType = 'percent' | 'flat';
 
@@ -40,6 +49,13 @@ export interface Coupon {
   /** Optional narrowing within the chosen categories. Empty = the whole category. */
   applicableSubcategories?: string[];
   firstOrderOnly?: boolean;
+  /**
+   * Not a store coupon: an academy partner's code (no id, never counted in
+   * usedCount). The server decides the real discount again at payment.
+   */
+  partner?: boolean;
+  /** The partner is using their own code (family discount). */
+  partnerFamily?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -266,6 +282,48 @@ const countUserOrders = async (userId: string, couponCode?: string): Promise<num
   }
 };
 
+/**
+ * An academy partner's code typed in the coupon box, shown as a percent
+ * coupon. Store coupons win a clash (validateCoupon looks them up first).
+ * Reads the public partnerSettings/main and partnerCodes/<CODE>; a customer
+ * cannot read a partner's own document, so only the partner themself (family
+ * use) gets their tier's percent, read from their own partners/<uid>.
+ * api/create-order.ts decides the discount again; a mismatch is refused there.
+ */
+async function partnerCodeAsCoupon(raw: string, cartTotal: number, userId?: string): Promise<CouponValidationResult | null> {
+  if (!FEATURES.dealers) return null;
+  const code = cleanPartnerCode(raw);
+  if (!PARTNER_CODE_RE.test(code)) return null;
+  const [settingsSnap, linkSnap] = await Promise.all([
+    getDoc(doc(db, 'partnerSettings', 'main')),
+    getDoc(doc(db, 'partnerCodes', code)),
+  ]);
+  const settings = normalisePartnerSettings(settingsSnap.exists() ? (settingsSnap.data() as Partial<PartnerSettings>) : null);
+  const link = linkSnap.exists() ? (linkSnap.data() as { uid?: string; active?: boolean }) : null;
+  if (!settings.enabled || !link?.uid || link.active === false) return null;
+  const family = !!userId && userId === link.uid;
+  let percent = partnerDiscountPercent(false, 'silver', settings);
+  if (family) {
+    const me = await getDoc(doc(db, 'partners', userId));
+    const p = me.exists() ? (me.data() as { status?: string; code?: string; lifetimeSales?: number; tierOverride?: unknown }) : null;
+    if (!p || p.status !== 'approved' || p.code !== code) return null;
+    percent = partnerDiscountPercent(true, partnerTierFor(Number(p.lifetimeSales) || 0, settings, p.tierOverride), settings);
+  }
+  const coupon: Coupon = {
+    code,
+    description: family ? 'Your partner family discount' : 'Academy partner code',
+    type: 'percent',
+    value: percent,
+    minOrderValue: 0,
+    maxUses: 0,
+    usedCount: 0,
+    active: true,
+    partner: true,
+    partnerFamily: family,
+  };
+  return { valid: true, coupon, discount: computeCouponDiscount(coupon, cartTotal) };
+}
+
 export const validateCoupon = async (
   code: string,
   cartTotal: number,
@@ -274,7 +332,11 @@ export const validateCoupon = async (
   cartSubcategories: string[] = [],
 ): Promise<CouponValidationResult> => {
   const coupon = await getCouponByCode(code);
-  if (!coupon) return { valid: false, reason: 'Coupon code does not exist' };
+  if (!coupon) {
+    const partner = await partnerCodeAsCoupon(code, cartTotal, userId).catch(() => null);
+    if (partner) return partner;
+    return { valid: false, reason: 'Coupon code does not exist' };
+  }
   if (!coupon.active) return { valid: false, reason: 'This coupon is inactive' };
 
   const now = new Date();
