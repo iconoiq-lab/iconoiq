@@ -81,7 +81,7 @@ export const DealerBand = ({ variant }: { variant: DealerBandVariant }) => (
   <section className="tx-slate tx-contour relative mb-6 overflow-hidden rounded-panel p-6 text-charcoal-foreground shadow-panel dark:ring-1 dark:ring-highlight-soft/20 lg:p-8">
     <Store aria-hidden="true" className="pointer-events-none absolute -right-6 -top-6 size-36 opacity-[0.07]" />
     <p className="eyebrow-no on-dark !text-[10px]"><span>For businesses</span></p>
-    <h1 className="sr-only mt-2 text-2xl font-semibold tracking-tight lg:not-sr-only lg:block lg:text-3xl">Dealer programme</h1>
+    <h2 className="mt-2 text-xl font-semibold tracking-tight lg:text-2xl">Become a stockist</h2>
     <p className="relative mt-2 max-w-xl text-sm leading-relaxed text-charcoal-foreground/80 lg:text-[15px]">
       {BAND_LEAD[variant]}
     </p>
@@ -643,6 +643,8 @@ export interface DealerPageViewProps {
   onCancelReapply: () => void;
   onWithdraw: () => void;
   withdrawRef?: React.Ref<HTMLButtonElement>;
+  /** Shown under an approved dealer's terms while the programme is on: the stockist area. */
+  stockistArea?: React.ReactNode;
 }
 
 const twoCol = 'grid items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]';
@@ -673,6 +675,7 @@ export const DealerPageView = ({
   onCancelReapply,
   onWithdraw,
   withdrawRef,
+  stockistArea,
 }: DealerPageViewProps) => {
   if (loading) {
     return (
@@ -687,8 +690,8 @@ export const DealerPageView = ({
     return (
       <EmptyState
         icon={Store}
-        as="h1"
-        title="The dealer programme isn't open right now."
+        as="h2"
+        title="The stockist programme isn't open right now."
         description="Regular prices apply across the store."
         action={{ label: 'Shop the range', to: '/products' }}
       />
@@ -763,6 +766,7 @@ export const DealerPageView = ({
             )}
           </motion.div>
         </div>
+        {programmeOn && stockistArea}
       </>
     );
   }

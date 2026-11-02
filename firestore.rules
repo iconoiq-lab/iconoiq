@@ -816,6 +816,11 @@ service cloud.firestore {
       }
     }
 
+    // The admin's claims queue reads every partner's claims at once.
+    match /{path=**}/claims/{claimId} {
+      allow read: if isAdmin();
+    }
+
     // --- USER FCM TOKENS (web push) ---
     // Document ID = the FCM registration token; data: { uid, token, platform, userAgent, createdAt, updatedAt }
     match /userTokens/{token} {

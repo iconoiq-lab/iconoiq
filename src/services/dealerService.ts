@@ -10,7 +10,6 @@ import {
   setDoc,
   updateDoc,
   where,
-  writeBatch,
   type DocumentData,
   type DocumentSnapshot,
 } from 'firebase/firestore';
