@@ -483,6 +483,163 @@ function planScratchReconcile(i: ScratchReconcileInput): ScratchReconcilePlan {
 }
 // <<< scratch-core
 
+// >>> partner-core
+type PartnerTier = 'silver' | 'gold';
+
+/** The money settings of partnerSettings/main (the server reads only these). */
+interface PartnerMoneySettings {
+  /** The programme's own runtime switch. Off: partner codes do nothing at checkout. */
+  enabled: boolean;
+  /** Commission for every approved partner, percent of the sales value. */
+  silverPercent: number;
+  /** Commission once lifetime delivered sales reach goldThreshold. */
+  goldPercent: number;
+  /** Rupees of lifetime delivered sales that switch a partner to Gold. */
+  goldThreshold: number;
+  /** Discount a customer gets with a partner's code (percent of the products). */
+  customerDiscountPercent: number;
+  /** Extra days earnings stay held after delivery (the return window always applies). */
+  holdDays: number;
+}
+
+const DEFAULT_PARTNER_MONEY: PartnerMoneySettings = {
+  enabled: false,
+  silverPercent: 15,
+  goldPercent: 30,
+  goldThreshold: 200_000,
+  customerDiscountPercent: 0,
+  holdDays: 0,
+};
+
+function partnerNum(v: unknown, fallback: number, min: number, max: number): number {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+
+const partnerMoney = (n: number) => Math.round(n * 100) / 100;
+
+function normalisePartnerMoney(raw: Partial<PartnerMoneySettings> | null | undefined): PartnerMoneySettings {
+  const d = DEFAULT_PARTNER_MONEY;
+  const pct = (v: unknown, f: number) => Math.round(partnerNum(v, f, 0, 90) * 100) / 100;
+  return {
+    enabled: raw?.enabled === true,
+    silverPercent: pct(raw?.silverPercent, d.silverPercent),
+    goldPercent: pct(raw?.goldPercent, d.goldPercent),
+    goldThreshold: Math.round(partnerNum(raw?.goldThreshold, d.goldThreshold, 1, 1_000_000_000)),
+    customerDiscountPercent: pct(raw?.customerDiscountPercent, d.customerDiscountPercent),
+    holdDays: Math.round(partnerNum(raw?.holdDays, d.holdDays, 0, 90)),
+  };
+}
+
+/**
+ * The partner's tier. An admin override wins; otherwise Gold once lifetime
+ * delivered sales reach the threshold, Silver before.
+ */
+function partnerTierFor(lifetimeSales: number, s: PartnerMoneySettings, override?: unknown): PartnerTier {
+  if (override === 'gold' || override === 'silver') return override;
+  return (Number(lifetimeSales) || 0) >= s.goldThreshold ? 'gold' : 'silver';
+}
+
+function partnerRate(tier: PartnerTier, s: PartnerMoneySettings): number {
+  return tier === 'gold' ? s.goldPercent : s.silverPercent;
+}
+
+/** Commission on one order's sales value, in rupees and paise. */
+function partnerCommission(sales: number, ratePercent: number): number {
+  const v = Number(sales) || 0;
+  const r = Number(ratePercent) || 0;
+  return v > 0 && r > 0 ? partnerMoney((v * r) / 100) : 0;
+}
+
+/**
+ * The checkout discount a partner code gives: the partner's own tier percent
+ * when they use their own code (family discount, no commission), otherwise
+ * the customer discount setting.
+ */
+function partnerDiscountPercent(family: boolean, tier: PartnerTier, s: PartnerMoneySettings): number {
+  return family ? partnerRate(tier, s) : s.customerDiscountPercent;
+}
+
+/** Whole rupees off the products, the same formula as a percent coupon. */
+function partnerDiscount(subtotal: number, percent: number): number {
+  const v = Number(subtotal) || 0;
+  const p = Number(percent) || 0;
+  return v > 0 && p > 0 ? Math.floor((v * p) / 100) : 0;
+}
+
+/** What the customer paid for the products: after every discount, delivery excluded. */
+function partnerSalesValue(i: { subtotal: number; discount: number; pointsValue?: number; cashback?: number }): number {
+  const v = (Number(i.subtotal) || 0) - (Number(i.discount) || 0) - (Number(i.pointsValue) || 0) - (Number(i.cashback) || 0);
+  return Math.max(0, partnerMoney(v));
+}
+
+const IST_OFFSET_MS = 330 * 60_000;
+
+/** "YYYY-MM" of a time in India (the month an order counts in). */
+function partnerMonthKey(ms: number): string {
+  const d = new Date((Number(ms) || 0) + IST_OFFSET_MS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** One credited order, as partners/{uid}/earnings/{orderId} holds it. */
+interface PartnerEarningLike {
+  amount: number;
+  sales: number;
+  units: number;
+  state: 'held' | 'active' | 'void';
+  family?: boolean;
+  savings?: number;
+}
+
+interface PartnerTotals {
+  /** Delivered sales value, family orders and voided orders excluded. */
+  lifetimeSales: number;
+  unitsSold: number;
+  /** Commission on orders that are not void (held and active). */
+  earnedTotal: number;
+  /** Family-discount savings on orders that are not void. */
+  familySavings: number;
+}
+
+/** The partner's server totals, recomputed from the earnings (idempotent). */
+function partnerTotals(rows: PartnerEarningLike[]): PartnerTotals {
+  let lifetimeSales = 0;
+  let unitsSold = 0;
+  let earnedTotal = 0;
+  let familySavings = 0;
+  for (const r of rows) {
+    if (r.state === 'void') continue;
+    if (r.family) {
+      familySavings += Number(r.savings) || 0;
+      continue;
+    }
+    lifetimeSales += Number(r.sales) || 0;
+    unitsSold += Math.max(0, Math.floor(Number(r.units) || 0));
+    earnedTotal += Number(r.amount) || 0;
+  }
+  return {
+    lifetimeSales: partnerMoney(lifetimeSales),
+    unitsSold,
+    earnedTotal: partnerMoney(earnedTotal),
+    familySavings: partnerMoney(familySavings),
+  };
+}
+/** The payment record's partner fields from the rw_partner note ("uid|CODE|sales|units|f|savings"); {} when absent or malformed. */
+function partnerFieldsFromNote(note: unknown): Record<string, string | number | boolean> {
+  const parts = typeof note === 'string' ? note.split('|') : [];
+  if (parts.length !== 6 || !parts[0] || !/^[A-Z0-9]{4,16}$/.test(parts[1])) return {};
+  const num = (v: string) => Math.max(0, Number(v) || 0);
+  return {
+    partnerUid: parts[0],
+    partnerCode: parts[1],
+    partnerSales: num(parts[2]),
+    partnerUnits: Math.floor(num(parts[3])),
+    partnerFamily: parts[4] === '1',
+    partnerSavings: num(parts[5]),
+  };
+}
+// <<< partner-core
+
 const CURRENCIES = ['points', 'cashback'] as const;
 const ENDED_STATUSES = ['cancelled', 'returned', 'refunded'];
 const DAY_MS = 86_400_000;
@@ -576,6 +733,13 @@ interface PaymentRecord {
   /** A dealer-priced order: earns nothing and gets no scratch card. */
   dealer?: boolean;
   regularSubtotal?: number;
+  /** An academy partner's code was used (from the rw_partner note). */
+  partnerUid?: string;
+  partnerCode?: string;
+  partnerSales?: number;
+  partnerUnits?: number;
+  partnerFamily?: boolean;
+  partnerSavings?: number;
 }
 
 /** payments/<rzp> from a paid Razorpay order's notes (what verify-payment writes). */
@@ -596,6 +760,7 @@ async function writePaymentRecord(
     cashback: whole(notes.rw_cashback),
     cartHash: String(notes.rw_cart || ''),
     ...(notes.rw_dealer === '1' ? { dealer: true, regularSubtotal: money(notes.rw_regular) } : {}),
+    ...partnerFieldsFromNote(notes.rw_partner),
     status: 'verified',
     verifiedAt: admin.firestore.Timestamp.now(),
     source: 'reconcile',
@@ -939,6 +1104,15 @@ export async function reconcileRewards(
   // 4. Scratch card: given on delivery, cancelled (or its prize voided) when the order ends.
   changed.push(...(await reconcileScratchCard(db, uid, rzp, payment, settings)));
 
+  // 4b. Academy partner commission on this order (see reconcilePartner).
+  if (payment.partnerUid && payment.partnerCode) {
+    const p = await reconcilePartner(db, orderId, rzp, order, payment, now);
+    changed.push(...p.changed);
+    if (order.partnerUid !== payment.partnerUid) orderUpdate.partnerUid = payment.partnerUid;
+    if (order.partnerCode !== payment.partnerCode) orderUpdate.partnerCode = payment.partnerCode;
+    if (order.partnerFamily !== (payment.partnerFamily === true)) orderUpdate.partnerFamily = payment.partnerFamily === true;
+  }
+
   // 5. What the order pages show. Written only when something differs.
   if (order.paymentStatus === 'pending') {
     orderUpdate.paymentStatus = 'paid';
@@ -954,6 +1128,104 @@ export async function reconcileRewards(
     changed.push(`order:${Object.keys(orderUpdate).join(',')}`);
   }
 
+  return { changed };
+}
+
+/**
+ * An academy partner's commission on one paid order, idempotent:
+ *   partners/<puid>/earnings/<rzp>  created once when the order reaches the
+ *     customer, at the rate of the tier the partner had BEFORE this order
+ *     (so Gold applies to orders delivered after the switch). Held while a
+ *     return is open or the order is not at delivered, void when the order
+ *     ends, restored if it is reopened. Unlocks after the return window
+ *     (unlockAtMs). A family order (the partner's own code) earns 0 and
+ *     records the savings.
+ *   partners/<puid> totals (lifetimeSales, unitsSold, earnedTotal,
+ *     familySavings) and tier, recomputed from every earning.
+ * The figures come from the payment record (written from create-order's
+ * rw_partner note), never from the order or the browser.
+ */
+export async function reconcilePartner(
+  db: admin.firestore.Firestore,
+  orderId: string,
+  rzp: string,
+  order: Record<string, any>,
+  payment: PaymentRecord,
+  now: admin.firestore.Timestamp,
+): Promise<{ changed: string[] }> {
+  const changed: string[] = [];
+  const puid = String(payment.partnerUid);
+  const partnerRef = db.collection('partners').doc(puid);
+  const [partnerSnap, settingsSnap] = await Promise.all([
+    partnerRef.get(),
+    db.collection('partnerSettings').doc('main').get(),
+  ]);
+  const partner = partnerSnap.data();
+  if (!partner) return { changed };
+  const s = normalisePartnerMoney(settingsSnap.exists ? (settingsSnap.data() as Partial<PartnerMoneySettings>) : null);
+  const status = String(order.status || '');
+  const ended = ENDED_STATUSES.includes(status);
+  const returnOpen = isReturnOpen(order);
+  const reachedCustomer = status === 'delivered' || returnOpen;
+  const earnings = partnerRef.collection('earnings');
+  const ref = earnings.doc(rzp);
+  const e = (await ref.get()).data();
+  const family = payment.partnerFamily === true;
+
+  if (!e) {
+    // Credited once, on delivery, only for an approved partner.
+    if (reachedCustomer && !ended && partner.status === 'approved') {
+      const rows = (await earnings.get()).docs.map((d) => d.data() as PartnerEarningLike);
+      const before = partnerTotals(rows).lifetimeSales;
+      const tier = partnerTierFor(before, s, partner.tierOverride);
+      const rate = family ? 0 : partnerRate(tier, s);
+      const sales = money(payment.partnerSales);
+      const deliveredMs = millis(order.deliveredAt) || now.toMillis();
+      const wrote = await createOnce(ref, {
+        orderId,
+        razorpayOrderId: rzp,
+        orderNumber: String(order.orderId || orderId),
+        amount: family ? 0 : partnerCommission(sales, rate),
+        rate,
+        tier,
+        sales,
+        units: whole(payment.partnerUnits),
+        family,
+        savings: family ? money(payment.partnerSavings) : 0,
+        month: partnerMonthKey(deliveredMs),
+        state: status === 'delivered' ? 'active' : 'held',
+        unlockAt: admin.firestore.Timestamp.fromMillis(unlockAtMs(now.toMillis(), order.deliveredAt, s.holdDays)),
+        createdAt: now,
+        createdBy: 'server',
+      });
+      if (wrote) changed.push(`partner:${ref.id}`);
+    }
+  } else if (ended) {
+    if (e.state !== 'void') {
+      await ref.update({ state: 'void', voidedAt: now, voidedBy: 'server', voidReason: `order-${status}` });
+      changed.push(`partner:${ref.id}:void`);
+    }
+  } else if (e.state === 'void') {
+    if (e.voidedBy === 'server' && reachedCustomer) {
+      await ref.update({ state: status === 'delivered' ? 'active' : 'held', restoredAt: now });
+      changed.push(`partner:${ref.id}:restore`);
+    }
+  } else {
+    const want = status === 'delivered' ? 'active' : 'held';
+    if (e.state !== want) {
+      await ref.update({ state: want });
+      changed.push(`partner:${ref.id}:${want === 'held' ? 'hold' : 'release'}`);
+    }
+  }
+
+  // Totals and tier from every earning, so a repeat or a reversal is always exact.
+  if (changed.length || partner.lifetimeSales === undefined) {
+    const rows = (await earnings.get()).docs.map((d) => d.data() as PartnerEarningLike);
+    const totals = partnerTotals(rows);
+    const tier = partnerTierFor(totals.lifetimeSales, s, partner.tierOverride);
+    await partnerRef.update({ ...totals, tier, totalsAt: now });
+    changed.push('partner:totals');
+  }
   return { changed };
 }
 

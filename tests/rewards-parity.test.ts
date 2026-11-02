@@ -33,3 +33,10 @@ test('api copy of dealer-core matches src/lib/dealer.ts', () => {
     'api/create-order.ts has drifted from src/lib/dealer.ts',
   );
 });
+
+test('api copies of partner-core match src/lib/partner.ts', () => {
+  const source = marked('src/lib/partner.ts', 'partner-core');
+  for (const copy of ['api/create-order.ts', 'api/notify-order.ts', 'api/verify-payment.ts']) {
+    assert.equal(marked(copy, 'partner-core'), source, `${copy} has drifted from src/lib/partner.ts`);
+  }
+});
