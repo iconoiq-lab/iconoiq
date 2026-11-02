@@ -1,11 +1,12 @@
 // ============================================
-// DEALER PROGRAMME (/dealer): apply, pending, approved, rejected, suspended.
-// A thin container: dealer state from useDealer(), writes through the dealer
-// service, and every screen drawn by src/components/dealer/DealerViews.tsx.
+// ACADEMY & DEALERSHIP PROGRAMME (/dealer): the hero, two track cards
+// (stockist, partner) and the chosen track. A thin container: dealer state
+// from useDealer(), partner state from usePartner(), screens drawn by
+// src/components/dealer/DealerViews.tsx and src/components/partner/PartnerViews.tsx.
 // ============================================
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,9 +17,13 @@ import Footer from '@/components/Footer';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { DealerPageView } from '@/components/dealer/DealerViews';
+import { StockistArea } from '@/components/dealer/StockistArea';
+import { PartnerTrack, ProgrammeHero, TrackCards, type Track, type TrackCardInfo } from '@/components/partner/PartnerViews';
+import { usePartner } from '@/hooks/usePartner';
 import { describeError } from '@/lib/errorMessage';
 import type { DealerApplicationInput } from '@/lib/dealerForm';
 import { applyAsDealer, withdrawDealerApplication } from '@/services/dealerService';
+import { applyAsPartner, withdrawPartnerApplication, type PartnerApplicationInput } from '@/services/partnerService';
 
 /** Wallet-style chrome (PurchaseSummary's shell): desktop Header and Footer, phone sticky title bar and bottom nav. */
 const DealerShell = ({ children }: { children: React.ReactNode }) => {
@@ -31,7 +36,7 @@ const DealerShell = ({ children }: { children: React.ReactNode }) => {
         <IconButton label="Back" onClick={() => navigate(-1)}>
           <ArrowLeft />
         </IconButton>
-        <p className="font-heading text-xl font-semibold tracking-tight text-foreground" aria-hidden="true">Dealer programme</p>
+        <p className="font-heading text-xl font-semibold tracking-tight text-foreground" aria-hidden="true">Partner with us</p>
       </div>
 
       <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-4 py-6 pb-24 outline-none lg:py-10 lg:pb-10">
@@ -63,7 +68,18 @@ const DealerProgramme: React.FC = () => {
   const focusReapplyAfterCancel = useRef(false);
   const lastStatus = useRef<string | null | undefined>(undefined);
 
-  usePageMeta({ title: 'Dealer programme', noindex: true });
+  usePageMeta({ title: 'Academy & Dealership Programme', noindex: true });
+
+  const partner = usePartner();
+  const [params] = useSearchParams();
+  const [pSubmitting, setPSubmitting] = useState(false);
+  const [pReapplying, setPReapplying] = useState(false);
+  const [pDraft, setPDraft] = useState<PartnerApplicationInput | null>(null);
+  const [pConfirmOpen, setPConfirmOpen] = useState(false);
+  const pStatus = partner.record?.status ?? null;
+  useEffect(() => {
+    if (pStatus !== 'rejected') setPReapplying(false);
+  }, [pStatus]);
 
   const { ready, record, settings, pricing } = dealer;
   const status = record?.status ?? null;
@@ -139,8 +155,96 @@ const DealerProgramme: React.FC = () => {
     toast('Application withdrawn');
   }, [user]);
 
+  const asked = params.get('track');
+  const track: Track =
+    asked === 'partner' || asked === 'stockist' ? asked : partner.record && !dealer.record ? 'partner' : 'stockist';
+
+  const STATUS_CHIP = {
+    pending: { label: 'Under review', tone: 'warning' },
+    approved: { label: 'Approved', tone: 'success' },
+    active: { label: 'Approved', tone: 'success' },
+    rejected: { label: 'Not approved', tone: 'neutral' },
+    suspended: { label: 'On hold', tone: 'warning' },
+  } as const satisfies Record<string, TrackCardInfo['status']>;
+  const chip = (s: string | null | undefined) => (s && s in STATUS_CHIP ? STATUS_CHIP[s as keyof typeof STATUS_CHIP] : undefined);
+  const firstTier = settings.tiers[0];
+  const cardInfo: Record<Track, TrackCardInfo> = {
+    stockist: {
+      offer: firstTier
+        ? `Buy stock in bulk at up to ${Math.max(...settings.tiers.map((t) => t.percent))}% off, then resell.`
+        : 'Buy stock in bulk at dealer prices, then resell.',
+      status: chip(status),
+      open: settings.enabled,
+    },
+    partner: {
+      offer: `Earn ${partner.settings.silverPercent}% on every sale made with your code.`,
+      status: chip(pStatus),
+      open: partner.settings.enabled,
+    },
+  };
+
+  const pPrefill: PartnerApplicationInput = {
+    name: userProfile?.name || userProfile?.username || '',
+    business: '',
+    phone: userProfile?.phone || '',
+    city: '',
+    state: '',
+  };
+
+  const handlePartnerSubmit = async (application: PartnerApplicationInput) => {
+    if (!user) return;
+    const reapply = pStatus === 'rejected';
+    setPDraft(application);
+    setPSubmitting(true);
+    try {
+      await applyAsPartner(user.uid, application, reapply);
+      setPDraft(null);
+      toast.success('Application sent');
+    } catch (e) {
+      toast.error(describeError(e));
+      if (reapply) setPReapplying(true);
+    } finally {
+      setPSubmitting(false);
+    }
+  };
+
+  const handlePartnerWithdraw = async () => {
+    if (!user) return;
+    try {
+      await withdrawPartnerApplication(user.uid);
+    } catch (e) {
+      toast.error(describeError(e));
+      throw e;
+    }
+    dialogReturnRef.current = document.getElementById('main');
+    toast('Application withdrawn');
+  };
+
   return (
     <DealerShell>
+      <ProgrammeHero />
+      <TrackCards active={track} info={cardInfo} hrefFor={(t) => `/dealer?track=${t}`} />
+      {track === 'partner' ? (
+        <PartnerTrack
+          loading={!partner.ready || !user}
+          settings={partner.settings}
+          record={partner.record}
+          reapplying={pReapplying}
+          prefill={pPrefill}
+          draft={pDraft}
+          submitting={pSubmitting}
+          onSubmit={handlePartnerSubmit}
+          onReapply={() => setPReapplying(true)}
+          onCancelReapply={() => {
+            setPDraft(null);
+            setPReapplying(false);
+          }}
+          onWithdraw={() => {
+            dialogReturnRef.current = document.activeElement as HTMLElement | null;
+            setPConfirmOpen(true);
+          }}
+        />
+      ) : (
       <DealerPageView
         loading={!ready || !user}
         record={record}
@@ -163,7 +267,9 @@ const DealerProgramme: React.FC = () => {
           setConfirmOpen(true);
         }}
         withdrawRef={withdrawRef}
+        stockistArea={user && status === 'approved' ? <StockistArea uid={user.uid} /> : undefined}
       />
+      )}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -174,6 +280,17 @@ const DealerProgramme: React.FC = () => {
         tone="danger"
         returnFocusRef={dialogReturnRef}
         onConfirm={handleWithdraw}
+      />
+      <ConfirmDialog
+        open={pConfirmOpen}
+        onOpenChange={setPConfirmOpen}
+        title="Withdraw your partner application?"
+        description="We'll delete it. You can send a new application if the programme is open."
+        confirmLabel="Withdraw"
+        cancelLabel="Keep application"
+        tone="danger"
+        returnFocusRef={dialogReturnRef}
+        onConfirm={handlePartnerWithdraw}
       />
     </DealerShell>
   );

@@ -5,6 +5,7 @@ import { usePageMeta } from '@/hooks/usePageMeta';
 import { useToast } from '@/hooks/use-toast';
 import { onCatalogPublishFailure } from '@/services/catalogPublisher';
 import { subscribePendingDealerCount } from '@/services/dealerService';
+import { subscribePendingPartnerCount } from '@/services/partnerService';
 import { isOn } from '@/config/features';
 import {
   LayoutDashboard,
@@ -37,6 +38,7 @@ import {
   Search,
   Store,
   Handshake,
+  GraduationCap,
   LayoutPanelTop,
   GalleryHorizontal,
   type LucideIcon,
@@ -84,6 +86,7 @@ const AdminLayout = () => {
   const [contentMediaOpen, setContentMediaOpen] = React.useState(false);
   const [headerQuery, setHeaderQuery] = React.useState('');
   const [pendingDealers, setPendingDealers] = React.useState(0);
+  const [pendingPartners, setPendingPartners] = React.useState(0);
   const { userProfile, logout } = useAuth();
   // Conversations with unread customer messages, for the WhatsApp badge.
   const whatsappUnread = useWhatsAppUnread(isOn('whatsappInbox') && userProfile?.role === 'admin');
@@ -114,6 +117,13 @@ const AdminLayout = () => {
     () =>
       isOn('dealers')
         ? subscribePendingDealerCount(setPendingDealers, () => setPendingDealers(0))
+        : undefined,
+    [],
+  );
+  React.useEffect(
+    () =>
+      isOn('dealers')
+        ? subscribePendingPartnerCount(setPendingPartners, () => setPendingPartners(0))
         : undefined,
     [],
   );
@@ -161,6 +171,7 @@ const AdminLayout = () => {
       : []),
     { path: '/admin/customers', icon: Users2, label: 'Customers' },
     ...(isOn('dealers') ? [{ path: '/admin/dealers', icon: Handshake, label: 'Dealers', count: pendingDealers }] : []),
+    ...(isOn('dealers') ? [{ path: '/admin/partners', icon: GraduationCap, label: 'Partners', count: pendingPartners }] : []),
     { path: '/admin/coupons', icon: Ticket, label: 'Coupons' },
     ...(isOn('giftCards') ? [{ path: '/admin/gift-cards', icon: Gift, label: 'Gift cards' }] : []),
     ...(isOn('videoCalls') ? [{ path: '/admin/video-calls', icon: Video, label: 'Video calls' }] : []),

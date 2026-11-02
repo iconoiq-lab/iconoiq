@@ -4,15 +4,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { describeError } from '@/lib/errorMessage';
-import { stockRows, type StockPurchaseLine } from '@/lib/stockist';
+import { restockState, stockRows, type StockPurchaseLine } from '@/lib/stockist';
+import { PanelSkeleton } from '@/components/skeletons';
 import {
   deleteStockSale,
   loadStockPurchases,
+  loadStockSales,
   logStockSale,
   subscribeStockSales,
   type LoggedSale,
 } from '@/services/stockistService';
-import { StockistAreaView, type LogSaleInput } from './StockistViews';
+import { InventoryTable, SaleHistory, StockistAreaView, type LogSaleInput } from './StockistViews';
 
 export const StockistArea = ({ uid }: { uid: string }) => {
   const [purchases, setPurchases] = useState<StockPurchaseLine[] | null>(null);
@@ -84,5 +86,36 @@ export const StockistArea = ({ uid }: { uid: string }) => {
       onLog={onLog}
       onDelete={(id) => void onDelete(id)}
     />
+  );
+};
+
+/** Admin > Dealers: a stockist's inventory and logged sales, read-only. */
+export const StockistReadOnly = ({ uid }: { uid: string }) => {
+  const [data, setData] = useState<{ purchases: StockPurchaseLine[]; sales: LoggedSale[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    setData(null);
+    Promise.all([loadStockPurchases(uid), loadStockSales(uid)])
+      .then(([purchases, sales]) => live && setData({ purchases, sales }))
+      .catch((e) => live && setError(describeError(e)));
+    return () => {
+      live = false;
+    };
+  }, [uid]);
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (!data) return <PanelSkeleton lines={3} label="Loading stock" />;
+  const rows = stockRows(data.purchases, data.sales);
+  const r = restockState(rows);
+  return (
+    <div className="space-y-4">
+      {r.alert && (
+        <p className="rounded-card bg-status-warning-bg px-3 py-2 text-xs font-medium text-status-warning-fg">
+          {Math.round(r.share * 100)}% of the stock bought is sold: time to restock.
+        </p>
+      )}
+      <InventoryTable rows={rows} />
+      <SaleHistory sales={data.sales} />
+    </div>
   );
 };

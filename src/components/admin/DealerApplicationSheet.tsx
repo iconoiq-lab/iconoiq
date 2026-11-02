@@ -14,6 +14,7 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 import { Spinner } from '@/components/ui/spinner';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 import { Textarea } from '@/components/ui/textarea';
+import { StockistReadOnly } from '@/components/dealer/StockistArea';
 import { businessTypeLabel } from '@/lib/dealerForm';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -217,6 +218,13 @@ export function DealerApplicationSheet({
                 </Link>
               </div>
             </section>
+
+            {(shown.status === 'approved' || shown.status === 'suspended') && (
+              <section className="mb-5">
+                <h3 className={SECTION_HEADING}>Stock and sales</h3>
+                <StockistReadOnly uid={shown.uid} />
+              </section>
+            )}
 
             {/* The note is only ever shown to the applicant when rejected or suspended. */}
             {reviewed && (

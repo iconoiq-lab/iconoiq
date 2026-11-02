@@ -27,6 +27,7 @@ import { subscribeToUserOrders, Order } from '@/services/orderService';
 import { useWhatsAppOtpVerification } from '@/hooks/useWhatsAppOtpVerification';
 import { useLoyaltyStatus } from '@/hooks/useLoyaltyStatus';
 import { useDealer } from '@/hooks/useDealer';
+import { usePartner } from '@/hooks/usePartner';
 import { BRAND } from '@/config/brand';
 import { formatMemberNumber, memberDigits } from '@/lib/loyaltyCard';
 import { updateSecuritySettings } from '@/services/securityService';
@@ -54,6 +55,7 @@ import {
   SunMoon,
   Store,
   BadgeCheck,
+  GraduationCap,
 } from 'lucide-react';
 import { SmartImage } from "@/components/ui/smart-image";
 
@@ -808,6 +810,10 @@ const AccountPage = () => {
   const dealer = useDealer();
   const dealersOn = isOn('dealers');
   const approvedDealer = dealersOn && dealer.record?.status === 'approved';
+  const partner = usePartner();
+  const partnerStatus = partner.record?.status;
+  const isPartner = dealersOn && (partnerStatus === 'approved' || partnerStatus === 'suspended');
+  const programmeEntry = dealersOn && (dealer.showEntry || partner.settings.enabled || Boolean(partner.record));
   const memberNumber = useMemo(
     () => (user?.uid ? formatMemberNumber(memberDigits(user.uid), BRAND.memberPrefix) : ''),
     [user?.uid],
@@ -889,7 +895,8 @@ const AccountPage = () => {
   const menuItems = [
     { id: 'orders', label: 'My orders', icon: Package, path: '/account' },
     ...(walletOn ? [{ id: 'wallet', label: walletLabel, icon: Wallet, path: '/wallet' }] : []),
-    ...(dealersOn && dealer.showEntry ? [{ id: 'dealer', label: 'Dealer programme', icon: Store, path: '/dealer' }] : []),
+    ...(isPartner ? [{ id: 'partner', label: 'Partner area', icon: GraduationCap, path: '/account/partner' }] : []),
+    ...(programmeEntry ? [{ id: 'dealer', label: 'Dealer & partner programme', icon: Store, path: '/dealer' }] : []),
     ...(isOn('videoCalls') ? [{ id: 'videocalls', label: 'My video calls', icon: Video, path: '/my-video-calls' }] : []),
     { id: 'editProfile', label: 'Edit profile', icon: Edit, path: '/account/profile-edit' },
     { id: 'addresses', label: 'Your addresses', icon: MapPin, path: '/account/addresses' },
@@ -902,7 +909,8 @@ const AccountPage = () => {
   const accountMenu: { label: string; icon: typeof Package; href: string; approved?: boolean }[] = [
     { label: 'My orders', icon: Package, href: '/account/orders' },
     ...(walletOn ? [{ label: walletLabel, icon: Wallet, href: '/wallet' }] : []),
-    ...(dealersOn && dealer.showEntry ? [{ label: 'Dealer programme', icon: Store, href: '/dealer', approved: approvedDealer }] : []),
+    ...(isPartner ? [{ label: 'Partner area', icon: GraduationCap, href: '/account/partner', approved: partnerStatus === 'approved' }] : []),
+    ...(programmeEntry ? [{ label: 'Dealer & partner programme', icon: Store, href: '/dealer', approved: approvedDealer }] : []),
     ...(isOn('videoCalls') ? [{ label: 'My video calls', icon: Video, href: '/my-video-calls' }] : []),
     { label: 'Edit profile', icon: Edit, href: '/account/profile-edit' },
     { label: 'Your addresses', icon: MapPin, href: '/account/addresses' },

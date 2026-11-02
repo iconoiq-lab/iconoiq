@@ -50,6 +50,7 @@ const SearchResults = lazy(() => import("./pages/SearchResults"));
 // Purchase Summary & Security Pages
 const PurchaseSummary = lazy(() => import("./pages/PurchaseSummary"));
 const DealerProgramme = lazy(() => import("./pages/DealerProgramme"));
+const PartnerArea = lazy(() => import("./pages/PartnerArea"));
 const SecurityPage = lazy(() => import("./pages/SecurityPage"));
 // Auth Pages
 const Signup = lazy(() => import("./pages/auth/Signup"));
@@ -79,6 +80,7 @@ const AdminImageCompressor = lazy(() => import("./pages/admin/AdminImageCompress
 const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetails = lazy(() => import("./pages/admin/AdminCustomerDetails"));
 const AdminDealers = lazy(() => import("./pages/admin/AdminDealers"));
+const AdminPartners = lazy(() => import("./pages/admin/AdminPartners"));
 const AdminSiteSettings = lazy(() => import("./pages/admin/AdminSiteSettings"));
 const AdminSilverRate = lazy(() => import("./pages/admin/AdminSilverRate"));
 const AdminCommerceSettings = lazy(() => import("./pages/admin/AdminCommerceSettings"));
@@ -232,6 +234,13 @@ const App = () => {
                   <ProfileEditPage />
                 </ProtectedRoute>
               } />
+              <Route path="/account/partner" element={
+                <FeatureGate feature="dealers">
+                  <ProtectedRoute requireEmailVerification={false}>
+                    <PartnerArea />
+                  </ProtectedRoute>
+                </FeatureGate>
+              } />
               <Route path="/account/addresses" element={
                 <ProtectedRoute requireEmailVerification={false}>
                   <SavedAddresses />
@@ -361,6 +370,7 @@ const App = () => {
                 <Route path="customers" element={<AdminCustomers />} />
                 <Route path="customers/:customerId" element={<AdminCustomerDetails />} />
                 <Route path="dealers" element={<FeatureGate feature="dealers" fallback="/admin/dashboard"><AdminDealers /></FeatureGate>} />
+                <Route path="partners" element={<FeatureGate feature="dealers" fallback="/admin/dashboard"><AdminPartners /></FeatureGate>} />
                 <Route path="newsletter" element={<FeatureGate feature="newsletter" fallback="/admin/dashboard"><AdminNewsletterSubscriptions /></FeatureGate>} />
                 <Route path="storage" element={<AdminStorage />} />
               </Route>
