@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { dealerCheck, loadDealer } from '../api/create-order.ts';
-import { dealerQuote, normaliseDealerPricing } from '../src/lib/dealer.ts';
+import { dealerQuote, normaliseDealerPricing, normaliseDealerSettings } from '../src/lib/dealer.ts';
 import { FakeFirestore } from './helpers/fakeFirestore.ts';
 
-const ON = { enabled: true, minOrder: 2000 };
-const P = normaliseDealerPricing({ discountPercent: 20 });
-const big = dealerQuote([{ productId: 'a', unit: 800, quantity: 3 }], ON, P, true);
+const ON = normaliseDealerSettings({ enabled: true });
+const P = normaliseDealerPricing({});
+const big = dealerQuote([{ productId: 'a', unit: 80000, quantity: 3 }], ON, P, true);
 const small = dealerQuote([{ productId: 'a', unit: 800, quantity: 1 }], ON, P, true);
 
 test('a matching dealer checkout goes on', () => {
@@ -40,7 +40,7 @@ const RETAIL = { approved: false, pricing: null };
 
 function shop(dealer?: Record<string, unknown>) {
   const db = new FakeFirestore();
-  db.applySet('dealerPricing/current', { discountPercent: 25, productPrices: { a: 500 } }, false);
+  db.applySet('dealerPricing/current', { productPrices: { a: 500 } }, false);
   if (dealer) db.applySet('dealers/cust1', dealer, false);
   return db;
 }
@@ -48,7 +48,6 @@ function shop(dealer?: Record<string, unknown>) {
 test('an approved dealer gets the stored dealer prices', async () => {
   const r = await loadDealer('cust1', ON, asDb(shop({ status: 'approved' })));
   assert.equal(r.approved, true);
-  assert.equal(r.pricing?.discountPercent, 25);
   assert.equal(r.pricing?.productPrices.a, 500);
 });
 
@@ -62,7 +61,7 @@ test('no dealer record, a guest, or the programme off is retail', async () => {
   assert.deepEqual(await loadDealer('cust1', ON, asDb(shop())), RETAIL, 'no application');
   assert.deepEqual(await loadDealer(null, ON, asDb(shop({ status: 'approved' }))), RETAIL, 'signed out');
   assert.deepEqual(
-    await loadDealer('cust1', { enabled: false, minOrder: 2000 }, asDb(shop({ status: 'approved' }))),
+    await loadDealer('cust1', normaliseDealerSettings({ enabled: false }), asDb(shop({ status: 'approved' }))),
     RETAIL,
     'programme off',
   );
@@ -73,10 +72,10 @@ test("another customer's approval does not carry over", async () => {
   assert.deepEqual(await loadDealer('cust2', ON, asDb(db)), RETAIL);
 });
 
-test('an approved dealer with no price document gets the default discount', async () => {
+test('an approved dealer with no price document is priced at the tier percent only', async () => {
   const db = new FakeFirestore();
   db.applySet('dealers/cust1', { status: 'approved' }, false);
   const r = await loadDealer('cust1', ON, asDb(db));
   assert.equal(r.approved, true);
-  assert.equal(r.pricing?.discountPercent, 20);
+  assert.deepEqual(r.pricing?.productPrices, {});
 });

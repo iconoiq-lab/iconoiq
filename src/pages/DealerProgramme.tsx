@@ -145,8 +145,8 @@ const DealerProgramme: React.FC = () => {
         loading={!ready || !user}
         record={record}
         programmeOn={settings.enabled}
-        discountPercent={pricing?.discountPercent ?? null}
-        minOrder={settings.minOrder}
+        tiers={settings.tiers}
+        pricingKnown={pricing !== null}
         reapplying={reapplying}
         prefill={prefill}
         draft={draft}

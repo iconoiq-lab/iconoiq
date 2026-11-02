@@ -104,7 +104,7 @@ export function subscribeDealerSettings(onNext: (s: DealerSettings, answered: bo
   return onSnapshot(settingsRef, LIVE, (s) => onNext(normaliseDealerSettings(s.exists() ? s.data() : null), answered(s)), onError);
 }
 
-/** A missing prices document is the default percent only when `answered` (the server uses the same default). */
+/** A missing prices document means no fixed prices, only when `answered` (the server reads it the same way). */
 export function subscribeDealerPricing(onNext: (p: DealerPricing, answered: boolean) => void, onError: (e: Error) => void) {
   return onSnapshot(pricingRef, LIVE, (s) => onNext(normaliseDealerPricing(s.exists() ? s.data() : null), answered(s)), onError);
 }
@@ -117,27 +117,22 @@ export async function loadDealerAdminSettings(): Promise<{ settings: DealerSetti
   };
 }
 
-/** One batch: the public switch and minimum, and the private discount. */
-export async function saveDealerAdminSettings(settings: DealerSettings, discountPercent: number, wasEnabled: boolean) {
+/** The public switch and the margin tiers (minOrder is derived from the first tier). */
+export async function saveDealerAdminSettings(settings: DealerSettings, wasEnabled: boolean) {
   const clean = normaliseDealerSettings(settings);
-  const batch = writeBatch(db);
-  batch.set(
+  await setDoc(
     settingsRef,
     { ...clean, ...(clean.enabled && !wasEnabled ? { enabledAt: serverTimestamp() } : {}), updatedAt: serverTimestamp() },
     { merge: true },
   );
-  batch.set(
-    pricingRef,
-    { discountPercent: normaliseDealerPricing({ discountPercent }).discountPercent, updatedAt: serverTimestamp() },
-    { merge: true },
-  );
-  await batch.commit();
 }
 
+/** A product's fixed dealer price, and the first tier's percent (what a product without one gets at that tier). */
 export async function getProductDealerPrice(productId: string): Promise<{ price: number | null; discountPercent: number }> {
-  const p = await getDoc(pricingRef);
+  const [p, s] = await Promise.all([getDoc(pricingRef), getDoc(settingsRef)]);
   const pricing = normaliseDealerPricing(p.exists() ? p.data() : null);
-  return { price: pricing.productPrices[productId] ?? null, discountPercent: pricing.discountPercent };
+  const settings = normaliseDealerSettings(s.exists() ? s.data() : null);
+  return { price: pricing.productPrices[productId] ?? null, discountPercent: settings.tiers[0].percent };
 }
 
 /** Set or clear (null) one product's fixed dealer price. */

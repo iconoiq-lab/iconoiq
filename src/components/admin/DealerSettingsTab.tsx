@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BadgeCheck, Clock, Handshake, IndianRupee, RefreshCw, Save } from 'lucide-react';
+import { BadgeCheck, Clock, Handshake, IndianRupee, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { FormSkeleton } from '@/components/skeletons';
 import { StatCard } from '@/components/admin/StatCard';
 import { describeError } from '@/lib/errorMessage';
-import { dealerUnitPrice, normaliseDealerPricing, normaliseDealerSettings } from '@/lib/dealer';
+import { dealerUnitPrice, normaliseDealerSettings, type DealerTier } from '@/lib/dealer';
 import { formatINR, formatNumber } from '@/lib/format';
 import { fadeUp } from '@/lib/motion';
 import {
@@ -22,15 +22,15 @@ import {
   subscribeDealerApplications,
 } from '@/services/dealerService';
 
-/** What the form edits: the public switch and minimum, and the private store-wide discount. */
+/** What the form edits: the public switch and the stockist margin tiers. */
 export interface DealerFormValues {
   enabled: boolean;
-  discountPercent: number;
-  minOrder: number;
+  tiers: DealerTier[];
 }
 
 /** The "₹800 item" in the live example under the fields. */
 const EXAMPLE_PRICE = 800;
+const MAX_TIERS = 5;
 
 /** Phone tap target: the 24px switch gets a 44px hit area. */
 const SWITCH_HIT = "relative after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-['']";
@@ -83,13 +83,13 @@ export function DealerSettingsTabView({
   counts,
   countsError,
 }: DealerSettingsTabViewProps) {
-  // Clamped like the save, so the example and the notice show what will be charged.
-  const pricing = useMemo(() => normaliseDealerPricing({ discountPercent: form?.discountPercent }), [form?.discountPercent]);
+  // Cleaned like the save, so the example and the notice show what will be charged.
+  const clean = useMemo(() => normaliseDealerSettings({ tiers: form?.tiers }), [form?.tiers]);
 
   if (!form && !loadError) {
     return (
       <div className={PANEL}>
-        <FormSkeleton fields={3} label="Loading dealer settings" />
+        <FormSkeleton fields={4} label="Loading dealer settings" />
       </div>
     );
   }
@@ -118,8 +118,12 @@ export function DealerSettingsTabView({
     );
   }
 
-  const minOrder = normaliseDealerSettings({ minOrder: form.minOrder }).minOrder;
-  const examplePrice = dealerUnitPrice('x', EXAMPLE_PRICE, pricing);
+  const tiers = clean.tiers;
+  const firstTier = tiers[0];
+  const topTier = tiers[tiers.length - 1];
+  const examplePrice = dealerUnitPrice('x', EXAMPLE_PRICE, { productPrices: {} }, topTier.percent);
+  const setTier = (i: number, patch: Partial<DealerTier>) =>
+    onChange({ tiers: form.tiers.map((t, n) => (n === i ? { ...t, ...patch } : t)) });
   const statSubtitle = (text: string) => (counts ? text : countsError ? 'Could not load the list' : 'Loading');
 
   return (
@@ -140,50 +144,75 @@ export function DealerSettingsTabView({
         />
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <Label htmlFor="dl-percent" className="text-sm">Dealer discount (%)</Label>
-          <Input
-            id="dl-percent"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            max={90}
-            value={form.discountPercent}
-            onChange={(e) => onChange({ discountPercent: Number(e.target.value) })}
-            aria-describedby="dl-percent-hint"
-            className="mt-1.5 tabular-nums"
-          />
-          <p id="dl-percent-hint" className="mt-1.5 text-xs text-muted-foreground">
-            Off the regular price, on every product. A product&apos;s own dealer price replaces it.
-          </p>
-        </div>
-        <div>
-          <Label htmlFor="dl-min" className="text-sm">Dealer prices from (₹, at regular prices)</Label>
-          <Input
-            id="dl-min"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            value={form.minOrder}
-            onChange={(e) => onChange({ minOrder: Number(e.target.value) })}
-            aria-describedby="dl-min-hint"
-            className="mt-1.5 tabular-nums"
-          />
-          <p id="dl-min-hint" className="mt-1.5 text-xs text-muted-foreground">
-            Below this the cart charges regular prices and shows how much more to add.
-          </p>
-        </div>
-      </div>
+      <fieldset className="mb-6" aria-describedby="dl-tiers-hint">
+        <legend className="text-sm font-medium text-foreground">Stockist margin tiers</legend>
+        <p id="dl-tiers-hint" className="mt-0.5 text-xs text-muted-foreground">
+          One order worth the amount or more at regular prices gets the percent off. The highest tier met wins; below the first, regular prices apply.
+        </p>
+        <ol className="mt-3 space-y-3">
+          {form.tiers.map((t, i) => (
+            <li key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto] items-end gap-3 rounded-control border border-border bg-muted/30 p-3">
+              <div>
+                <Label htmlFor={`dl-tier-min-${i}`} className="text-xs">Order of (₹, regular prices)</Label>
+                <Input
+                  id={`dl-tier-min-${i}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  value={t.minOrder}
+                  onChange={(e) => setTier(i, { minOrder: Number(e.target.value) })}
+                  className="mt-1 tabular-nums"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`dl-tier-pct-${i}`} className="text-xs">Margin (% off)</Label>
+                <Input
+                  id={`dl-tier-pct-${i}`}
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={90}
+                  value={t.percent}
+                  onChange={(e) => setTier(i, { percent: Number(e.target.value) })}
+                  className="mt-1 tabular-nums"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Remove tier ${i + 1}`}
+                disabled={form.tiers.length <= 1}
+                onClick={() => onChange({ tiers: form.tiers.filter((_, n) => n !== i) })}
+              >
+                <Trash2 aria-hidden="true" />
+              </Button>
+            </li>
+          ))}
+        </ol>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          disabled={form.tiers.length >= MAX_TIERS}
+          onClick={() => {
+            const last = form.tiers[form.tiers.length - 1];
+            onChange({ tiers: [...form.tiers, { minOrder: (Number(last?.minOrder) || 0) + 100000, percent: Math.min(90, (Number(last?.percent) || 0) + 5) }] });
+          }}
+        >
+          <Plus aria-hidden="true" /> Add a tier
+        </Button>
+      </fieldset>
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <li className="col-span-2 sm:col-span-1">
           <StatCard
-            label={`A ${formatINR(EXAMPLE_PRICE)} item costs dealers`}
+            label={`A ${formatINR(EXAMPLE_PRICE)} item at the top tier`}
             icon={IndianRupee}
             value={formatINR(examplePrice)}
-            subtitle={`${pricing.discountPercent}% off, unless the product has its own`}
+            subtitle={`${topTier.percent}% off, unless the product has its own dealer price`}
           />
         </li>
         <li>
@@ -210,11 +239,16 @@ export function DealerSettingsTabView({
 
       <Notice tone="info" title="How dealer prices work" className="mt-6" role="note">
         <ul className="list-disc space-y-1 pl-4">
+          {tiers.map((t) => (
+            <li key={t.minOrder}>
+              One order of {formatINR(t.minOrder)} or more at regular prices: {t.percent}% off.
+            </li>
+          ))}
           <li>
-            Approved dealers see dealer prices once their cart is worth {formatINR(minOrder)} or more at regular prices. Only
-            approved dealers and admins ever see them.
+            Below {formatINR(firstTier.minOrder)} an approved stockist pays regular prices. Only approved stockists and admins
+            ever see dealer prices.
           </li>
-          <li>A dealer price set on a product replaces the {pricing.discountPercent}% for that product.</li>
+          <li>A dealer price set on a product replaces the tier percent for that product.</li>
           <li>A dealer-priced order takes no coupon and cannot use points or wallet cashback.</li>
           <li>It earns no points and gets no Scratch &amp; Win card. Delivery and GST are charged as usual.</li>
           <li>The invoice prints the dealer&apos;s business name and GSTIN in the buyer block.</li>
@@ -236,7 +270,7 @@ export function DealerSettingsTabView({
   );
 }
 
-/** Admin > Commerce settings > Dealers: loads and saves the programme switch, minimum and discount. */
+/** Admin > Commerce settings > Dealers: loads and saves the programme switch and the margin tiers. */
 export function DealerSettingsTab() {
   // Set only by a successful read. A failed one never falls back to the
   // defaults: saving those would overwrite the shop's real settings.
@@ -253,10 +287,10 @@ export function DealerSettingsTab() {
     let live = true;
     setLoadError(null);
     loadDealerAdminSettings()
-      .then(({ settings, pricing }) => {
+      .then(({ settings }) => {
         if (!live) return;
         setLiveEnabled(settings.enabled);
-        setForm({ enabled: settings.enabled, discountPercent: pricing.discountPercent, minOrder: settings.minOrder });
+        setForm({ enabled: settings.enabled, tiers: settings.tiers });
       })
       .catch((err) => {
         console.error(err);
@@ -292,18 +326,17 @@ export function DealerSettingsTab() {
     setSaving(true);
     try {
       // What is written: out-of-range values are clamped, so show those afterwards.
-      const clean = normaliseDealerSettings({ enabled: before.enabled, minOrder: before.minOrder });
-      const discountPercent = normaliseDealerPricing({ discountPercent: before.discountPercent }).discountPercent;
-      await saveDealerAdminSettings(clean, discountPercent, liveEnabled);
-      const adjusted = clean.minOrder !== before.minOrder || discountPercent !== before.discountPercent;
+      const clean = normaliseDealerSettings({ enabled: before.enabled, tiers: before.tiers });
+      await saveDealerAdminSettings(clean, liveEnabled);
+      const adjusted = JSON.stringify(clean.tiers) !== JSON.stringify(before.tiers.map((t) => ({ minOrder: t.minOrder, percent: t.percent })));
       setLiveEnabled(clean.enabled);
       // Keep anything typed while the save was running.
       setForm((current) =>
-        current === before ? { enabled: clean.enabled, discountPercent, minOrder: clean.minOrder } : current,
+        current === before ? { enabled: clean.enabled, tiers: clean.tiers } : current,
       );
       toast.success(
         'Dealer settings saved',
-        adjusted ? { description: 'Values outside the allowed range were adjusted to fit.' } : undefined,
+        adjusted ? { description: 'Tiers were sorted, and values outside the allowed range adjusted to fit.' } : undefined,
       );
     } catch (err) {
       console.error(err);

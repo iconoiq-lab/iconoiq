@@ -41,6 +41,7 @@ import { formatDate, formatINR } from '@/lib/format';
 import { INDIAN_STATES } from '@/lib/indianStates';
 import { DUR, EASE_OUT } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import type { DealerTier } from '@/lib/dealer';
 import type { DealerRecord } from '@/services/dealerService';
 
 const SUPPORT_PATH = '/customer-support';
@@ -87,26 +88,24 @@ export const DealerBand = ({ variant }: { variant: DealerBandVariant }) => (
   </section>
 );
 
-// ─── How it works (apply page: never shows the discount) ───────────────────
+// ─── How it works (apply page) ─────────────────────────────────────────────
 
-export const HowItWorks = ({ minOrder }: { minOrder: number }) => {
+/** "40% off from ₹1,50,000 · 50% off from ₹2,50,000" */
+export const tierLine = (tiers: DealerTier[]) => tiers.map((t) => `${t.percent}% off from ${formatINR(t.minOrder)}`).join(' · ');
+
+export const HowItWorks = ({ tiers }: { tiers: DealerTier[] }) => {
+  const minOrder = tiers[0]?.minOrder ?? 0;
   const items: { icon: LucideIcon; title: string; body: string }[] = [
     {
       icon: BadgePercent,
       title: 'Dealer prices on the full range',
       body: 'Dealer prices show across the store while you are signed in. Some products have their own dealer price.',
     },
-    minOrder > 0
-      ? {
-          icon: ShoppingBasket,
-          title: `Dealer prices from ${formatINR(minOrder)}`,
-          body: `They apply when your order is worth ${formatINR(minOrder)} or more at regular prices.`,
-        }
-      : {
-          icon: ShoppingBasket,
-          title: 'No minimum order',
-          body: 'Dealer prices apply to every order you place.',
-        },
+    {
+      icon: ShoppingBasket,
+      title: `Stockist margins from ${formatINR(minOrder)}`,
+      body: `One order worth ${tierLine(tiers)} at regular prices. The bigger the order, the bigger the margin.`,
+    },
     {
       icon: ReceiptText,
       title: 'GST invoice with your business details',
@@ -583,20 +582,10 @@ export const DealerAccountCard = ({ record, mode = 'on' }: { record: DealerRecor
 
 // ─── Terms (approved, programme on) ────────────────────────────────────────
 
-export const DealerTerms = ({
-  discountPercent,
-  minOrder,
-  hasGstin,
-}: {
-  discountPercent: number;
-  minOrder: number;
-  hasGstin: boolean;
-}) => {
+export const DealerTerms = ({ tiers, hasGstin }: { tiers: DealerTier[]; hasGstin: boolean }) => {
   const terms = [
-    discountPercent > 0
-      ? `${discountPercent}% off regular prices. Some products have their own dealer price.`
-      : 'Some products have their own dealer price.',
-    ...(minOrder > 0 ? [`Applies on orders of ${formatINR(minOrder)} or more at regular prices.`] : []),
+    ...tiers.map((t) => `One order of ${formatINR(t.minOrder)} or more at regular prices: ${t.percent}% off.`),
+    `Below ${formatINR(tiers[0]?.minOrder ?? 0)}, regular prices apply. Some products have their own dealer price.`,
     "Coupons, points and cashback don't apply to dealer-priced orders, and they earn no points.",
     'Delivery and GST are charged as usual.',
     hasGstin ? 'GST invoice with your business name and GSTIN.' : 'GST invoice with your business name.',
@@ -638,9 +627,10 @@ export interface DealerPageViewProps {
   record: DealerRecord | null;
   /** The programme switch (siteSettings/dealer.enabled). */
   programmeOn: boolean;
-  /** Only readable once approved while the programme is on; null otherwise. */
-  discountPercent: number | null;
-  minOrder: number;
+  /** Margin tiers (public settings). */
+  tiers: DealerTier[];
+  /** Product dealer prices loaded (readable once approved while the programme is on). */
+  pricingKnown: boolean;
   /** After a rejection: show the form again, prefilled with the old answers. */
   reapplying: boolean;
   /** Prefill for a first application (name and phone from the profile). */
@@ -672,8 +662,8 @@ export const DealerPageView = ({
   loading = false,
   record,
   programmeOn,
-  discountPercent,
-  minOrder,
+  tiers,
+  pricingKnown,
   reapplying,
   prefill,
   draft = null,
@@ -713,7 +703,7 @@ export const DealerPageView = ({
       <>
         <motion.div {...enter()}><DealerBand variant={again ? 'rejected' : 'apply'} /></motion.div>
         <div className={twoCol}>
-          <motion.div {...enter(0.04)}><HowItWorks minOrder={minOrder} /></motion.div>
+          <motion.div {...enter(0.04)}><HowItWorks tiers={tiers} /></motion.div>
           <motion.div {...enter(0.08)}>
             <DealerApplyForm
               key={again ? 'again' : 'new'}
@@ -764,12 +754,12 @@ export const DealerPageView = ({
               >
                 The shop has paused dealer prices. Your dealer account stays approved.
               </Notice>
-            ) : discountPercent === null ? (
+            ) : !pricingKnown ? (
               <Notice tone="warning" title="Dealer prices didn't load" role="region" aria-label="Dealer prices status">
                 Refresh the page to try again. Your dealer account is approved.
               </Notice>
             ) : (
-              <DealerTerms discountPercent={discountPercent} minOrder={minOrder} hasGstin={Boolean(record.gstin)} />
+              <DealerTerms tiers={tiers} hasGstin={Boolean(record.gstin)} />
             )}
           </motion.div>
         </div>

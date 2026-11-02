@@ -12,10 +12,10 @@ import { normaliseDealerPricing, type DealerPricing, type DealerSettings } from 
  */
 
 type Rec = Parameters<Parameters<DealerSources['subscribeRecord']>[1]>[0];
-const ON: DealerSettings = { enabled: true, minOrder: 2000 };
-const OFF: DealerSettings = { enabled: false, minOrder: 2000 };
+const ON: DealerSettings = { enabled: true, minOrder: 2000, tiers: [{ minOrder: 2000, percent: 30 }] };
+const OFF: DealerSettings = { enabled: false, minOrder: 2000, tiers: [{ minOrder: 2000, percent: 30 }] };
 const APPROVED = { status: 'approved', businessName: 'Acme', gstin: '' } as unknown as NonNullable<Rec>;
-const PRICES: DealerPricing = { discountPercent: 30, productPrices: {} };
+const PRICES: DealerPricing = { productPrices: { a: 300 } };
 
 /** Fake listeners the test drives by hand. */
 function setup(t: TestContext) {
@@ -121,7 +121,7 @@ test('B3: the programme being off means a record problem changes nothing', (t) =
 
 test('B3: the last known settings stand when a later read fails', (t) => {
   const { store, settings, record } = setup(t);
-  settings.next!({ enabled: true, minOrder: 3000 }, true);
+  settings.next!({ enabled: true, minOrder: 3000, tiers: [{ minOrder: 3000, percent: 30 }] }, true);
   record.next!(null, true);
   settings.error!(boom);
   const d = store.getState();
@@ -165,18 +165,18 @@ test('B3: prices answered only from the offline cache are not the default percen
   prices.next!(PRICES, true);
   d = store.getState();
   assert.equal(d.active, true);
-  assert.equal(d.pricing?.discountPercent, 30);
+  assert.equal(d.pricing?.productPrices.a, 300);
   assert.equal(d.unavailable, false);
   assert.equal(dealerPayHold(d, 2500), null);
 });
 
-test('B3: a price document the server says is missing still means the default percent (the server uses it too)', (t) => {
+test('B3: a price document the server says is missing still means dealer pricing at the tier percent (the server does the same)', (t) => {
   const { store, settings, record, prices } = setup(t);
   settings.next!(ON, true);
   record.next!(APPROVED, true);
   prices.next!(normaliseDealerPricing(null), true);
   assert.equal(store.getState().active, true);
-  assert.equal(store.getState().pricing?.discountPercent, 20);
+  assert.deepEqual(store.getState().pricing?.productPrices, {});
 });
 
 test('Retry subscribes again to whatever failed', (t) => {

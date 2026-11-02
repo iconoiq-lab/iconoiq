@@ -47,7 +47,7 @@ export function DealerPriceFieldView({
   // What dealers would pay for the typed value, or for blank, the store-wide discount.
   const storeWide =
     hasPrice && storeWidePercent !== null
-      ? dealerUnitPrice('', regularPrice, { discountPercent: storeWidePercent, productPrices: NO_FIXED_PRICES })
+      ? dealerUnitPrice('', regularPrice, { productPrices: NO_FIXED_PRICES }, storeWidePercent)
       : null;
   const typedError = dealerPriceError(value, regularPrice);
   const typed = parseDealerPrice(value);
@@ -77,7 +77,7 @@ export function DealerPriceFieldView({
             onChange={(e) => onChange(e.target.value)}
             onBlur={onBlur}
             disabled={!ready}
-            placeholder={ready ? `Store-wide ${storeWidePercent}% off` : load === 'loading' ? 'Loading…' : ''}
+            placeholder={ready ? `Tier margin, from ${storeWidePercent}% off` : load === 'loading' ? 'Loading…' : ''}
             aria-invalid={!!error || undefined}
             aria-describedby={describedBy}
             className={cn('mt-2 bg-card tabular-nums', error && 'border-destructive focus-visible:border-destructive')}
@@ -118,7 +118,7 @@ export function DealerPriceFieldView({
       <p id="pf-dealer-price-hint" className="mt-2 text-xs text-muted-foreground">
         {ready ? (
           <>
-            Leave blank to use the store-wide {storeWidePercent}% off{storeWide !== null ? ` (${formatINR(storeWide)})` : ''}.{' '}
+            Leave blank to use the margin tiers, from {storeWidePercent}% off{storeWide !== null ? ` (${formatINR(storeWide)} at the first tier)` : ''}.{' '}
           </>
         ) : null}
         Only approved dealers see it.

@@ -48,10 +48,11 @@ export function useDealerUnit(productId: string, regularPrice: number): { unit: 
   const d = useDealer();
   return useMemo(() => {
     if (!d.active || !d.pricing || !(regularPrice > 0)) return null;
-    const unit = dealerUnitPrice(productId, regularPrice, d.pricing);
+    // Product pages show the first margin tier: below it the order pays regular prices.
+    const unit = dealerUnitPrice(productId, regularPrice, d.pricing, d.settings.tiers[0]?.percent ?? 0);
     if (!(unit < regularPrice)) return null;
     return { unit, percentOff: Math.round((1 - unit / regularPrice) * 100) };
-  }, [d.active, d.pricing, productId, regularPrice]);
+  }, [d.active, d.pricing, d.settings.tiers, productId, regularPrice]);
 }
 
 /** The cart priced for this customer, as api/create-order.ts will price it. */
@@ -60,14 +61,20 @@ export function useDealerQuote(items: Array<{ id: string; price: number; quantit
   return useMemo(() => {
     const lines = items.map((i) => ({ productId: i.id, unit: Number(i.price) || 0, quantity: Number(i.quantity) || 0 }));
     const quote: DealerQuote = dealerQuote(lines, d.settings, d.active ? d.pricing : null, d.active);
-    const potential = d.active ? dealerQuote(lines, { ...d.settings, minOrder: 0 }, d.pricing, true).savings : 0;
+    // What the first tier would save on this cart, for the "add more" nudge.
+    const firstTier = d.settings.tiers[0];
+    const potential =
+      d.active && firstTier
+        ? dealerQuote(lines, { ...d.settings, minOrder: 0, tiers: [{ minOrder: 0, percent: firstTier.percent }] }, d.pricing, true).savings
+        : 0;
     return {
       active: d.active,
       quote,
       pricing: (quote.applies ? 'dealer' : 'retail') as 'dealer' | 'retail',
       potentialSavings: potential,
       minOrder: d.settings.minOrder,
-      discountPercent: d.pricing?.discountPercent ?? 0,
+      discountPercent: quote.applies ? quote.percent : firstTier?.percent ?? 0,
+      tiers: d.settings.tiers,
     };
   }, [items, d.active, d.settings, d.pricing]);
 }
