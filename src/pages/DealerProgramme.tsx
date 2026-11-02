@@ -6,7 +6,7 @@
 // ============================================
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,7 +22,9 @@ import { PartnerTrack, ProgrammeHero, TrackCards, type Track, type TrackCardInfo
 import { usePartner } from '@/hooks/usePartner';
 import { describeError } from '@/lib/errorMessage';
 import type { DealerApplicationInput } from '@/lib/dealerForm';
-import { applyAsDealer, withdrawDealerApplication } from '@/services/dealerService';
+import { DEFAULT_DEALER_SETTINGS, type DealerSettings } from '@/lib/dealer';
+import { applyAsDealer, subscribeDealerSettings, withdrawDealerApplication } from '@/services/dealerService';
+import { GuestApplyPanel } from '@/components/partner/GuestApplyPanel';
 import { applyAsPartner, withdrawPartnerApplication, type PartnerApplicationInput } from '@/services/partnerService';
 
 /** Wallet-style chrome (PurchaseSummary's shell): desktop Header and Footer, phone sticky title bar and bottom nav. */
@@ -68,7 +70,21 @@ const DealerProgramme: React.FC = () => {
   const focusReapplyAfterCancel = useRef(false);
   const lastStatus = useRef<string | null | undefined>(undefined);
 
-  usePageMeta({ title: 'Academy & Dealership Programme', noindex: true });
+  usePageMeta({
+    title: 'Academy & Dealership Programme',
+    description: 'Learn. Teach. Earn. Explore! Stock ICONOIQ in your shop at dealer prices, or partner with us as an academy or teacher and earn on every sale made with your code.',
+    canonicalPath: '/dealer',
+  });
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Guests read the public stockist settings here (useDealer reads nothing for them).
+  const [guestSettings, setGuestSettings] = useState<DealerSettings | null>(null);
+  useEffect(() => {
+    if (user) return;
+    setGuestSettings(null);
+    return subscribeDealerSettings((s) => setGuestSettings(s), () => setGuestSettings({ ...DEFAULT_DEALER_SETTINGS }));
+  }, [user]);
 
   const partner = usePartner();
   const [params] = useSearchParams();
@@ -81,7 +97,9 @@ const DealerProgramme: React.FC = () => {
     if (pStatus !== 'rejected') setPReapplying(false);
   }, [pStatus]);
 
-  const { ready, record, settings, pricing } = dealer;
+  const { record, pricing } = dealer;
+  const settings = user ? dealer.settings : guestSettings ?? DEFAULT_DEALER_SETTINGS;
+  const ready = user ? dealer.ready : guestSettings !== null;
   const status = record?.status ?? null;
 
   // Applying again only makes sense while the application is rejected.
@@ -220,13 +238,17 @@ const DealerProgramme: React.FC = () => {
     toast('Application withdrawn');
   };
 
+  const signInToApply = () => navigate('/login', { state: { from: location, reason: 'dealer' } });
+  const guestApply = user ? undefined : <GuestApplyPanel track={track} onSignIn={signInToApply} />;
+
   return (
     <DealerShell>
       <ProgrammeHero />
       <TrackCards active={track} info={cardInfo} hrefFor={(t) => `/dealer?track=${t}`} />
       {track === 'partner' ? (
         <PartnerTrack
-          loading={!partner.ready || !user}
+          loading={!partner.ready}
+          guestApply={guestApply}
           settings={partner.settings}
           record={partner.record}
           reapplying={pReapplying}
@@ -246,7 +268,8 @@ const DealerProgramme: React.FC = () => {
         />
       ) : (
       <DealerPageView
-        loading={!ready || !user}
+        loading={!ready}
+        guestApply={guestApply}
         record={record}
         programmeOn={settings.enabled}
         tiers={settings.tiers}

@@ -137,6 +137,7 @@ export const PartnerOffer = ({ settings }: { settings: PartnerSettings }) => {
     `Your family discount: use your own code for ${settings.silverPercent}% off your own orders.`,
     `A 1 g silver coin for every ${formatINR(settings.silverStep)} in sales.`,
     ...(settings.customerDiscountPercent > 0 ? [`Customers get ${settings.customerDiscountPercent}% off with your code.`] : []),
+    'A higher tier unlocks as your sales grow.',
   ];
   const perks = PERKS.map((p) => ({ ...p, rule: settings.perks[p.id] })).sort((a, b) => a.rule.unlockAt - b.rule.unlockAt);
   return (
@@ -333,6 +334,8 @@ const AppSummary = ({ title, r }: { title: string; r: PartnerApplicationInput })
 
 export interface PartnerTrackProps {
   loading: boolean;
+  /** A guest: shown in place of the form (sign in, then back here). */
+  guestApply?: React.ReactNode;
   settings: PartnerSettings;
   record: PartnerRecord | null;
   reapplying: boolean;
@@ -349,6 +352,7 @@ const toInput = (r: PartnerRecord): PartnerApplicationInput => ({ name: r.name, 
 
 export const PartnerTrack = ({
   loading,
+  guestApply,
   settings,
   record,
   reapplying,
@@ -386,7 +390,7 @@ export const PartnerTrack = ({
         <div className={twoCol}>
           <motion.div {...enter(0.04)}><PartnerOffer settings={settings} /></motion.div>
           <motion.div {...enter(0.08)}>
-            <PartnerApplyForm
+            {guestApply && !record ? guestApply : <PartnerApplyForm
               key={again ? 'again' : 'new'}
               initial={draft ?? (record ? toInput(record) : prefill)}
               heading={again ? 'Apply again' : undefined}
@@ -394,7 +398,7 @@ export const PartnerTrack = ({
               onSubmit={onSubmit}
               onCancel={again ? onCancelReapply : undefined}
               focusOnMount={again}
-            />
+            />}
           </motion.div>
         </div>
       </>

@@ -272,11 +272,10 @@ const App = () => {
                   </ProtectedRoute>
                 </FeatureGate>
               } />
+              {/* Public: the recruiting page. Guests see both offers and sign in to apply. */}
               <Route path="/dealer" element={
                 <FeatureGate feature="dealers">
-                  <ProtectedRoute requireEmailVerification={false}>
-                    <DealerProgramme />
-                  </ProtectedRoute>
+                  <DealerProgramme />
                 </FeatureGate>
               } />
               <Route path="/security" element={

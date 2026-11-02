@@ -213,6 +213,7 @@ const REASON_COPY: Record<string, string> = {
   checkout: 'Sign in to check out. Your bag is saved.',
   cart: 'Sign in to check out. Your bag is saved.',
   wishlist: 'Sign in to see your saved items.',
+  dealer: 'Sign in or create an account to apply. We will bring you back to the programme page.',
 };
 
 /** Sign-up uses the same password policy as reset (owner decision AUTH-24). */

@@ -283,13 +283,15 @@ export interface PerkDef {
   tab: 'support' | 'claims';
   /** Label of the button. */
   action: string;
+  /** Count perks only: name the next one in the button ("Redeem class 2 of 6"). Passes are interchangeable, so they don't. */
+  numbered?: boolean;
 }
 
 export const PERKS: PerkDef[] = [
   { id: 'catalogue', title: 'Digital catalogue', body: 'The full range as a catalogue to share with your students and parents.', kind: 'once', tab: 'support', action: 'Redeem' },
   { id: 'photos', title: 'Product photographs', body: 'Photos of the range for your posts and notice board.', kind: 'once', tab: 'support', action: 'Redeem' },
   { id: 'pamphlets', title: 'Pamphlets', body: 'Printed pamphlets with your partner code.', kind: 'once', tab: 'support', action: 'Redeem' },
-  { id: 'masterclass', title: 'Masterclasses', body: 'Six masterclasses for you and your students. [NEED: masterclass names]', kind: 'count', tab: 'support', action: 'Redeem class' },
+  { id: 'masterclass', title: 'Masterclasses', body: 'Six masterclasses for you and your students. [NEED: masterclass names]', kind: 'count', tab: 'support', action: 'Redeem class', numbered: true },
   { id: 'passGroup', title: 'Competition passes: group', body: 'National competitions and stage performance passes for groups.', kind: 'count', tab: 'support', action: 'Redeem a pass' },
   { id: 'passSolo', title: 'Competition passes: solo', body: 'National competitions and stage performance passes for solo performers.', kind: 'count', tab: 'support', action: 'Redeem a pass' },
   { id: 'promoTeam', title: 'Promotion team', body: 'One interview, four videos and four posters each month.', kind: 'monthly', tab: 'support', action: 'Request this month' },

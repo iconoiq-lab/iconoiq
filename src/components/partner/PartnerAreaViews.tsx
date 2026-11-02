@@ -261,9 +261,10 @@ const PerkCard = ({
   const mine = claims.filter((c) => c.perk === def.id && (def.kind !== 'monthly' || c.month === month));
   const done = s.left === 0 && unlocked;
   const label =
-    def.kind === 'count' && s.nextIndex
-      ? `${def.action} ${s.nextIndex}`
+    def.kind === 'count' && def.numbered && s.nextIndex
+      ? `${def.action} ${s.nextIndex} of ${total}`
       : def.action;
+  const fulfilledOnce = def.kind === 'once' && done && mine[0]?.status === 'fulfilled';
 
   return (
     <li className={cn('panel tx-sheet flex flex-col p-5', !unlocked && 'bg-muted/40')}>
@@ -282,6 +283,8 @@ const PerkCard = ({
             <span className="sr-only">Locked. </span>
             {unlockLabel(rule.unlockAt)}
           </span>
+        ) : fulfilledOnce ? (
+          <span className="sr-only">Done.</span>
         ) : (
           <span className="text-xs text-muted-foreground tabular-nums">
             {def.kind === 'count'
@@ -291,9 +294,7 @@ const PerkCard = ({
                   ? `Requested for ${monthLabel(month)}`
                   : `One request each month`
                 : done
-                  ? mine[0]?.status === 'fulfilled'
-                    ? 'Fulfilled'
-                    : 'Requested, we will be in touch'
+                  ? 'Requested, we will be in touch'
                   : 'Ready to redeem'}
             {s.fulfilled > 0 && def.kind !== 'once' && ` · ${s.fulfilled} fulfilled`}
           </span>
@@ -304,7 +305,7 @@ const PerkCard = ({
             {label}
           </Button>
         )}
-        {unlocked && done && def.kind === 'once' && mine[0]?.status === 'fulfilled' && (
+        {fulfilledOnce && (
           <StatusBadge tone="success" icon={CheckCircle2} label="Fulfilled" />
         )}
       </div>

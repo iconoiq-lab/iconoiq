@@ -624,6 +624,8 @@ export const DealerTerms = ({ tiers, hasGstin }: { tiers: DealerTier[]; hasGstin
 export interface DealerPageViewProps {
   /** Dealer state is still loading (sign-in, settings, own application). */
   loading?: boolean;
+  /** A guest: shown in place of the form (sign in, then back here). */
+  guestApply?: React.ReactNode;
   record: DealerRecord | null;
   /** The programme switch (siteSettings/dealer.enabled). */
   programmeOn: boolean;
@@ -662,6 +664,7 @@ const toInput = (r: DealerRecord): DealerApplicationInput => ({
 
 export const DealerPageView = ({
   loading = false,
+  guestApply,
   record,
   programmeOn,
   tiers,
@@ -708,7 +711,7 @@ export const DealerPageView = ({
         <div className={twoCol}>
           <motion.div {...enter(0.04)}><HowItWorks tiers={tiers} /></motion.div>
           <motion.div {...enter(0.08)}>
-            <DealerApplyForm
+            {guestApply && !record ? guestApply : <DealerApplyForm
               key={again ? 'again' : 'new'}
               initial={draft ?? (record ? toInput(record) : prefill)}
               heading={again ? 'Apply again' : undefined}
@@ -716,7 +719,7 @@ export const DealerPageView = ({
               onSubmit={onSubmit}
               onCancel={again ? onCancelReapply : undefined}
               focusOnMount={again}
-            />
+            />}
           </motion.div>
         </div>
       </>

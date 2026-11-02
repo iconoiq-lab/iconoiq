@@ -51,5 +51,6 @@ export function usePartner(): PartnerState {
     );
   }, [uid]);
 
-  return { ready: Boolean(uid) && recordReady && settingsReady, record, settings, error };
+  // A guest has no record to wait for: ready once the public settings answered (/dealer is public).
+  return { ready: (uid ? recordReady : true) && settingsReady, record, settings, error };
 }
