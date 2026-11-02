@@ -1,6 +1,6 @@
 # ICONOIQ: progress
 
-**Overall: 70% (23 of 33 steps done, 1 waiting)**
+**Overall: 69% (24 of 35 steps done, 2 waiting)**
 
 ✅ done · ⏳ to do or in progress · ⛔ waiting on the client or the owner (say what in the line). After ticking steps, run `node scripts/progress.mjs` to update the line above. Add or remove steps to fit the client (new features go under Phase 4).
 
@@ -41,6 +41,8 @@
 ## Phase 4. New features
 
 - ✅ List new features, one line each from `REQUIREMENTS.md`: none for now (owner, 2026-10-17: no functionality changes). Later, only if the client asks: loyalty card purchase, scratch prizes beyond points, paid dealer membership
+- ✅ Academy & Dealership Programme (client PLANS.pdf, 2026-11-02): spec `docs/specs/academy-dealership-programme.md`; public /dealer page, partner area, stockist area, Admin > Partners, stockist margin tiers; reviewed, tests pass. Not deployed
+- ⛔ Deploy the programme, then turn on the dealers switch in Admin (waiting on the owner's yes)
 
 ## Phase 5. Accounts
 
@@ -78,6 +80,9 @@
 - [NEED: launch coupons or offers, or "none"]
 - [NEED: processing time before dispatch]
 - [NEED: reference sites and dislikes for the look] (Phase 2; "choose for us" works)
+- [NEED: programme: customer discount % when a shopper uses a partner's code] (0% for now)
+- [NEED: programme: stockist tiers per single order (assumed) or cumulative]
+- [NEED: programme: masterclass names, international-trip terms, how silver coins are delivered]
 - [NEED: GST: confirm no GST is charged, and what changes once the client registers]
 - Provisional selling rules, to confirm in Phase 6: delivery ₹50 inside Telangana and ₹100 outside, free above ₹999, 4-7 business days, 7-day returns for any reason, reply within 24 hours, the template's policy pages
 - Phase 5: Firebase project created (iconoiq-85b53), setup pending, Razorpay KYC (in progress), Vercel, WhatsApp Business API account, Gemini API key, image storage (Cloudinary or Cloudflare R2)

@@ -7,11 +7,11 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-10-22 (template port done: the card change, `useAutoScroll` step mode and the 2026-10-22 fixes are committed in the template, `08936f3`..`c6404d6`; NOT deployed anywhere).
+Last updated: 2026-11-02 (Academy & Dealership Programme built, reviewed and committed up to `fadf03f`; NOT deployed).
 
 ## State
 
-- **2026-11-02, in progress: Academy & Dealership Programme** (client PLANS.pdf). Spec: `docs/specs/academy-dealership-programme.md` (commit `b06e5ab`). Being built by a builder agent; if the chat ended mid-build, check `git log` for its commits, then run `npm test` + `node scripts/check.mjs` and finish what's missing against the spec. Owner said: do NOT deploy yet. Browser "javani spiritual hub" = deviceId a9ed28d9 (not logged into Vercel; Razorpay blocked for the extension).
+- **Academy & Dealership Programme (2026-11-02, done, not deployed):** client PLANS.pdf; spec `docs/specs/academy-dealership-programme.md`. Public `/dealer`, partner area `/account/partner`, stockist area, Admin > Partners, stockist margin tiers (dealer-core, synced into create-order). Partner credit runs in notify-order `reconcile-rewards`; `refresh-partner` action updates totals. Private sales in `partnerPrivate/{uid}` (partners never see their sales value). Rules tests `tests/partnerRules.emulator.test.ts`; screenshots `.shots/programme`. Reviewer findings fixed. Open questions in the PROGRESS.md [NEED] list. Browser "javani spiritual hub" = deviceId a9ed28d9 (not logged into Vercel).
 
 - **Branch:** main, local commits ahead of `origin` (github.com/iconoiq-lab/iconoiq; Vercel `javani1/iconoiq` deploys from it, so push = deploy). The template is the `template` remote.
 - **Done:** Phases 0-3 (look "Temple Modern"); Firebase `iconoiq-85b53` with rules, 12 indexes and the dummy catalogue (`node scripts/seed-iconoiq.mjs`, all `demo: true`); Cloudflare R2 + analytics token; Vercel vars; domain iconoiq.com on Vercel (www). Details in the archive file.
@@ -29,8 +29,8 @@ Last updated: 2026-10-22 (template port done: the card change, `useAutoScroll` s
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 1 | **Deploy, only on the owner's yes:** `git push origin main` (Vercel builds it). Then on www.iconoiq.com: Admin > Settings shows the alert number field from the store setting; cart says "Calculated at address" before an address; the Razorpay screen shows the logo once keys exist. The other store deploys from its own repo on a separate yes | No | Medium |
-| 2 | After the deploy: on www.iconoiq.com open Admin > Categories, move one category and back, and check the menu strip follows; the other store gets the same check after its own deploy | No | Medium |
+| 1 | **Deploy, only on the owner's yes:** `git push origin main` (Vercel builds it). Includes the Academy & Dealership Programme. Then on www.iconoiq.com: Admin > Settings shows the alert number field from the store setting; cart says "Calculated at address" before an address; the Razorpay screen shows the logo once keys exist. The other store deploys from its own repo on a separate yes | No | Medium |
+| 2 | After the deploy: Admin > Settings turns on the dealers switch (programme); apply as a partner with a test account, approve it in Admin > Partners, place an order with the code, mark delivered, check the earning shows held. Also open Admin > Categories, move one category and back, and check the menu strip follows; the other store gets the same check after its own deploy | No | Medium |
 | 3 | Phase 5 when the Razorpay keys arrive: keys into `.env` and Vercel, then a test order end to end (`docs/setup/`) | No | High |
 | 4 | Before launch: remove the test data (above); owner changes the admin@iconoiq.com password and sets the alert WhatsApp number (Admin > Settings); social links; COD yes/no (some COD code exists in `orderStatus.ts`/`orderService.ts`) | No | Medium |
 | 5 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
