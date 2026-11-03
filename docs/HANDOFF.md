@@ -7,7 +7,7 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-02 (Academy & Dealership Programme built, reviewed and committed up to `fadf03f`; NOT deployed).
+Last updated: 2026-11-03 (pushed b35ea64 to origin main = deployed via Vercel; step 1 done, do the step 1 live checks + step 2).
 
 ## State
 
