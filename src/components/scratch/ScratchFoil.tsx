@@ -24,7 +24,14 @@ type Point = { x: number; y: number };
 /** Drawn in the foil's ring: the store's initials ("Demo Store" -> "DS"). */
 const MONOGRAM = brandMonogram(BRAND.name);
 
-function paintFoil(ctx: CanvasRenderingContext2D, w: number, h: number, dpr: number) {
+interface FoilLook {
+  /** The small line under SCRATCH TO REVEAL. */
+  hint: string;
+  /** A round foil (a coin), its bevel drawn as a ring. */
+  round: boolean;
+}
+
+function paintFoil(ctx: CanvasRenderingContext2D, w: number, h: number, dpr: number, look: FoilLook) {
   ctx.globalCompositeOperation = 'source-over';
   const g = ctx.createLinearGradient(0, 0, w, h);
   FOIL_STOPS.forEach(([p, c]) => g.addColorStop(p, c));
@@ -42,7 +49,13 @@ function paintFoil(ctx: CanvasRenderingContext2D, w: number, h: number, dpr: num
   // Inner bevel.
   ctx.strokeStyle = 'rgba(255,255,255,.55)';
   ctx.lineWidth = 1.5 * dpr;
-  ctx.strokeRect(6 * dpr, 6 * dpr, w - 12 * dpr, h - 12 * dpr);
+  if (look.round) {
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, Math.min(w, h) / 2 - 6 * dpr, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.strokeRect(6 * dpr, 6 * dpr, w - 12 * dpr, h - 12 * dpr);
+  }
   // Monogram ring and the instructions.
   const cx = w / 2;
   const spaced = ctx as unknown as { letterSpacing: string };
@@ -56,13 +69,22 @@ function paintFoil(ctx: CanvasRenderingContext2D, w: number, h: number, dpr: num
   const heading = fontStack('heading');
   ctx.font = `700 ${Math.round(h * 0.12)}px ${heading}`;
   ctx.fillText(MONOGRAM, cx, h * 0.385);
+  if (look.round) {
+    // A coin is too narrow for the full line and a hint small enough to fit would be unreadable;
+    // the card's own help line under it says how to scratch.
+    ctx.font = `700 ${Math.round(h * 0.085)}px ${heading}`;
+    spaced.letterSpacing = `${Math.round(h * 0.02)}px`;
+    ctx.fillText('SCRATCH', cx, h * 0.68);
+    spaced.letterSpacing = '0px';
+    return;
+  }
   ctx.font = `700 ${Math.round(h * 0.068)}px ${heading}`;
   spaced.letterSpacing = `${Math.round(h * 0.022)}px`;
   ctx.fillText('SCRATCH TO REVEAL', cx, h * 0.68);
   spaced.letterSpacing = '0px';
   ctx.font = `500 ${Math.round(h * 0.052)}px ${fontStack('body')}`;
   ctx.fillStyle = 'rgba(27,26,24,.6)';
-  ctx.fillText('or press Reveal prize below', cx, h * 0.8);
+  ctx.fillText(look.hint, cx, h * 0.8);
 }
 
 interface ScratchFoilProps {
@@ -73,6 +95,10 @@ interface ScratchFoilProps {
   onFirstStroke: () => void;
   /** Called once, when over half the foil is scratched off. */
   onCleared: () => void;
+  /** The small line under SCRATCH TO REVEAL (default: the Reveal prize button). */
+  hint?: string;
+  /** A round foil over a coin. */
+  round?: boolean;
 }
 
 /**
@@ -80,7 +106,14 @@ interface ScratchFoilProps {
  * round brush. Purely visual (`aria-hidden`); the Reveal prize button is the
  * keyboard and screen-reader path.
  */
-export function ScratchFoil({ resetKey, fading, onFirstStroke, onCleared }: ScratchFoilProps) {
+export function ScratchFoil({
+  resetKey,
+  fading,
+  onFirstStroke,
+  onCleared,
+  hint = 'or press Reveal prize below',
+  round = false,
+}: ScratchFoilProps) {
   const ref = useRef<HTMLCanvasElement>(null);
   const last = useRef<Point | null>(null);
   const moves = useRef(0);
@@ -113,7 +146,7 @@ export function ScratchFoil({ resetKey, fading, onFirstStroke, onCleared }: Scra
       el.width = Math.round(w * dpr);
       el.height = Math.round(h * dpr);
       const ctx = context();
-      if (ctx) paintFoil(ctx, el.width, el.height, dpr);
+      if (ctx) paintFoil(ctx, el.width, el.height, dpr, { hint, round });
     };
     const observer = new ResizeObserver(paint);
     observer.observe(el);
@@ -127,7 +160,7 @@ export function ScratchFoil({ resetKey, fading, onFirstStroke, onCleared }: Scra
       live = false;
       observer.disconnect();
     };
-  }, [resetKey]);
+  }, [resetKey, hint, round]);
 
   const stroke = (from: Point, to: Point) => {
     const el = ref.current;
@@ -152,9 +185,20 @@ export function ScratchFoil({ resetKey, fading, onFirstStroke, onCleared }: Scra
     const ctx = context();
     if (!el || !ctx || !el.width || !el.height) return 0;
     const { data } = ctx.getImageData(0, 0, el.width, el.height);
+    const w = el.width;
+    const cx = w / 2;
+    const cy = el.height / 2;
+    const r2 = (Math.min(w, el.height) / 2) ** 2;
     let clear = 0;
     let total = 0;
     for (let i = 3; i < data.length; i += 4 * SAMPLE_EVERY) {
+      // A round foil counts only the coin, not the corners the rounding hides.
+      if (round) {
+        const px = (i - 3) / 4;
+        const dx = (px % w) - cx;
+        const dy = Math.floor(px / w) - cy;
+        if (dx * dx + dy * dy > r2) continue;
+      }
       total++;
       if (data[i] < 128) clear++;
     }
@@ -185,6 +229,7 @@ export function ScratchFoil({ resetKey, fading, onFirstStroke, onCleared }: Scra
       aria-hidden="true"
       className={cn(
         'absolute inset-0 size-full cursor-grab touch-none select-none transition-opacity duration-drawer ease-out active:cursor-grabbing',
+        round && 'rounded-full',
         fading && 'pointer-events-none opacity-0',
       )}
       onPointerDown={(e) => {

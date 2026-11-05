@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { SmartImage } from "@/components/ui/smart-image";
 import { ScratchCardOrderNote } from "@/components/scratch/ScratchCardOrderNote";
+import { CoinGiftOrderNote } from "@/components/coin/CoinGiftOrderNote";
 import { getScratchCard, type ScratchCard } from "@/services/scratchWinService";
 import { BRAND } from "@/config/brand";
 import { useCustomerSupport } from "@/hooks/useCustomerSupport";
@@ -1314,6 +1315,7 @@ const OrderDetailsPage = () => {
             </p>
           )}
           <ScratchCardOrderNote card={scratchCard} nowMs={Date.now()} />
+          <CoinGiftOrderNote orderId={scratchOrderId} />
         </section>
 
         {/* Share order details + invoice */}

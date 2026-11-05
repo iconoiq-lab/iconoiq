@@ -453,7 +453,9 @@ service cloud.firestore {
             'returnStatus', 'returnRequestedAt', 'returnApprovedAt', 'returnScheduledAt', 'returnCancelled',
             'pointsEarned', 'pointsEarnedState', 'pointsUnlockAt', 'paymentVerifiedAt',
             'refundReceiptUrl', 'paymentCollectedAt', 'paymentCollectedBy',
-            'partnerCode', 'partnerUid', 'partnerFamily'
+            'partnerCode', 'partnerUid', 'partnerFamily',
+            // Lakshmi coin card: written only by api/notify-order.ts (mirror of payments/<id>.coinGift).
+            'coinGift'
           ]);
       }
       

@@ -49,6 +49,7 @@ import { DUR, EASE_DRAWER, EASE_OUT } from '@/lib/motion';
 import { RETURNS_CHIP_LABEL } from '@/lib/returnWindow';
 import { BRAND } from '@/config/brand';
 import { isOn } from '@/config/features';
+import { CoinGiftPrompt } from '@/components/coin/CoinGiftDialog';
 
 const HEADING_FONT = { fontFamily: "var(--font-heading)", fontStretch: "var(--font-heading-stretch)" } as const;
 
@@ -2226,6 +2227,8 @@ const MobileCheckout = () => {
                 Done
               </button>
             </div>
+            {/* The Lakshmi coin card pops up once the server has given this order a coin. */}
+            <CoinGiftPrompt orderId={firestoreOrderId} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -3361,6 +3364,8 @@ const Checkout = () => {
               Done
             </button>
           </div>
+          {/* The Lakshmi coin card pops up once the server has given this order a coin. */}
+          {showOrderSuccess && <CoinGiftPrompt orderId={firestoreOrderId} />}
         </DialogContent>
       </Dialog>
 

@@ -483,6 +483,108 @@ function planScratchReconcile(i: ScratchReconcileInput): ScratchReconcilePlan {
 }
 // <<< scratch-core
 
+// >>> coin-core
+type CoinType = 'silver' | 'gold';
+
+interface CoinGiftSettings {
+  enabled: boolean;
+  /** Rupees of goods (cart value before coupons, delivery and rewards) at or above which an order gets a coin. */
+  minOrder: number;
+  /** Every Nth coin order is gold (4: orders 4, 8, 12 ...). */
+  goldEvery: number;
+}
+
+const DEFAULT_COIN_SETTINGS: CoinGiftSettings = { enabled: false, minOrder: 3500, goldEvery: 4 };
+
+function normaliseCoinSettings(raw: Partial<CoinGiftSettings> | null | undefined): CoinGiftSettings {
+  const whole = (v: unknown, fallback: number, min: number, max: number) => {
+    const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.floor(n))) : fallback;
+  };
+  const d = DEFAULT_COIN_SETTINGS;
+  return {
+    enabled: raw?.enabled === true,
+    minOrder: whole(raw?.minOrder, d.minOrder, 0, 10_000_000),
+    goldEvery: whole(raw?.goldEvery, d.goldEvery, 1, 100),
+  };
+}
+
+/** The coin for place `seq` (1-based) in the customer's current run of coins; the run ends with a gold one. */
+function coinTypeFor(seq: number, s: CoinGiftSettings): CoinType {
+  return seq >= s.goldEvery ? 'gold' : 'silver';
+}
+
+/** One of the customer's other coins that is still active. */
+interface CoinSeen {
+  type: CoinType;
+  /** When it was decided, ms. */
+  decidedAtMs: number;
+}
+
+/**
+ * The next coin's place in the customer's current run: one more than the
+ * active coins decided since their latest active gold. A cancelled coin drops
+ * out, so cancelling an earlier order can never give two golds in a row.
+ */
+function nextRunPlace(others: CoinSeen[]): number {
+  const lastGold = others.reduce((t, c) => (c.type === 'gold' ? Math.max(t, c.decidedAtMs) : t), -Infinity);
+  return others.filter((c) => c.decidedAtMs > lastGold).length + 1;
+}
+
+interface CoinGiftRecord {
+  type: CoinType;
+  /** Its place in the customer's run of coins (1-based; gold ends the run). */
+  seq: number;
+  status: 'active' | 'void';
+  voidedBy?: string;
+}
+
+interface CoinPlanInput {
+  settings: CoinGiftSettings;
+  /** The payment's existing gift, if one was given. */
+  gift: CoinGiftRecord | null;
+  /** Rupees of goods before coupons (payments.subtotal). */
+  goodsRupees: number;
+  /** A dealer-priced order. */
+  dealer: boolean;
+  /** Cancelled, returned or refunded. */
+  ended: boolean;
+  /** payments.verifiedAt in ms (0 when unknown). */
+  paidAtMs: number;
+  /** When the switch was last turned on (siteSettings/coinGift.enabledAt), 0 when unknown. */
+  enabledAtMs: number;
+  /** The customer's other coin gifts that are still active. */
+  others: CoinSeen[];
+}
+
+type CoinPlan =
+  | { action: 'create'; type: CoinType; seq: number }
+  | { action: 'void' }
+  | { action: 'restore' }
+  | { action: 'none' };
+
+/**
+ * What reconcile does with an order's coin. A coin is decided once and never
+ * changes type (the card may already be packed); it is voided when the order
+ * ends, so it no longer counts towards the next gold, and restored if the shop
+ * reopens the order. A coin voided by the shop by hand is left alone.
+ */
+function planCoinGift(i: CoinPlanInput): CoinPlan {
+  const g = i.gift;
+  if (g) {
+    if (g.status === 'active' && i.ended) return { action: 'void' };
+    if (g.status === 'void' && g.voidedBy === 'server' && !i.ended) return { action: 'restore' };
+    return { action: 'none' };
+  }
+  if (!i.settings.enabled || i.ended || i.dealer) return { action: 'none' };
+  if (!(i.goodsRupees >= i.settings.minOrder)) return { action: 'none' };
+  // No coins for orders paid while the switch was off (deviceless server times: a minute's slack).
+  if (i.paidAtMs > 0 && i.paidAtMs < i.enabledAtMs - 60_000) return { action: 'none' };
+  const seq = nextRunPlace(i.others);
+  return { action: 'create', type: coinTypeFor(seq, i.settings), seq };
+}
+// <<< coin-core
+
 // >>> partner-core
 type PartnerTier = 'silver' | 'gold';
 
@@ -826,6 +928,8 @@ interface PaymentRecord {
   partnerUnits?: number;
   partnerFamily?: boolean;
   partnerSavings?: number;
+  /** Rupees of goods before coupons, delivery and rewards (rw_sub note; older payments lack it). */
+  subtotal?: number;
 }
 
 /** payments/<rzp> from a paid Razorpay order's notes (what verify-payment writes). */
@@ -845,6 +949,7 @@ async function writePaymentRecord(
     pointsValue: money(notes.rw_pv),
     cashback: whole(notes.rw_cashback),
     cartHash: String(notes.rw_cart || ''),
+    ...(notes.rw_sub != null && String(notes.rw_sub) !== '' ? { subtotal: money(notes.rw_sub) } : {}),
     ...(notes.rw_dealer === '1' ? { dealer: true, regularSubtotal: money(notes.rw_regular) } : {}),
     ...partnerFieldsFromNote(notes.rw_partner),
     status: 'verified',
@@ -1190,6 +1295,9 @@ export async function reconcileRewards(
   // 4. Scratch card: given on delivery, cancelled (or its prize voided) when the order ends.
   changed.push(...(await reconcileScratchCard(db, uid, rzp, payment, settings)));
 
+  // 4c. Lakshmi coin card: silver or gold, decided once when the order is paid (see reconcileCoinGift).
+  changed.push(...(await reconcileCoinGift(db, uid, rzp)));
+
   // 4b. Academy partner commission on this order (see reconcilePartner).
   if (payment.partnerUid && payment.partnerCode) {
     const p = await reconcilePartner(db, orderId, rzp, order, payment, now);
@@ -1455,6 +1563,132 @@ async function loadScratchSettings(
   return { scratch: normaliseScratchSettings(raw as Partial<ScratchWinSettings> | undefined), enabledAtMs: millis(raw?.enabledAt) };
 }
 
+/** siteSettings/coinGift, and when its switch was last turned on (0 when unknown). */
+async function loadCoinSettings(db: admin.firestore.Firestore): Promise<{ coin: CoinGiftSettings; enabledAtMs: number }> {
+  const snap = await db.collection('siteSettings').doc('coinGift').get();
+  const raw = snap.exists ? snap.data() : undefined;
+  return { coin: normaliseCoinSettings(raw as Partial<CoinGiftSettings> | undefined), enabledAtMs: millis(raw?.enabledAt) };
+}
+
+type StoredCoin = CoinGiftRecord & Record<string, any>;
+
+const readCoinRecord = (raw: any): StoredCoin | null =>
+  raw && (raw.type === 'silver' || raw.type === 'gold') ? (raw as StoredCoin) : null;
+
+/** What the order pages show of a payment's coin (orders/<rzp>.coinGift). */
+function coinMirror(g: StoredCoin | null) {
+  if (!g) return null;
+  return {
+    type: g.type,
+    seq: whole(g.seq),
+    status: g.status === 'void' ? 'void' : 'active',
+    ...(g.revealedAt ? { revealedAt: g.revealedAt } : {}),
+  };
+}
+
+const sameCoinMirror = (a: ReturnType<typeof coinMirror>, b: any) =>
+  a === null
+    ? b == null
+    : !!b && b.type === a.type && whole(b.seq) === a.seq && b.status === a.status && millis(b.revealedAt) === millis(a.revealedAt);
+
+/**
+ * The Lakshmi coin card of a paid order (spec docs/specs/lakshmi-coin-gift.md).
+ * payments/<rzp>.coinGift is the shop's record (server-only); orders/<rzp>.coinGift
+ * mirrors it for the order pages and is overwritten if anything else wrote it.
+ * The customer's coin orders are counted inside the transaction, so two orders
+ * reconciled at the same moment cannot both get the same coin number.
+ */
+async function reconcileCoinGift(db: admin.firestore.Firestore, uid: string, rzp: string): Promise<string[]> {
+  const { coin, enabledAtMs } = await loadCoinSettings(db);
+  const orderRef = db.collection('orders').doc(rzp);
+  const payRef = db.collection('payments').doc(rzp);
+  return db.runTransaction(async (tx) => {
+    const orderSnap = await tx.get(orderRef);
+    const paySnap = await tx.get(payRef);
+    const order = orderSnap.data();
+    const pay = paySnap.data();
+    if (!order || order.userId !== uid || !pay || pay.uid !== uid) return [];
+    const ended = ENDED_STATUSES.includes(String(order.status || ''));
+    const existing = readCoinRecord(pay.coinGift);
+    // Goods before coupons; a payment from before the rw_sub note falls back to its earn base.
+    const goodsRupees = pay.subtotal != null ? money(pay.subtotal) : money(pay.base);
+    const dealer = pay.dealer === true;
+    const others: CoinSeen[] = [];
+    if (!existing && coin.enabled && !ended && !dealer && goodsRupees >= coin.minOrder) {
+      const mine = await tx.get(db.collection('payments').where('uid', '==', uid));
+      for (const d of mine.docs) {
+        const g = d.id === rzp ? null : readCoinRecord(d.data()?.coinGift);
+        if (g?.status === 'active') others.push({ type: g.type, decidedAtMs: millis(g.decidedAt) });
+      }
+    }
+    const plan = planCoinGift({
+      settings: coin,
+      gift: existing,
+      goodsRupees,
+      dealer,
+      ended,
+      paidAtMs: millis(pay.verifiedAt),
+      enabledAtMs,
+      others,
+    });
+    const now = admin.firestore.Timestamp.now();
+    const changed: string[] = [];
+    let gift = existing;
+    if (plan.action === 'create') {
+      gift = { type: plan.type, seq: plan.seq, status: 'active', decidedAt: now };
+      tx.update(payRef, { coinGift: gift });
+      changed.push(`coin:${plan.type}#${plan.seq}`);
+    } else if (plan.action === 'void' && existing) {
+      gift = { ...existing, status: 'void', voidedAt: now, voidedBy: 'server' };
+      tx.update(payRef, { 'coinGift.status': 'void', 'coinGift.voidedAt': now, 'coinGift.voidedBy': 'server' });
+      changed.push('coin:void');
+    } else if (plan.action === 'restore' && existing) {
+      const { voidedBy: _voidedBy, ...rest } = existing;
+      gift = { ...rest, status: 'active', restoredAt: now } as StoredCoin;
+      tx.update(payRef, {
+        'coinGift.status': 'active',
+        'coinGift.restoredAt': now,
+        'coinGift.voidedBy': admin.firestore.FieldValue.delete(),
+      });
+      changed.push('coin:restore');
+    }
+    const want = coinMirror(gift);
+    if (!sameCoinMirror(want, order.coinGift)) {
+      tx.update(orderRef, { coinGift: want ?? admin.firestore.FieldValue.delete() });
+      changed.push('order:coinGift');
+    }
+    return changed;
+  });
+}
+
+/**
+ * The customer scratched the coin card on screen: stamp revealedAt on the
+ * payment and the order, so the card is not offered again. Idempotent.
+ */
+async function revealCoinGift(
+  db: admin.firestore.Firestore,
+  uid: string,
+  rzp: string,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const orderRef = db.collection('orders').doc(rzp);
+  const payRef = db.collection('payments').doc(rzp);
+  return db.runTransaction(async (tx) => {
+    const orderSnap = await tx.get(orderRef);
+    const paySnap = await tx.get(payRef);
+    const order = orderSnap.data();
+    const pay = paySnap.data();
+    const g = readCoinRecord(pay?.coinGift);
+    if (!order || order.userId !== uid || !pay || pay.uid !== uid || !g) {
+      return { status: 404, body: { error: 'coin_not_found' } };
+    }
+    const revealedAt = g.revealedAt || admin.firestore.Timestamp.now();
+    if (!g.revealedAt) tx.update(payRef, { 'coinGift.revealedAt': revealedAt });
+    const want = coinMirror({ ...g, revealedAt });
+    if (!sameCoinMirror(want, order.coinGift)) tx.update(orderRef, { coinGift: want });
+    return { status: 200, body: { ok: true, type: g.type, seq: whole(g.seq), status: g.status } };
+  });
+}
+
 /**
  * Give, cancel or restore an order's scratch card, and keep a won prize in
  * line with the order (see planScratchReconcile). One transaction that also
@@ -1680,6 +1914,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
      * 'reconcile-rewards': sync this order's payment and points/cashback instead of sending a push.
      * 'release-holds': free points/cashback reserved by unpaid checkouts (no orderId needed).
      * 'scratch-card': scratch the caller's card for orderId; the server draws the prize.
+     * 'coin-reveal': the caller scratched the Lakshmi coin card of their order orderId.
      */
     action?: string;
     orderId?: string;
@@ -1703,11 +1938,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const isRelease = body.action === 'release-holds';
   const isScratch = body.action === 'scratch-card';
   const isPartnerRefresh = body.action === 'refresh-partner';
+  const isCoinReveal = body.action === 'coin-reveal';
   if (!orderId && !isRelease && !isPartnerRefresh) return res.status(400).json({ error: 'orderId is required' });
   // An order id (and a card id, a document id under the caller's own user
   // document) is one path segment: a slash would reach another document.
   if (orderId && !/^[\w-]{1,128}$/.test(orderId)) return res.status(400).json({ error: 'invalid orderId' });
-  if (!isReconcile && !isRelease && !isScratch && !isPartnerRefresh) {
+  if (!isReconcile && !isRelease && !isScratch && !isPartnerRefresh && !isCoinReveal) {
     if (!audience || !['customer', 'admins', 'delivery'].includes(audience)) {
       return res.status(400).json({ error: 'audience must be customer|admins|delivery' });
     }
@@ -1785,6 +2021,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Nothing was written: the card stays unscratched for another try.
       console.error('[notify-order] scratch-card failed:', err instanceof Error ? err.message : err);
       return res.status(503).json({ error: 'scratch_failed' });
+    }
+  }
+
+  if (isCoinReveal) {
+    try {
+      // Always the caller's own order (orders/<orderId>.userId and the payment's uid).
+      const r = await revealCoinGift(db, callerUid, orderId);
+      return res.status(r.status).json(r.body);
+    } catch (err) {
+      console.error('[notify-order] coin-reveal failed:', err instanceof Error ? err.message : err);
+      return res.status(503).json({ error: 'reveal_failed' });
     }
   }
 

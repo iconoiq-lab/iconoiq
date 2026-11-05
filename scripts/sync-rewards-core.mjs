@@ -3,6 +3,7 @@
 // carry their own copy (api/ files import nothing from src/):
 //   rewards-core  src/lib/rewards.ts    -> api/create-order.ts, api/notify-order.ts
 //   scratch-core  src/lib/scratchWin.ts -> api/notify-order.ts
+//   coin-core     src/lib/coinGift.ts   -> api/notify-order.ts
 //   dealer-core   src/lib/dealer.ts     -> api/create-order.ts
 //   partner-core  src/lib/partner.ts    -> api/create-order.ts, api/notify-order.ts, api/verify-payment.ts
 // tests/rewards-parity.test.ts fails until this has been run after an edit.
@@ -11,6 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const BLOCKS = [
   { name: 'rewards-core', source: 'src/lib/rewards.ts', copies: ['api/create-order.ts', 'api/notify-order.ts'] },
   { name: 'scratch-core', source: 'src/lib/scratchWin.ts', copies: ['api/notify-order.ts'] },
+  { name: 'coin-core', source: 'src/lib/coinGift.ts', copies: ['api/notify-order.ts'] },
   { name: 'dealer-core', source: 'src/lib/dealer.ts', copies: ['api/create-order.ts'] },
   { name: 'partner-core', source: 'src/lib/partner.ts', copies: ['api/create-order.ts', 'api/notify-order.ts', 'api/verify-payment.ts'] },
 ];

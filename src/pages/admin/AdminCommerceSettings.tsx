@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Store,
   Ticket,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { DealerSettingsTab } from '@/components/admin/DealerSettingsTab';
 import { LoyaltyTiersSection } from '@/components/admin/LoyaltyTiersSection';
 import { ScratchWinSettingsTab } from '@/components/admin/ScratchWinSettingsTab';
+import { CoinGiftSettingsTab } from '@/components/admin/CoinGiftSettingsTab';
 import { hasTierErrors, rewardSettingsAdjusted } from '@/lib/loyaltyTiersForm';
 import { fadeUp } from '@/lib/motion';
 import {
@@ -969,7 +971,7 @@ const RewardsTab = () => {
   );
 };
 
-const COMMERCE_TABS = ['delivery', 'support', 'rewards', 'scratch', 'dealers'] as const;
+const COMMERCE_TABS = ['delivery', 'support', 'rewards', 'scratch', 'coin', 'dealers'] as const;
 
 // Tabs that belong to a feature switch. A switched-off tab is not shown and ?tab= cannot open it.
 const TAB_FEATURE: Partial<Record<(typeof COMMERCE_TABS)[number], FeatureKey>> = {
@@ -993,6 +995,7 @@ const AdminCommerceSettings = () => {
     'customer support',
     ...(tabIsOn('rewards') ? ['rewards'] : []),
     ...(tabIsOn('scratch') ? ['Scratch & Win'] : []),
+    'Lakshmi coin',
     ...(tabIsOn('dealers') ? ['dealers'] : []),
   ];
   const areaList = areas.length > 1 ? `${areas.slice(0, -1).join(', ')} and ${areas[areas.length - 1]}` : areas[0];
@@ -1022,6 +1025,9 @@ const AdminCommerceSettings = () => {
               <Ticket aria-hidden="true" className="h-4 w-4" /> Scratch &amp; Win
             </TabsTrigger>
           )}
+          <TabsTrigger value="coin" className="gap-1.5">
+            <Gift aria-hidden="true" className="h-4 w-4" /> Lakshmi coin
+          </TabsTrigger>
           {tabIsOn('dealers') && (
             <TabsTrigger value="dealers" className="gap-1.5">
               <Store aria-hidden="true" className="h-4 w-4" /> Dealers
@@ -1045,6 +1051,9 @@ const AdminCommerceSettings = () => {
             <ScratchWinSettingsTab />
           </TabsContent>
         )}
+        <TabsContent value="coin">
+          <CoinGiftSettingsTab />
+        </TabsContent>
         {tabIsOn('dealers') && (
           <TabsContent value="dealers">
             <DealerSettingsTab />

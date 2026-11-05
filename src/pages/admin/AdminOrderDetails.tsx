@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   TriangleAlert,
   Ticket,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -46,6 +47,7 @@ import { dealerOrderTotals } from '@/lib/dealerPriceForm';
 import { DealerOrderChip, DealerOrderTotalsRows } from '@/components/admin/DealerOrderRows';
 import { scratchCardView, voidReasonText } from '@/lib/scratchWin';
 import { getScratchCard, type ScratchCard } from '@/services/scratchWinService';
+import { coinName, readOrderCoinGift } from '@/lib/coinGift';
 import { RETURN_WINDOW_DAYS, returnRequestTiming, returnWindowEnd } from '@/lib/returnWindow';
 import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyService';
 import { isOn } from '@/config/features';
@@ -840,6 +842,8 @@ const AdminOrderDetails = () => {
     pointsText = 'No points recorded for this order';
   }
 
+  const coin = readOrderCoinGift((order as { coinGift?: unknown }).coinGift);
+
   // ── Scratch card, as the server last wrote it ──
   let scratchText = '';
   if (scratchCard) {
@@ -904,6 +908,20 @@ const AdminOrderDetails = () => {
           <span className="break-words">
             {order.manualReviewReason || 'This order was flagged for a manual check.'}
           </span>
+        </Notice>
+      )}
+
+      {/* Lakshmi coin card: which printed card goes in the parcel (server-written, see api/notify-order.ts). */}
+      {coin && (
+        <Notice
+          tone={coin.status === 'void' ? 'neutral' : 'success'}
+          icon={Gift}
+          title={coin.status === 'void' ? 'Lakshmi coin card cancelled: do not pack it' : `Pack a ${coinName(coin.type)} card`}
+          className="shadow-sm"
+        >
+          {coin.status === 'void'
+            ? 'This order was cancelled or returned, so its coin card was taken back.'
+            : coin.revealed ? 'The customer has seen it on screen.' : 'The customer has not scratched it on screen yet.'}
         </Notice>
       )}
 

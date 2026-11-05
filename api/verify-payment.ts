@@ -365,6 +365,7 @@ async function recordPayment(
         pointsValue: money(notes.rw_pv),
         cashback: want.cashback,
         cartHash: String(notes.rw_cart || ''),
+        ...(notes.rw_sub != null && String(notes.rw_sub) !== '' ? { subtotal: money(notes.rw_sub) } : {}),
         ...(notes.rw_dealer === '1' ? { dealer: true, regularSubtotal: money(notes.rw_regular) } : {}),
         ...partnerFieldsFromNote(notes.rw_partner),
         status: 'verified',

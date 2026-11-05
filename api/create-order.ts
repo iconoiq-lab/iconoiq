@@ -29,6 +29,7 @@ import { createHash } from 'node:crypto';
  *   rw_uid    the signed-in customer (from the verified ID token)
  *   rw_base   rupees paid for products, which points are earned on (earnBase)
  *   rw_cart   SHA-256 of the cart (cartKey), to compare with the order later
+ *   rw_sub    rupees of goods before coupons, delivery and rewards (Lakshmi coin threshold)
  *   rw_dealer  '1' when the order was charged dealer prices; its points base (rw_base) is then 0
  *   rw_regular the cart at regular prices (rupees), written with rw_dealer
  *   rw_points / rw_pv / rw_cashback   points spent, their rupee value, cashback spent
@@ -1554,6 +1555,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const notes: Record<string, string> = {
     ...clientNotes(body.notes),
     rw_base: String(base),
+    rw_sub: String(parts.subtotal),
     rw_cart: createHash('sha256').update(cartKey(items)).digest('hex'),
     ...(uid ? { rw_uid: uid } : {}),
     ...(quote.applies ? { rw_dealer: '1', rw_regular: String(quote.regularSubtotal) } : {}),

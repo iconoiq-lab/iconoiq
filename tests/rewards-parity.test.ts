@@ -26,6 +26,14 @@ test('api copy of scratch-core matches src/lib/scratchWin.ts', () => {
   );
 });
 
+test('api copy of coin-core matches src/lib/coinGift.ts', () => {
+  assert.equal(
+    marked('api/notify-order.ts', 'coin-core'),
+    marked('src/lib/coinGift.ts', 'coin-core'),
+    'api/notify-order.ts has drifted from src/lib/coinGift.ts',
+  );
+});
+
 test('api copy of dealer-core matches src/lib/dealer.ts', () => {
   assert.equal(
     marked('api/create-order.ts', 'dealer-core'),
