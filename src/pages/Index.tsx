@@ -15,6 +15,9 @@ import { isOn } from "@/config/features";
 import { HOME_BLOCKS, HOME_BLOCK_RESERVE } from "@/config/homeBlocks";
 import { activeSection } from "@/config/activeSections";
 import { subscribeHomeBanners, subscribeHomeCollections } from "@/services/homeContentService";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { BRAND } from "@/config/brand";
+import { SITE_URL } from "@/lib/siteUrl";
 
 // Below the fold: each section is its own chunk, fetched only as it nears the screen.
 const MarqueeBand = lazy(() => import("@/components/MarqueeBand"));
@@ -43,6 +46,35 @@ const Deferred = ({ children, reserve }: { children: ReactNode; reserve: string 
 };
 
 const Index = () => {
+  // Search title and the store's identity for Google (Organization + WebSite). Facts only:
+  // add BRAND.social links to sameAs once the client has them.
+  const sameAs = (Object.values(BRAND.social ?? {}) as unknown[]).filter((u): u is string => typeof u === "string" && /^https?:\/\//.test(u));
+  usePageMeta({
+    title: `${BRAND.name} | Indian Iconography Learning Kits, Mudra Cards and Temple Art`,
+    canonicalPath: "/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": `${SITE_URL}/#organization`,
+          name: BRAND.name,
+          url: `${SITE_URL}/`,
+          logo: `${SITE_URL}/icon-192.png`,
+          description: BRAND.description,
+          ...(sameAs.length ? { sameAs } : {}),
+        },
+        {
+          "@type": "WebSite",
+          "@id": `${SITE_URL}/#website`,
+          name: BRAND.name,
+          url: `${SITE_URL}/`,
+          inLanguage: "en-IN",
+          publisher: { "@id": `${SITE_URL}/#organization` },
+        },
+      ],
+    },
+  });
   // The category display version picks which chunk loads; Classic keeps its own.
   const tiles = activeSection("categoryDisplay") === "tiles";
   // Start listening for the lower blocks' content as the page opens, so by the time the banner and the

@@ -22,7 +22,11 @@
     },
     {
       "source": "/catalog/products.json",
-      "destination": "https://pub-1721e1d562564ca39bca984fd714520c.r2.dev/catalog/products.json"
+      "destination": "/api/media?catalog=1"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/media?sitemap=1"
     },
     {
       "source": "/product/:id",

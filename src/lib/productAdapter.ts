@@ -108,6 +108,8 @@ export const adaptFirebaseArrayToUI = (fbProducts: FirebaseProduct[]): UIProduct
 export interface UIProductDetail extends UIProduct {
   /** False when the shop has hidden it (sold out, withdrawn, awaiting photos). */
   isActive?: boolean;
+  /** A sample listing from the seed script: kept out of search results. */
+  demo?: boolean;
   /** For offers limited to a subcategory. */
   subcategory?: string;
   description?: string;
@@ -129,6 +131,7 @@ export const adaptFirebaseToUIDetail = (fbProduct: FirebaseProduct): UIProductDe
   return {
     ...baseProduct,
     isActive: fbProduct.flags?.isActive !== false,
+    demo: (fbProduct as { demo?: unknown }).demo === true,
     subcategory: fbProduct.subcategory || undefined,
     description: fbProduct.description,
     images: fbProduct.media.images || [],

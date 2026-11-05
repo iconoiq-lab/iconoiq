@@ -40,3 +40,9 @@ Moved out of `docs/HANDOFF.md` on 2026-10-22 to keep it short. Still accurate as
 ## Real-user test fixes (moved from the handoff 2026-10-22)
 
 - **Real-user test 2026-10-22:** report `docs/qa/real-user-test-2026-10-22.md` (shopper pass + admin pass). Not deployed yet: checkout address fix, payment error text, silver-rate gate, catalogue rewrite (`03bfd00`), and step 1c's Razorpay logo (`razorpayService.ts`), "Calculated at address" in cart and checkout (`deliveryDependsOnAddress`, `tests/deliveryQuote.test.ts`) and the Admin Settings fix (the alert number now loads and saves `siteSettings/adminNotification`, never the admin's profile; `tests/admin-alert-number.test.ts`). Same changes in the other client store's repo.
+
+## Moved from HANDOFF.md on 2026-11-05
+
+- **Not deployed yet (2026-10-22):** real-user test fixes (report `docs/qa/real-user-test-2026-10-22.md`; list in the archive file), step 1c's admin fixes and Admin > Categories. Same changes in the other client store's repo.
+- **Admin > Categories (2026-10-22, `6cb5782`):** `/admin/categories`; spec `docs/specs/2026-10-22-categories-admin.md`. Live round trip on iconoiq-85b53 passed. Also in the template and the other client store. Not deployed.
+- **Template port (2026-10-22):** the template now has the Detailed card (cart button + Buy now, View cart pill), `useAutoScroll` step mode and every 2026-10-22 fix (commits `08936f3`, `617709e`, `d4ff07c`, `c6404d6` there; its `check.mjs` passed). Its `check.mjs` also warns in a client copy whose `vercel.json` lacks the `/catalog/products.json` rewrite. Not ported: this store's "Free delivery" card detail line and its header, top-deals and category-bar look choices. `siteSettings` is readable by everyone, so the alert number in `siteSettings/adminNotification` is public (it was already, since order alerts read it from there).

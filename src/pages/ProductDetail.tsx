@@ -582,9 +582,10 @@ const ProductDetail = () => {
     description: notFound ? undefined : metaDescription,
     canonicalPath: productId ? `/product/${productId}` : undefined,
     image: product?.image,
-    noindex: notFound,
+    // Sample listings stay out of search: they are replaced by the real range before launch.
+    noindex: notFound || product?.demo === true,
     jsonLd:
-      product && !notFound
+      product && !notFound && !product.demo
         ? {
             "@context": "https://schema.org",
             "@type": "Product",

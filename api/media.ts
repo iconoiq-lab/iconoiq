@@ -10,6 +10,8 @@ const STORE_NAME = 'ICONOIQ'; // must equal BRAND.name (tests/brand-parity.test.
  *
  *   GET  /api/media                      -> usage vs free tier (admin)
  *   GET  /api/media?og=product&id=<id>   -> link-preview HTML for WhatsApp etc. (public)
+ *   GET  /api/media?catalog=1            -> the catalog snapshot, for /catalog/products.json (public)
+ *   GET  /api/media?sitemap=1            -> sitemap.xml (public)
  *   POST /api/media { action: 'upload' } -> store one file (+ optional preview / og image)
  *   POST /api/media { action: 'delete' } -> remove files by public URL
  *   POST /api/media { action: 'publish-catalog' }            -> rebuild catalog snapshot (admin)
@@ -110,9 +112,16 @@ const MANAGED_KEY = /^[a-z]+\/(?:[A-Za-z0-9_-]{1,128}\/)?\d{4}\/\d{2}\/m[0-9a-f]
 
 // ── Plumbing ────────────────────────────────────────────────────────────────
 
+// Plain fields (no parameter properties) so tests can load this file with Node's type stripping.
 class HttpError extends Error {
-  constructor(public status: number, public code: string, message: string, public extra?: object) {
+  status: number;
+  code: string;
+  extra?: object;
+  constructor(status: number, code: string, message: string, extra?: object) {
     super(message);
+    this.status = status;
+    this.code = code;
+    this.extra = extra;
   }
 }
 
@@ -986,6 +995,114 @@ async function handleProductPreview(req: VercelRequest, res: VercelResponse) {
   res.end(html);
 }
 
+// ── Catalog feed and sitemap (public) ──────────────────────────────────────
+//
+// GET /catalog/products.json and /sitemap.xml are rewritten here (vercel.json).
+// The catalog used to be an external rewrite straight to the bucket's r2.dev
+// address, but Vercel served index.html for it (2026-11-05), so every visit
+// fell back to Firestore reads. Both answers are cached at Vercel's edge.
+
+/** Pages that are always public and worth indexing. Keep in step with src/App.tsx. */
+const SITEMAP_PAGES = [
+  '/',
+  '/products',
+  '/about',
+  '/contact',
+  '/customer-support',
+  '/shipping-policy',
+  '/cancellation-refund-policy',
+  '/privacy-policy',
+  '/terms-conditions',
+];
+
+const xmlEscape = (value: string) =>
+  value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c] as string);
+
+function siteOrigin(req: VercelRequest): string {
+  const fixed = (process.env.VITE_SITE_URL || '').trim().replace(/\/+$/, '');
+  if (/^https?:\/\//.test(fixed)) return fixed;
+  const header = (name: string) => String(req.headers[name] || '').split(',')[0].trim();
+  const host = header('x-forwarded-host') || header('host');
+  return `${header('x-forwarded-proto') || 'https'}://${host}`;
+}
+
+async function handleCatalogFeed(res: VercelResponse) {
+  const { client, bucketUrl } = r2();
+  const resp = await client.fetch(`${bucketUrl}/${encodeKey(CATALOG_KEY)}`);
+  res.setHeader('X-Robots-Tag', 'noindex');
+  if (resp.status === 404) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30');
+    return res.status(404).json({ ok: false, code: 'NOT_FOUND', error: 'No catalog snapshot yet.' });
+  }
+  if (!resp.ok) throw new HttpError(502, 'SERVER', `Could not read the catalog snapshot (HTTP ${resp.status}).`);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  // Same freshness as the bucket copy (CATALOG_CACHE_CONTROL); the browser always revalidates.
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=60');
+  return res.status(200).send(await resp.text());
+}
+
+type SitemapProduct = {
+  id?: string;
+  demo?: boolean;
+  flags?: { isActive?: boolean };
+  updatedAt?: { seconds?: number };
+  media?: { images?: string[] };
+};
+
+/** Live products only: sample (demo) listings and hidden ones stay out of search. */
+export function sitemapXml(origin: string, products: SitemapProduct[], categorySlugs: string[]): string {
+  const url = (path: string, extra = '') =>
+    `  <url><loc>${xmlEscape(`${origin}${path}`)}</loc>${extra}</url>`;
+  const rows = SITEMAP_PAGES.map((path) => url(path));
+  for (const slug of categorySlugs) rows.push(url(`/category/${encodeURIComponent(slug)}`));
+  for (const p of products) {
+    if (!p.id || p.demo === true || p.flags?.isActive !== true) continue;
+    const seconds = p.updatedAt?.seconds;
+    const lastmod = typeof seconds === 'number' ? `<lastmod>${new Date(seconds * 1000).toISOString().slice(0, 10)}</lastmod>` : '';
+    const image = p.media?.images?.[0];
+    const img = image && /^https?:\/\//.test(image) ? `<image:image><image:loc>${xmlEscape(image)}</image:loc></image:image>` : '';
+    rows.push(url(`/product/${encodeURIComponent(p.id)}`, lastmod + img));
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${rows.join('\n')}
+</urlset>
+`;
+}
+
+async function handleSitemap(req: VercelRequest, res: VercelResponse) {
+  let products: SitemapProduct[] = [];
+  let slugs: string[] = [];
+  let complete = true;
+  try {
+    products = ((await readCatalog())?.file.products as SitemapProduct[] | undefined) ?? [];
+  } catch (err) {
+    complete = false;
+    console.warn('[media] sitemap: catalog unavailable:', err);
+  }
+  try {
+    initAdmin();
+    const snap = await Promise.race([
+      admin.firestore().collection('categories').get(),
+      // Search crawlers wait longer than link-preview bots; a cold start can take a few seconds.
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('no answer in 7000ms')), 7000)),
+    ]);
+    slugs = snap.docs
+      .filter((d) => d.get('hidden') !== true && typeof d.get('slug') === 'string' && d.get('slug'))
+      .map((d) => String(d.get('slug')));
+  } catch (err) {
+    complete = false;
+    console.warn('[media] sitemap: categories unavailable:', err instanceof Error ? err.message : err);
+  }
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  // A partial answer (storage or Firestore down) is cached briefly so the full one returns soon.
+  res.setHeader(
+    'Cache-Control',
+    complete ? 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' : 'public, max-age=0, s-maxage=60',
+  );
+  return res.status(200).send(sitemapXml(siteOrigin(req), products, slugs));
+}
+
 // ── Entry ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -997,6 +1114,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET' && /[?&]og=product(&|$)/.test(req.url || '')) {
       return await handleProductPreview(req, res);
     }
+    if (req.method === 'GET' && /[?&]catalog=1(&|$)/.test(req.url || '')) return await handleCatalogFeed(res);
+    if (req.method === 'GET' && /[?&]sitemap=1(&|$)/.test(req.url || '')) return await handleSitemap(req, res);
 
     const caller = await authenticate(req);
 

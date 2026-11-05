@@ -7,6 +7,11 @@ Disallow: /checkout
 Disallow: /wallet
 Disallow: /delivery
 Disallow: /api/
+Disallow: /search
+Disallow: /search-results
+Disallow: /wishlist
+Disallow: /call
+Disallow: /my-video-calls
 
-# [NEED: sitemap.xml] Generate it for https://www.iconoiq.com, then uncomment the line below.
-# Sitemap: https://www.iconoiq.com/sitemap.xml
+# Built live from the catalogue by api/media.ts (vercel.json rewrite).
+Sitemap: https://www.iconoiq.com/sitemap.xml

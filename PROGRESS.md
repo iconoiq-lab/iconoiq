@@ -1,6 +1,6 @@
 # ICONOIQ: progress
 
-**Overall: 69% (24 of 35 steps done, 2 waiting)**
+**Overall: 68% (25 of 37 steps done, 3 waiting)**
 
 ✅ done · ⏳ to do or in progress · ⛔ waiting on the client or the owner (say what in the line). After ticking steps, run `node scripts/progress.mjs` to update the line above. Add or remove steps to fit the client (new features go under Phase 4).
 
@@ -43,6 +43,8 @@
 - ✅ List new features, one line each from `REQUIREMENTS.md`: none for now (owner, 2026-10-17: no functionality changes). Later, only if the client asks: loyalty card purchase, scratch prizes beyond points, paid dealer membership
 - ✅ Academy & Dealership Programme (client PLANS.pdf, 2026-11-02): spec `docs/specs/academy-dealership-programme.md`; public /dealer page, partner area, stockist area, Admin > Partners, stockist margin tiers; reviewed, tests pass. Not deployed
 - ⛔ Deploy the programme, then turn on the dealers switch in Admin (waiting on the owner's yes)
+- ✅ Lakshmi coin card (client voice notes, 2026-11-05): scratch card after paid orders of ₹3,500+, silver x3 then gold; spec `docs/specs/lakshmi-coin-gift.md`; unit tests + live test `scripts/qa/coin-gift-live.mjs` passed. Not deployed
+- ⛔ Deploy it, deploy `firestore.rules`, then switch it on in Admin > Commerce settings > Lakshmi coin (waiting on the owner's yes)
 
 ## Phase 5. Accounts
 
@@ -52,7 +54,7 @@
 - ✅ Image storage (Cloudflare R2 on the client's account, keys + analytics token in Vercel, live upload tested 2026-10-19; cache purge waits for the domain)
 - ⏳ Razorpay keys (test, then live) (owner: 2026-10-18)
 - ⏳ Vercel project and env vars (owner: 2026-10-18; which account still to decide)
-- ✅ Domain and `VITE_SITE_URL`: iconoiq.com (GoDaddy) live on Vercel, www.iconoiq.com main; `VITE_SITE_URL=https://www.iconoiq.com` in `.env` and Vercel 2026-10-19 (needs a Redeploy to take effect); sitemap.xml still to make
+- ✅ Domain and `VITE_SITE_URL`: iconoiq.com (GoDaddy) live on Vercel, www.iconoiq.com main; `VITE_SITE_URL=https://www.iconoiq.com` in `.env` and Vercel 2026-10-19 (needs a Redeploy to take effect); live sitemap.xml + SEO pass done 2026-11-05 (not deployed)
 - ✅ Live real-user test, shopper and admin (2026-10-22, `docs/qa/real-user-test-2026-10-22.md`): fixes committed, Rewards turned on in Admin
 - ⛔ Deploy the 2026-10-22 fixes (waiting on the owner's yes; push to `origin` = Vercel deploy)
 - ✅ Categories admin page (add, rename, reorder, hide and remove categories and subcategories; ported to the template, 2026-10-22)
