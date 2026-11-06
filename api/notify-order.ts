@@ -694,6 +694,12 @@ interface PartnerEarningLike {
   savings?: number;
   /** When the return window ends (ms). Sales count towards unlocks only after it. */
   unlockAtMs?: number;
+  /**
+   * The admin's check (possible self-referral): 'pending' holds the commission
+   * and the unlock credit until the admin decides; 'cleared' = pay it; 'own' =
+   * the partner's own order (then family, amount 0).
+   */
+  review?: 'pending' | 'cleared' | 'own';
 }
 
 interface PartnerTotals {
@@ -740,7 +746,7 @@ function partnerUnlocked(rows: PartnerEarningLike[], nowMs: number): { unlockedS
   let unlockedSales = 0;
   let nextUnlockMs: number | null = null;
   for (const r of rows) {
-    if (r.state !== 'active' || r.family) continue;
+    if (r.state !== 'active' || r.family || r.review === 'pending') continue;
     const at = Number(r.unlockAtMs);
     if (Number.isFinite(at) && at <= nowMs) unlockedSales += Number(r.sales) || 0;
     else if (Number.isFinite(at) && (nextUnlockMs === null || at < nextUnlockMs)) nextUnlockMs = at;
@@ -1325,6 +1331,61 @@ export async function reconcileRewards(
   return { changed };
 }
 
+/** Last 10 digits of a phone number ('' when shorter): +91 / 0 prefixes and spacing never matter. */
+const phoneKey = (v: unknown) => {
+  const d = String(v ?? '').replace(/\D/g, '');
+  return d.length >= 10 ? d.slice(-10) : '';
+};
+const emailKey = (v: unknown) => String(v ?? '').trim().toLowerCase();
+/** Letters and digits only, lower case: "12-4, Temple St" and "12-4 temple st" are the same. */
+const textKey = (v: unknown) => String(v ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+const keySet = (vals: unknown[], f: (v: unknown) => string) => new Set(vals.map(f).filter(Boolean));
+
+/**
+ * Whether a partner-code order looks like the partner's own (2026-11-03
+ * security review: a guest checkout or a second account with the own code
+ * would otherwise earn commission and unlock credit). Compared with the
+ * partner's application, account and saved addresses:
+ *   self   'account' | 'phone' | 'email': the buyer is the partner. Treated as
+ *          a family order: no commission, no sales towards unlocks.
+ *   review 'name' | 'address': only the delivery name or one of the partner's
+ *          saved addresses matches. Credited, but held for the admin's check.
+ * Exported for tests.
+ */
+export async function partnerSelfMatch(
+  db: admin.firestore.Firestore,
+  puid: string,
+  partner: Record<string, any>,
+  order: Record<string, any>,
+  buyerUid: string,
+): Promise<{ self?: 'account' | 'phone' | 'email'; review?: 'name' | 'address' }> {
+  if (buyerUid && buyerUid === puid) return { self: 'account' };
+  const usersCol = db.collection('users');
+  const [pUser, addrSnap, bUser] = await Promise.all([
+    usersCol.doc(puid).get(),
+    usersCol.doc(puid).collection('addresses').get(),
+    buyerUid && /^[\w-]{1,128}$/.test(buyerUid) ? usersCol.doc(buyerUid).get() : Promise.resolve(null),
+  ]);
+  const pu = pUser.data() || {};
+  const saved = addrSnap.docs.map((d) => d.data() || {});
+  const bu = bUser?.data() || {};
+  const ship = (order.shippingAddress || {}) as Record<string, unknown>;
+
+  const partnerPhones = keySet([partner.phone, pu.phone, pu.phoneNumber, ...saved.flatMap((a) => [a.mobile, a.alternativePhone])], phoneKey);
+  const orderPhones = keySet([ship.mobile, ship.alternativePhone, order.userPhone, order.customerPhone, bu.phone, bu.phoneNumber], phoneKey);
+  if ([...orderPhones].some((k) => partnerPhones.has(k))) return { self: 'phone' };
+  const partnerEmails = keySet([pu.email], emailKey);
+  const orderEmails = keySet([order.userEmail, order.customerEmail, bu.email], emailKey);
+  if ([...orderEmails].some((k) => partnerEmails.has(k))) return { self: 'email' };
+
+  const name = textKey(ship.fullName);
+  if (name.length >= 3 && keySet([partner.name, pu.name, pu.displayName, ...saved.map((a) => a.fullName)], textKey).has(name)) return { review: 'name' };
+  const line = textKey(ship.address);
+  const pin = textKey(ship.pincode);
+  if (line.length >= 4 && saved.some((a) => textKey(a.address) === line && textKey(a.pincode) === pin)) return { review: 'address' };
+  return {};
+}
+
 /**
  * An academy partner's commission on one paid order, idempotent:
  *   partners/<puid>/earnings/<rzp>  created once when the order reaches the
@@ -1333,7 +1394,10 @@ export async function reconcileRewards(
  *     return is open or the order is not at delivered, void when the order
  *     ends, restored if it is reopened. Unlocks after the return window
  *     (unlockAtMs). A family order (the partner's own code) earns 0 and
- *     records the savings.
+ *     records the savings. An order that is the partner's own by its contact
+ *     details (partnerSelfMatch) counts as family too; a weaker match is
+ *     credited with review 'pending' until the admin decides
+ *     (reviewPartnerEarning). The reason stays on partnerPrivate.
  *   partnerPrivate/<puid> lifetimeSales and orders/<rzp> sales (admin and
  *     server only), and partners/<puid> unitsSold, earnedTotal,
  *     familySavings, tier, silverGrams and perksUnlocked, recomputed from
@@ -1369,7 +1433,7 @@ export async function reconcilePartner(
   const earnings = partnerRef.collection('earnings');
   const ref = earnings.doc(rzp);
   const e = (await ref.get()).data();
-  const family = payment.partnerFamily === true;
+  let family = payment.partnerFamily === true;
   // Back to active: the sales count towards unlocks only once the customer
   // can no longer return the order (never earlier than the existing unlockAt).
   const windowFrom = () => {
@@ -1380,6 +1444,8 @@ export async function reconcilePartner(
   if (!e) {
     // Credited once, on delivery, only for an approved partner.
     if (reachedCustomer && !ended && partner.status === 'approved') {
+      const match = family ? {} : await partnerSelfMatch(db, puid, partner, order, String(order.userId || payment.uid || ''));
+      if (match.self) family = true;
       // The tier from sales past their return window only: a held order (or
       // one that can still be returned) never lifts this order to Gold.
       const [eSnap, sSnap] = await Promise.all([earnings.get(), salesOf.get()]);
@@ -1389,7 +1455,13 @@ export async function reconcilePartner(
       const sales = money(payment.partnerSales);
       const deliveredMs = millis(order.deliveredAt) || now.toMillis();
       // The private sales value first: an earning never exists without it.
-      await salesOf.doc(rzp).set({ sales, orderId, createdAt: now });
+      await salesOf.doc(rzp).set({
+        sales,
+        orderId,
+        createdAt: now,
+        ...(match.self ? { selfOrder: match.self } : {}),
+        ...(match.review ? { reviewReason: match.review } : {}),
+      });
       const wrote = await createOnce(ref, {
         orderId,
         razorpayOrderId: rzp,
@@ -1403,6 +1475,7 @@ export async function reconcilePartner(
         month: partnerMonthKey(deliveredMs),
         state: status === 'delivered' ? 'active' : 'held',
         unlockAt: admin.firestore.Timestamp.fromMillis(unlockAtMs(now.toMillis(), order.deliveredAt, s.holdDays)),
+        ...(match.review && !family ? { review: 'pending' } : {}),
         createdAt: now,
         createdBy: 'server',
       });
@@ -1475,6 +1548,8 @@ export async function refreshPartnerTotals(
     const rows = partnerRows(eSnap.docs, sSnap.docs);
     const { lifetimeSales, ...totals } = partnerTotals(rows);
     const { unlockedSales, nextUnlockMs } = partnerUnlocked(rows, now.toMillis());
+    // Orders waiting for the admin's self-referral check (the admin list shows the count).
+    const reviewPending = rows.filter((r) => r.review === 'pending' && r.state !== 'void').length;
     const raw = setSnap.exists ? (setSnap.data() as Record<string, unknown>) : null;
     const view = partnerView(unlockedSales, raw, partner.tierOverride);
     const priv = privSnap.data() || {};
@@ -1482,6 +1557,7 @@ export async function refreshPartnerTotals(
     const same =
       priv.lifetimeSales === lifetimeSales &&
       priv.unlockedSales === unlockedSales &&
+      priv.reviewPending === reviewPending &&
       partner.lifetimeSales === undefined &&
       dueMs === nextUnlockMs &&
       (Object.keys(totals) as (keyof typeof totals)[]).every((k) => partner[k] === totals[k]) &&
@@ -1489,7 +1565,7 @@ export async function refreshPartnerTotals(
       partner.silverGrams === view.silverGrams &&
       JSON.stringify(partner.perksUnlocked) === JSON.stringify(view.perksUnlocked);
     if (same) return false;
-    tx.set(privateRef, { lifetimeSales, unlockedSales, totalsAt: now }, { merge: true });
+    tx.set(privateRef, { lifetimeSales, unlockedSales, reviewPending, totalsAt: now }, { merge: true });
     tx.update(partnerRef, {
       ...totals,
       ...view,
@@ -1499,6 +1575,34 @@ export async function refreshPartnerTotals(
     });
     return true;
   });
+}
+
+/**
+ * The admin's decision on a commission held for a self-referral check:
+ *   'pay'  review 'cleared': it unlocks and is paid like any other.
+ *   'own'  the partner's own order: family, amount 0, rate 0, no sales towards
+ *          unlocks. Final: a later reconcile never credits it again.
+ * Only an earning still 'pending' can be decided. Returns whether it changed.
+ */
+export async function reviewPartnerEarning(
+  db: admin.firestore.Firestore,
+  puid: string,
+  rzp: string,
+  decision: 'pay' | 'own',
+  adminUid: string,
+  now: admin.firestore.Timestamp,
+): Promise<boolean> {
+  const ref = db.collection('partners').doc(puid).collection('earnings').doc(rzp);
+  const privRef = db.collection('partnerPrivate').doc(puid).collection('orders').doc(rzp);
+  const done = await db.runTransaction(async (tx) => {
+    const e = (await tx.get(ref)).data();
+    if (!e || e.review !== 'pending') return false;
+    tx.update(ref, decision === 'own' ? { review: 'own', family: true, amount: 0, rate: 0, reviewedAt: now } : { review: 'cleared', reviewedAt: now });
+    tx.set(privRef, { reviewedBy: adminUid, reviewedAt: now, reviewDecision: decision }, { merge: true });
+    return true;
+  });
+  if (done) await refreshPartnerTotals(db, puid, now);
+  return done;
 }
 
 /**
@@ -1920,8 +2024,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     orderId?: string;
     /** release-holds: only this checkout's hold (the customer closed the payment window). */
     razorpayOrderId?: string;
-    /** release-holds and refresh-partner, admins only: whose holds or figures (default: the caller's). */
+    /** release-holds and refresh-partner, admins only: whose holds or figures (default: the caller's). review-partner-earning: the partner. */
     uid?: string;
+    /** review-partner-earning (admins only): 'pay' clears the check, 'own' = the partner's own order. */
+    decision?: string;
     audience?: 'customer' | 'admins' | 'delivery';
     title?: string;
     body?: string;
@@ -1939,11 +2045,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const isScratch = body.action === 'scratch-card';
   const isPartnerRefresh = body.action === 'refresh-partner';
   const isCoinReveal = body.action === 'coin-reveal';
-  if (!orderId && !isRelease && !isPartnerRefresh) return res.status(400).json({ error: 'orderId is required' });
+  const isPartnerReview = body.action === 'review-partner-earning';
+  if (!orderId && !isRelease && !isPartnerRefresh && !isPartnerReview) return res.status(400).json({ error: 'orderId is required' });
   // An order id (and a card id, a document id under the caller's own user
   // document) is one path segment: a slash would reach another document.
   if (orderId && !/^[\w-]{1,128}$/.test(orderId)) return res.status(400).json({ error: 'invalid orderId' });
-  if (!isReconcile && !isRelease && !isScratch && !isPartnerRefresh && !isCoinReveal) {
+  if (!isReconcile && !isRelease && !isScratch && !isPartnerRefresh && !isCoinReveal && !isPartnerReview) {
     if (!audience || !['customer', 'admins', 'delivery'].includes(audience)) {
       return res.status(400).json({ error: 'audience must be customer|admins|delivery' });
     }
@@ -2009,6 +2116,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (err) {
       console.error('[notify-order] refresh-partner failed:', err instanceof Error ? err.message : err);
       return res.status(503).json({ error: 'refresh_failed' });
+    }
+  }
+
+  if (isPartnerReview) {
+    // The admin decides a commission held for a self-referral check.
+    if (!isAdmin) return res.status(403).json({ error: 'admins only' });
+    const uid = String(body.uid || '');
+    const rzp = String(body.razorpayOrderId || '');
+    const decision = body.decision;
+    if (!/^[\w-]{1,128}$/.test(uid) || !/^[\w-]{1,128}$/.test(rzp) || (decision !== 'pay' && decision !== 'own')) {
+      return res.status(400).json({ error: 'uid, razorpayOrderId and decision (pay|own) are required' });
+    }
+    try {
+      return res.status(200).json({ ok: true, changed: await reviewPartnerEarning(db, uid, rzp, decision, callerUid, admin.firestore.Timestamp.now()) });
+    } catch (err) {
+      console.error('[notify-order] review-partner-earning failed:', err instanceof Error ? err.message : err);
+      return res.status(503).json({ error: 'review_failed' });
     }
   }
 

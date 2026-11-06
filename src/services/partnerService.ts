@@ -71,6 +71,8 @@ export interface PartnerRecord extends PartnerApplicationInput {
   lifetimeSales?: number;
   /** Admin only: sales past their return window, what unlocks perks, silver and Gold. */
   unlockedSales?: number;
+  /** Admin only: orders whose commission waits for the self-referral check. */
+  reviewPending?: number;
   /** When the next order leaves its return window (0: none waiting). */
   viewsDueAtMs: number;
   unitsSold: number;
@@ -132,6 +134,8 @@ const toEarning = (id: string, d: DocumentData): EarningRow => ({
   state: d.state === 'void' || d.state === 'held' ? d.state : 'active',
   month: str(d.month),
   unlockAtMs: ms(d.unlockAt),
+  orderNumber: str(d.orderNumber) || undefined,
+  review: d.review === 'pending' || d.review === 'cleared' || d.review === 'own' ? d.review : undefined,
 });
 
 const toPayout = (id: string, d: DocumentData): PayoutRow => ({
@@ -244,13 +248,13 @@ export async function claimSilver(uid: string, pot: { earned: number; claimed: n
 /** Every partner, with the private sales value merged in (admin only). */
 export function subscribePartners(onNext: (rows: PartnerRecord[]) => void, onError: (e: Error) => void) {
   let docs: DocumentSnapshot[] | null = null;
-  let sales: Map<string, { lifetimeSales: number; unlockedSales: number }> | null = null;
+  let sales: Map<string, { lifetimeSales: number; unlockedSales: number; reviewPending: number }> | null = null;
   const emit = () => {
     if (!docs || !sales) return;
     const s = sales;
     onNext(
       docs
-        .map((d) => ({ ...toRecord(d.id, d.data(est) ?? {}), lifetimeSales: 0, unlockedSales: 0, ...s.get(d.id) }))
+        .map((d) => ({ ...toRecord(d.id, d.data(est) ?? {}), lifetimeSales: 0, unlockedSales: 0, reviewPending: 0, ...s.get(d.id) }))
         .sort((a, b) => b.appliedAtMs - a.appliedAtMs),
     );
   };
@@ -258,7 +262,9 @@ export function subscribePartners(onNext: (rows: PartnerRecord[]) => void, onErr
   const off2 = onSnapshot(
     collection(db, 'partnerPrivate'),
     (s) => {
-      sales = new Map(s.docs.map((d) => [d.id, { lifetimeSales: num(d.data().lifetimeSales), unlockedSales: num(d.data().unlockedSales) }]));
+      sales = new Map(
+        s.docs.map((d) => [d.id, { lifetimeSales: num(d.data().lifetimeSales), unlockedSales: num(d.data().unlockedSales), reviewPending: num(d.data().reviewPending) }]),
+      );
       emit();
     },
     onError,
@@ -288,12 +294,30 @@ export function subscribeAllClaims(onNext: (rows: ClaimRow[]) => void, onError: 
 export const fulfilClaim = (path: string, adminUid: string) =>
   updateDoc(doc(db, path), { status: 'fulfilled', fulfilledAt: serverTimestamp(), fulfilledBy: adminUid });
 
+/** Admin only: the earnings (with the private self-referral reasons) and the payouts. */
 export async function loadPartnerMoney(uid: string): Promise<{ earnings: EarningRow[]; payouts: PayoutRow[] }> {
-  const [e, p] = await Promise.all([
+  const [e, p, priv] = await Promise.all([
     getDocs(collection(db, 'partners', uid, 'earnings')),
     getDocs(query(collection(db, 'partners', uid, 'payouts'), orderBy('createdAt', 'desc'))),
+    getDocs(collection(db, 'partnerPrivate', uid, 'orders')),
   ]);
-  return { earnings: e.docs.map((d) => toEarning(d.id, d.data())), payouts: p.docs.map((d) => toPayout(d.id, d.data())) };
+  const reasons = new Map(priv.docs.map((d) => [d.id, d.data().reviewReason]));
+  const earnings = e.docs.map((d) => {
+    const row = toEarning(d.id, d.data());
+    const why = reasons.get(d.id);
+    return why === 'name' || why === 'address' ? { ...row, reviewReason: why } : row;
+  });
+  return { earnings, payouts: p.docs.map((d) => toPayout(d.id, d.data())) };
+}
+
+/**
+ * The admin's decision on a commission held for a self-referral check: 'pay'
+ * releases it, 'own' = the partner's own order (no commission, for good).
+ * The server writes it (earnings are server-only). Throws when it fails.
+ */
+export async function decidePartnerEarning(uid: string, razorpayOrderId: string, decision: 'pay' | 'own') {
+  const r = await rewardsAction({ action: 'review-partner-earning', uid, razorpayOrderId, decision });
+  if (!r.ok) throw new Error("Couldn't save the decision. Please try again.");
 }
 
 /**

@@ -176,6 +176,12 @@ interface PartnerEarningLike {
   savings?: number;
   /** When the return window ends (ms). Sales count towards unlocks only after it. */
   unlockAtMs?: number;
+  /**
+   * The admin's check (possible self-referral): 'pending' holds the commission
+   * and the unlock credit until the admin decides; 'cleared' = pay it; 'own' =
+   * the partner's own order (then family, amount 0).
+   */
+  review?: 'pending' | 'cleared' | 'own';
 }
 
 interface PartnerTotals {
@@ -222,7 +228,7 @@ function partnerUnlocked(rows: PartnerEarningLike[], nowMs: number): { unlockedS
   let unlockedSales = 0;
   let nextUnlockMs: number | null = null;
   for (const r of rows) {
-    if (r.state !== 'active' || r.family) continue;
+    if (r.state !== 'active' || r.family || r.review === 'pending') continue;
     const at = Number(r.unlockAtMs);
     if (Number.isFinite(at) && at <= nowMs) unlockedSales += Number(r.sales) || 0;
     else if (Number.isFinite(at) && (nextUnlockMs === null || at < nextUnlockMs)) nextUnlockMs = at;

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import admin from 'firebase-admin';
 import { FakeFirestore } from './helpers/fakeFirestore.ts';
-import { reconcileRewards, refreshPartnerTotals } from '../api/notify-order.ts';
+import { reconcileRewards, refreshPartnerTotals, reviewPartnerEarning } from '../api/notify-order.ts';
 import { partnerNote, resolvePartnerCode } from '../api/create-order.ts';
 
 const T = (ms: number) => admin.firestore.Timestamp.fromMillis(ms);
@@ -239,4 +239,99 @@ test('totals: two reconciles at once never undercount (one transaction each)', a
   await Promise.all([refresh(db), refresh(db), reconcile(db, 'a')]);
   assert.deepEqual([sales(db), unlocked(db)], [70000, 70000]);
   assert.equal(db.read(`partners/${PUID}`)!.unitsSold, 4);
+});
+
+// ─── Self-referral (2026-11-03 security review) ────────────────────────────
+// A partner checking out as a guest or from a second account with their own
+// code must not earn commission or unlock credit.
+
+/** The partner's own account and application details. */
+function partnerContact(db: FakeFirestore) {
+  db.applyUpdate(`partners/${PUID}`, { name: 'Ravi Kumar', phone: '+91 98480 12345', city: 'Vijayawada', state: 'Andhra Pradesh' });
+  db.applySet(`users/${PUID}`, { email: 'Ravi.K@example.com', phone: '9000011111' }, false);
+  db.applySet(`users/${PUID}/addresses/a1`, { fullName: 'Ravi Kumar', mobile: '9000011111', address: '12-4, Temple Street', pincode: '520001' }, false);
+}
+const ship = (o: Record<string, unknown>) => ({ shippingAddress: { fullName: 'Sita Devi', mobile: '9123456789', address: '7 Lake Road', pincode: '500001', ...o } });
+const earning = (db: FakeFirestore, rzp: string) => db.read(`partners/${PUID}/earnings/${rzp}`)!;
+const privateOrder = (db: FakeFirestore, rzp: string) => db.read(`partnerPrivate/${PUID}/orders/${rzp}`)!;
+
+test('self-referral: a delivery phone that is the partner\'s own earns nothing and adds no sales', async () => {
+  const db = shop();
+  partnerContact(db);
+  order(db, 's1', 1000, 'delivered', {}, 'guest-or-second-account');
+  db.applyUpdate('orders/s1', ship({ mobile: '098480-12345' }));
+  await reconcile(db, 's1');
+  const e = earning(db, 's1');
+  assert.deepEqual([e.amount, e.rate, e.family], [0, 0, true]);
+  assert.equal(privateOrder(db, 's1').selfOrder, 'phone', 'the reason is kept where only the admin reads it');
+  assert.equal(e.selfOrder, undefined, 'not on the earning the partner reads');
+  age(db, 's1');
+  await refresh(db);
+  assert.deepEqual([sales(db), unlocked(db), db.read(`partners/${PUID}`)!.earnedTotal], [0, 0, 0]);
+});
+
+test('self-referral: the partner\'s account phone or email on the order also counts as their own', async () => {
+  const db = shop();
+  partnerContact(db);
+  order(db, 's1', 1000, 'delivered', {}, 'second');
+  db.applyUpdate('orders/s1', { ...ship({}), userPhone: '+919000011111' });
+  order(db, 's2', 1000, 'delivered', {}, 'third');
+  db.applyUpdate('orders/s2', { ...ship({}), userEmail: ' ravi.k@EXAMPLE.com ' });
+  order(db, 's3', 1000, 'delivered', {}, 'fourth');
+  db.applyUpdate('orders/s3', ship({}));
+  db.applySet('users/fourth', { phone: '98480 12345' }, false);
+  for (const id of ['s1', 's2', 's3']) await reconcile(db, id);
+  assert.deepEqual(['s1', 's2', 's3'].map((id) => [earning(db, id).amount, privateOrder(db, id).selfOrder]), [[0, 'phone'], [0, 'email'], [0, 'phone']]);
+});
+
+test('self-referral: the partner\'s name or saved address holds the commission for the admin\'s check', async () => {
+  const db = shop();
+  partnerContact(db);
+  order(db, 'n1', 1000, 'delivered');
+  db.applyUpdate('orders/n1', ship({ fullName: '  ravi   KUMAR ' }));
+  order(db, 'a1', 2000, 'delivered');
+  db.applyUpdate('orders/a1', ship({ address: '12-4 temple street', pincode: '520001' }));
+  await reconcile(db, 'n1');
+  await reconcile(db, 'a1');
+  assert.deepEqual([earning(db, 'n1').amount, earning(db, 'n1').review], [150, 'pending'], 'credited, but waiting for a check');
+  assert.deepEqual([privateOrder(db, 'n1').reviewReason, privateOrder(db, 'a1').reviewReason], ['name', 'address']);
+  age(db, 'n1');
+  age(db, 'a1');
+  await refresh(db);
+  assert.equal(unlocked(db), 0, 'an order waiting for a check unlocks nothing');
+  assert.equal(db.read(`partnerPrivate/${PUID}`)!.reviewPending, 2, 'the admin list shows how many to check');
+});
+
+test('self-referral: a customer with different details is credited normally', async () => {
+  const db = shop();
+  partnerContact(db);
+  order(db, 'c1', 1000, 'delivered');
+  db.applyUpdate('orders/c1', { ...ship({}), userEmail: 'sita@example.com', userPhone: '9123456789' });
+  await reconcile(db, 'c1');
+  const e = earning(db, 'c1');
+  assert.deepEqual([e.amount, e.family, e.review], [150, false, undefined]);
+  assert.equal(db.read(`partnerPrivate/${PUID}`)!.reviewPending, 0);
+});
+
+test('admin review: "pay it" releases the commission; "their own order" removes it for good', async () => {
+  const db = shop();
+  partnerContact(db);
+  for (const id of ['r1', 'r2']) {
+    order(db, id, 1000, 'delivered');
+    db.applyUpdate(`orders/${id}`, ship({ fullName: 'Ravi Kumar' }));
+    await reconcile(db, id);
+    age(db, id);
+  }
+  const now = admin.firestore.Timestamp.now();
+  assert.equal(await reviewPartnerEarning(asDb(db), PUID, 'r1', 'pay', 'admin1', now), true);
+  assert.equal(await reviewPartnerEarning(asDb(db), PUID, 'r2', 'own', 'admin1', now), true);
+  assert.deepEqual([earning(db, 'r1').review, earning(db, 'r1').amount], ['cleared', 150]);
+  assert.deepEqual([earning(db, 'r2').review, earning(db, 'r2').amount, earning(db, 'r2').family], ['own', 0, true]);
+  assert.equal(privateOrder(db, 'r2').reviewedBy, 'admin1');
+  assert.deepEqual([unlocked(db), sales(db), db.read(`partnerPrivate/${PUID}`)!.reviewPending], [1000, 1000, 0]);
+  // A later reconcile (status change) never brings the commission back.
+  await reconcile(db, 'r2');
+  assert.equal(earning(db, 'r2').amount, 0);
+  assert.equal(await reviewPartnerEarning(asDb(db), PUID, 'r2', 'pay', 'admin1', now), false, 'only an order still waiting can be decided');
+  assert.equal(await reviewPartnerEarning(asDb(db), PUID, 'nope', 'pay', 'admin1', now), false);
 });

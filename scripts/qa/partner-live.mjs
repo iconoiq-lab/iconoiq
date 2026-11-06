@@ -131,12 +131,15 @@ const QTY = 2; // stays under the Rs 3,500 coin card minimum
 const image = p.images?.[0]?.url || p.images?.[0] || p.image || '';
 const addr = { fullName: 'Preview Shopper', mobile: '9000000000', pincode: '500001', address: '1 Demo Street',
   city: 'Hyderabad', state: 'Telangana', addressType: 'home' };
+// A customer who shares nothing with the partner (the self-referral check compares phone, email, name and saved addresses).
+const custAddr = { ...addr, fullName: 'Live Check Customer', mobile: '9000007777', address: '7 Check Road', pincode: '500002' };
 
 const created = new Set();
 let partnerCode = null;
 const step = (msg) => console.log(`  ok  ${msg}`);
 const read = async (ref) => (await ref.get()).data();
 const earningRef = (rzp) => db.collection('partners').doc(PUID).collection('earnings').doc(rzp);
+const privRef = db.collection('partnerPrivate').doc(PUID);
 const reconcile = async (rzp, who) => {
   const r = await call(notifyOrder, { action: 'reconcile-rewards', orderId: rzp }, who.token);
   assert.equal(r.status, 200, JSON.stringify(r.json));
@@ -144,7 +147,7 @@ const reconcile = async (rzp, who) => {
 };
 
 /** A paid checkout through the real create-order and verify-payment, then the order the storefront writes. */
-async function paidOrder(tag, who, couponCode) {
+async function paidOrder(tag, who, couponCode, ship = addr) {
   const r = await call(createOrder, { items: [{ productId: prod.id, quantity: QTY }], shippingState: 'Telangana',
     ...(couponCode ? { couponCode } : {}) }, who.token);
   assert.equal(r.status, 200, JSON.stringify(r.json));
@@ -162,7 +165,7 @@ async function paidOrder(tag, who, couponCode) {
     items: [{ productId: prod.id, name: p.name, image: typeof image === 'string' ? image : '', price, quantity: QTY }],
     subtotal, discount: Math.max(0, subtotal - total), deliveryCharge: 0, taxAmount: 0, total,
     paymentMethod: 'Razorpay', paymentStatus: 'paid', razorpayOrderId: rzp, razorpayPaymentId: `pay_${rzp}`,
-    shippingAddress: addr, status: 'pending', createdAt: T.now(), updatedAt: T.now(),
+    shippingAddress: ship, status: 'pending', createdAt: T.now(), updatedAt: T.now(),
     statusHistory: [{ status: 'pending', timestamp: T.now(), note: 'Live check' }],
   });
   return { rzp, total, subtotal };
@@ -290,7 +293,7 @@ try {
   step(`approved in Admin > Partners: code ${partnerCode}, Silver`);
 
   // 4. A customer (the test admin account) orders with the code: commission credited only on delivery.
-  const C = await paidOrder('CUST', adminUser, partnerCode);
+  const C = await paidOrder('CUST', adminUser, partnerCode, custAddr);
   const expectDiscount = Math.floor((C.subtotal * (ps.customerDiscountPercent || 0)) / 100);
   assert.equal(C.subtotal - C.total, expectDiscount, `customer discount ${ps.customerDiscountPercent}% (paid Rs ${C.total} of Rs ${C.subtotal})`);
   const cPay = await read(db.collection('payments').doc(C.rzp));
@@ -324,6 +327,53 @@ try {
   assert.equal(pr.unitsSold, QTY, `unitsSold counts the customer order only (${pr.unitsSold})`);
   assert.equal(pr.lifetimeSales, undefined, 'no sales value on the partner document');
   step(`own-code order: ${ps.silverPercent}% off (Rs ${famDiscount}), no commission; totals: earned Rs ${pr.earnedTotal}, units ${pr.unitsSold}, savings Rs ${pr.familySavings}`);
+
+  // 5b. Self-referral (2026-11-06): another account orders with the code but ships to the partner.
+  //     The partner's phone = their own order (no commission); only their name = held for the admin's check.
+  const S = await paidOrder('SELF', adminUser, partnerCode, { ...custAddr, mobile: '+91 90000 03210' });
+  await deliver(S.rzp);
+  await reconcile(S.rzp, adminUser);
+  const se = await read(earningRef(S.rzp));
+  assert.deepEqual([se.family, se.amount, se.review], [true, 0, undefined], JSON.stringify(se));
+  assert.equal((await read(privRef.collection('orders').doc(S.rzp)))?.selfOrder, 'phone');
+  const N = await paidOrder('NAME', adminUser, partnerCode, { ...custAddr, fullName: 'preview  tester' });
+  await deliver(N.rzp);
+  await reconcile(N.rzp, adminUser);
+  const ne = await read(earningRef(N.rzp));
+  const nCommission = Math.round(N.total * ps.silverPercent) / 100;
+  assert.deepEqual([ne.family, ne.amount, ne.review], [false, nCommission, 'pending'], JSON.stringify(ne));
+  assert.equal((await read(privRef.collection('orders').doc(N.rzp)))?.reviewReason, 'name');
+  assert.equal((await read(privRef))?.reviewPending, 1, 'admin list count');
+  const pr2 = await read(db.collection('partners').doc(PUID));
+  assert.equal(pr2.unitsSold, QTY * 2, `the own order adds no units; the held one does (${pr2.unitsSold})`);
+  {
+    for (const [w, h, theme] of [[390, 844, 'light'], [1440, 900, 'light'], [390, 844, 'dark'], [1440, 900, 'dark']]) {
+      const { ctx, page } = await ctxFor(w, h, theme, adminUser, '/admin');
+      await page.goto(`${BASE}/admin/partners`, { waitUntil: 'load' });
+      await settle(page);
+      await page.getByRole('tab', { name: /^Partners/ }).click();
+      await page.getByText('1 order to check').first().waitFor({ timeout: 20000 });
+      if (w === 1440 && theme === 'light') await shot(page, 'admin-partner-list-check-1440-light');
+      await page.getByRole('button', { name: 'Manage Preview Tester' }).click();
+      const box = page.getByText('Check before paying').first();
+      await box.waitFor({ timeout: 20000 });
+      await box.scrollIntoViewIfNeeded();
+      await page.getByText("The delivery name is the partner's own name.").first().waitFor({ timeout: 20000 });
+      await shot(page, `admin-check-${w}-${theme}`, false);
+      if (w === 1440 && theme === 'dark') {
+        await page.getByRole('button', { name: 'Pay it' }).first().click();
+        for (let i = 0; i < 30 && (await read(earningRef(N.rzp)))?.review !== 'cleared'; i++) await page.waitForTimeout(300);
+        await page.getByText('Check before paying').first().waitFor({ state: 'detached', timeout: 20000 });
+        await shot(page, 'admin-check-cleared-1440-dark', false);
+      }
+      await ctx.close();
+    }
+  }
+  const ne2 = await read(earningRef(N.rzp));
+  assert.deepEqual([ne2.review, ne2.amount], ['cleared', nCommission], JSON.stringify(ne2));
+  assert.equal((await read(privRef))?.reviewPending, 0);
+  assert.equal((await read(privRef.collection('orders').doc(N.rzp)))?.reviewDecision, 'pay');
+  step(`self-referral: partner's phone on another account's order -> own order, Rs 0; partner's name -> held, "Check before paying" in Admin > Partners, "Pay it" releases Rs ${nCommission}; 4 sizes/themes`);
 
   // 6. Partner area: the earning shows, still waiting on the return window ("Total to be settled" Rs 0).
   for (const [w, h, theme] of [[390, 844, 'light'], [1440, 900, 'dark'], [390, 844, 'dark'], [1440, 900, 'light']]) {
@@ -396,7 +446,6 @@ try {
   }
   // The partner record, its subcollections, the private figures and the code link.
   const pRef = db.collection('partners').doc(PUID);
-  const privRef = db.collection('partnerPrivate').doc(PUID);
   await db.recursiveDelete(pRef);
   await db.recursiveDelete(privRef);
   for (const d of (await db.collection('partnerCodes').where('uid', '==', PUID).get()).docs) await d.ref.delete();

@@ -45,6 +45,8 @@ import {
   normalisePartnerSettings,
   partnerCodeFor,
   partnerTierFor,
+  REVIEW_REASON_TEXT,
+  earningsToCheck,
   receivedTotal,
   settledAmount,
   unlockedEarnings,
@@ -55,6 +57,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   approvePartner,
+  decidePartnerEarning,
   fulfilClaim,
   loadPartnerMoney,
   loadPartnerSettings,
@@ -290,6 +293,9 @@ function PartnerList({ rows, adminUid }: { rows: PartnerRecord[]; adminUid: stri
                 <p className="truncate text-xs text-muted-foreground">{r.business ? `${r.business} · ` : ''}<span className="font-mono">{r.code || 'no code'}</span></p>
               </div>
               <StatusBadge tone={st.tone} label={st.label} />
+              {(r.reviewPending ?? 0) > 0 && (
+                <StatusBadge tone="warning" label={`${r.reviewPending} order${r.reviewPending === 1 ? '' : 's'} to check`} />
+              )}
               <span className="text-xs text-muted-foreground">
                 {(r.tierOverride ?? r.tier) === 'gold' ? 'Gold' : 'Silver'}
                 {r.tierOverride && ' (set by admin)'}
@@ -347,6 +353,15 @@ function PartnerDialog({ r, adminUid, onClose }: { r: PartnerRecord; adminUid: s
   const sent = money ? money.payouts.reduce((t, p) => t + p.amount, 0) : 0;
   const received = money ? receivedTotal(money.payouts) : 0;
   const owed = money ? settledAmount(money.earnings, money.payouts, nowMs) : 0;
+  const toCheck = money ? earningsToCheck(money.earnings) : [];
+  const decide = async (rzp: string, decision: 'pay' | 'own') => {
+    const ok = await act(
+      `${decision}-${rzp}`,
+      () => decidePartnerEarning(r.uid, rzp, decision),
+      decision === 'pay' ? 'Commission released' : 'Marked as their own order: no commission',
+    );
+    if (ok) void reload();
+  };
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -377,6 +392,45 @@ function PartnerDialog({ r, adminUid, onClose }: { r: PartnerRecord; adminUid: s
           </p>
         )}
         {loadError && <Notice tone="danger" compact title="Couldn't load money">{loadError}</Notice>}
+
+        {toCheck.length > 0 && (
+          <section aria-labelledby={`check-${r.uid}`} className="space-y-3 rounded-card border border-status-warning-line bg-status-warning-bg p-4">
+            <div>
+              <h3 id={`check-${r.uid}`} className="text-sm font-semibold text-foreground">Check before paying</h3>
+              <p className="text-xs text-muted-foreground">
+                These orders may be the partner's own. Their commission is not in "To settle" until you decide.
+              </p>
+            </div>
+            <ul className="space-y-3">
+              {toCheck.map((e) => (
+                <li key={e.id} className="space-y-2 text-sm">
+                  <p className="text-foreground">
+                    <span className="font-mono">{e.orderNumber || e.id}</span> · {formatINR(e.amount)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{e.reviewReason ? REVIEW_REASON_TEXT[e.reviewReason] : 'Details match the partner.'}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy !== null}
+                      onClick={() => void decide(e.id, 'pay')}
+                    >
+                      {busy === `pay-${e.id}` ? <Spinner /> : <Check aria-hidden="true" />} Pay it
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy !== null}
+                      onClick={() => void decide(e.id, 'own')}
+                    >
+                      {busy === `own-${e.id}` ? <Spinner /> : <X aria-hidden="true" />} Their own order
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section aria-labelledby={`tier-${r.uid}`} className="space-y-2">
           <Label id={`tier-${r.uid}`}>Tier</Label>

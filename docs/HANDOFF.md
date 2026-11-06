@@ -7,13 +7,14 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-06 (Next step 2 done: dealer + partner programme switches ON in live Firestore; partner flow and category move checked with `node scripts/qa/partner-live.mjs`, PASS. Bing sitemap: Success, 15 URLs. Google Search Console: verified, sitemap Success.)
+Last updated: 2026-11-06 (Self-referral fix done locally, commit after 57fad23, NOT deployed; 25 partner tests pass, check.mjs ok. Live check extended but not run: it writes live Firestore.)
 
 ## State
 
 - **Live = e282b8e (Ready on Vercel).** Coin card, SEO pass, Academy programme are live. Vercel Hobby + private repo blocks pushes whose head commit author is not `iconoiq-lab` (b35ea64..cc19727 were Blocked): after any push, check Vercel > Deployments shows Ready.
 - **Programme switches ON (2026-11-06):** `siteSettings/dealer.enabled` (Admin > Commerce settings > Dealers) and `partnerSettings/main.enabled` (Admin > Partners > Settings: Silver 15%, customer discount 0%, hold 0 days). Live `/dealer` shows "Become a partner". No real partners yet.
 - **Partner live check** `node scripts/qa/partner-live.mjs [BASE] [OUT] [--leave-on]` (dev server on BASE): admin switches on, shopper applies on /dealer, admin approves (code PREV3210), a customer order with the code credits 15% only on delivery, held until the return window ends, no double credit; own-code order = 15% off, no commission; partner area at 4 sizes/themes; Admin > Categories move down/up and the home strip follows. Writes live Firestore and deletes everything after; restores switches unless `--leave-on`. Discounts are whole rupees (floor), commission keeps paise.
+- **Self-referral fix (2026-11-06, local, not deployed):** on delivery `reconcilePartner` calls `partnerSelfMatch` (`api/notify-order.ts`). Order phone (shipping/alternative/account/buyer's user doc) or email = the partner's (application, user doc, saved addresses) → family: Rs 0, no units, no unlock credit (`partnerPrivate/<uid>/orders/<rzp>.selfOrder`). Only the delivery name or a saved address (line + pincode) matches → credited with `review: 'pending'`: not unlocked, not in "To settle", "N orders to check" badge in Admin > Partners and a "Check before paying" box in Manage with "Pay it" / "Their own order" (`/api/notify-order` action `review-partner-earning`, admins only). Phones compare on the last 10 digits, names/addresses on letters+digits only. Not caught: a buyer with a different phone, email, name and address (a friend) — accepted, that is a real referral in practice.
 - **Lakshmi coin card:** live; spec `docs/specs/lakshmi-coin-gift.md`; switch it on in Admin > Commerce settings > Lakshmi coin when the owner says so.
 - **SEO:** report `docs/seo/SEO-2026-11-05.md`; sitemap/catalog served by `api/media.ts`.
 
@@ -23,19 +24,19 @@ Last updated: 2026-11-06 (Next step 2 done: dealer + partner programme switches 
 - **Rewards:** turned on in Admin (owner's yes, 2026-10-22).
 - **Admins:** admin@iconoiq.com (password equals the email: the owner must change it) and iconoiq@gmail.com (client sets a password with "Forgot password"). The order-alert WhatsApp number is empty.
 - **Test data in iconoiq-85b53 (remove before launch):** shopper `preview.shopper@iconoiq-test.invalid` (login in `scripts/qa/shopper.local`, git-ignored), 13 fixture orders and a temporary admin from `node scripts/qa/ui-fixtures.mjs seed`. Remove with `node scripts/qa/ui-fixtures.mjs remove`, then delete the shopper in Firebase Auth and `users/`.
-- **Unfinished or uncommitted work:** none.
+- **Unfinished or uncommitted work:** none (the fix is committed locally; not pushed).
 - **How to run and check it:** `npm run dev` (port 5182: `npx vite --port 5182 --strictPort --host 127.0.0.1`); `node scripts/check.mjs` runs tests, build and screenshots.
 
 ## Next steps (in order)
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 1 | **Security follow-up (2026-11-03 review):** a partner can check out as a guest or from a second account with their own code and earn commission plus unlock credit (`api/create-order.ts` `resolvePartnerCode` only treats it as family when the uid matches). Fix: match the shipping phone/address against the partner application and treat a match as family (no commission), and add an admin review flag before payout. Now urgent: the programme is ON | No | Extra high |
+| 1 | **Deploy the self-referral fix** (owner's OK first: push = deploy): optionally first `node scripts/qa/partner-live.mjs` with the dev server (owner's OK: writes live Firestore; new step 5b checks own-phone → Rs 0 and own-name → "Check before paying" → "Pay it", shots in OUT). Then push, and confirm Vercel > Deployments shows Ready (Hobby blocks a head commit not authored by `iconoiq-lab`) | No | Medium |
 | 2 | Razorpay = Javani's live account (owner 2026-11-03). Done: iconoiq.com submitted for website approval (24-48 h), the 3 keys are in local `.env`. Keys are on Vercel (redeployed, `8bcff1c`). Left: after approval a real small test order + refund | No | High |
 | 3 | Before launch: remove the test data (above); owner changes the admin@iconoiq.com password and sets the alert WhatsApp number (Admin > Settings); social links; COD yes/no (some COD code exists in `orderStatus.ts`/`orderService.ts`) | No | Medium |
 | 4 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (partner self-referral fix).` Step 2 waits on Razorpay website approval.
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (deploy the self-referral fix).` Step 2 waits on Razorpay website approval.
 
 ## Waiting on the client or the user
 

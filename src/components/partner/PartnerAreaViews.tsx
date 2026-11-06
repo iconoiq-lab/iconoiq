@@ -122,7 +122,7 @@ const AccountTab = ({ record, settings, earnings, payouts, nowMs, busy, onReceiv
   const thisMonth = byMonth.find((m) => m.month === month)?.amount ?? 0;
   const toSettle = settledAmount(earnings, payouts, nowMs);
   const waiting = earnings.reduce(
-    (t, r) => (!r.family && r.state !== 'void' && (r.state === 'held' || r.unlockAtMs > nowMs) ? t + (Number(r.amount) || 0) : t),
+    (t, r) => (!r.family && r.state !== 'void' && (r.state === 'held' || r.review === 'pending' || r.unlockAtMs > nowMs) ? t + (Number(r.amount) || 0) : t),
     0,
   );
   const awaiting = payouts.filter((x) => !x.receivedAtMs);

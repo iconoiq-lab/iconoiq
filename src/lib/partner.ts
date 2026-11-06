@@ -117,6 +117,12 @@ interface PartnerEarningLike {
   savings?: number;
   /** When the return window ends (ms). Sales count towards unlocks only after it. */
   unlockAtMs?: number;
+  /**
+   * The admin's check (possible self-referral): 'pending' holds the commission
+   * and the unlock credit until the admin decides; 'cleared' = pay it; 'own' =
+   * the partner's own order (then family, amount 0).
+   */
+  review?: 'pending' | 'cleared' | 'own';
 }
 
 interface PartnerTotals {
@@ -163,7 +169,7 @@ function partnerUnlocked(rows: PartnerEarningLike[], nowMs: number): { unlockedS
   let unlockedSales = 0;
   let nextUnlockMs: number | null = null;
   for (const r of rows) {
-    if (r.state !== 'active' || r.family) continue;
+    if (r.state !== 'active' || r.family || r.review === 'pending') continue;
     const at = Number(r.unlockAtMs);
     if (Number.isFinite(at) && at <= nowMs) unlockedSales += Number(r.sales) || 0;
     else if (Number.isFinite(at) && (nextUnlockMs === null || at < nextUnlockMs)) nextUnlockMs = at;
@@ -451,11 +457,24 @@ export interface EarningRow extends PartnerEarningLike {
   rate: number;
   month: string;
   unlockAtMs: number;
+  /** The store's order number (ORD-…), when the server wrote it. */
+  orderNumber?: string;
+  /** Admin only (from partnerPrivate): why the order waits for a check. */
+  reviewReason?: 'name' | 'address';
 }
 
-/** Unlocked earnings: active and past the hold. */
+/** What the admin sees for an order held for a self-referral check. */
+export const REVIEW_REASON_TEXT: Record<'name' | 'address', string> = {
+  name: "The delivery name is the partner's own name.",
+  address: "It goes to an address saved in the partner's own account.",
+};
+
+/** Unlocked earnings: active, past the hold and not waiting for the admin's check. */
 export const unlockedEarnings = (rows: EarningRow[], nowMs: number) =>
-  partnerMoney(rows.reduce((t, r) => (r.state === 'active' && r.unlockAtMs <= nowMs ? t + (Number(r.amount) || 0) : t), 0));
+  partnerMoney(rows.reduce((t, r) => (r.state === 'active' && r.review !== 'pending' && r.unlockAtMs <= nowMs ? t + (Number(r.amount) || 0) : t), 0));
+
+/** Commission waiting for the admin's self-referral check (not void): never paid before the check. */
+export const earningsToCheck = (rows: EarningRow[]) => rows.filter((r) => r.review === 'pending' && r.state !== 'void');
 
 /** Payouts the partner confirmed as received. */
 export const receivedTotal = (payouts: PayoutLike[]) =>
