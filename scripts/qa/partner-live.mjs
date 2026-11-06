@@ -263,7 +263,12 @@ try {
     await shot(page, 'applied-pending-390-light');
     await ctx.close();
   }
-  const applied = await read(db.collection('partners').doc(PUID));
+  // The page shows "reviewing" from the local write; wait for the server copy (a 2026-11-06 run read it too early).
+  let applied;
+  for (let i = 0; i < 20 && applied?.status !== 'pending'; i++) {
+    applied = await read(db.collection('partners').doc(PUID));
+    if (applied?.status !== 'pending') await new Promise((r) => setTimeout(r, 500));
+  }
   assert.equal(applied?.status, 'pending', 'application saved as pending');
   assert.equal(await restPatch(partnerUser, `partners/${PUID}`, { status: 'approved' }), 403, 'applicant cannot approve themselves');
   assert.equal(await restPatch(partnerUser, `partners/${PUID}`, { earnedTotal: 99999 }), 403, 'applicant cannot write totals');
