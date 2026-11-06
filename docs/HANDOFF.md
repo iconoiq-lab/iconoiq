@@ -7,14 +7,14 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-06 (Self-referral fix done locally, commit after 57fad23, NOT deployed; 25 partner tests pass, check.mjs ok. Live check extended but not run: it writes live Firestore.)
+Last updated: 2026-11-06 (Self-referral fix DEPLOYED: f05a0dd, Vercel commit status "Deployment has completed". Live check `partner-live.mjs` PASS incl. step 5b before the push.)
 
 ## State
 
-- **Live = e282b8e (Ready on Vercel).** Coin card, SEO pass, Academy programme are live. Vercel Hobby + private repo blocks pushes whose head commit author is not `iconoiq-lab` (b35ea64..cc19727 were Blocked): after any push, check Vercel > Deployments shows Ready.
+- **Live = f05a0dd (Vercel status success, 2026-11-06).** Coin card, SEO pass, Academy programme are live. Vercel Hobby + private repo blocks pushes whose head commit author is not `iconoiq-lab` (b35ea64..cc19727 were Blocked): after any push, check Vercel > Deployments shows Ready.
 - **Programme switches ON (2026-11-06):** `siteSettings/dealer.enabled` (Admin > Commerce settings > Dealers) and `partnerSettings/main.enabled` (Admin > Partners > Settings: Silver 15%, customer discount 0%, hold 0 days). Live `/dealer` shows "Become a partner". No real partners yet.
 - **Partner live check** `node scripts/qa/partner-live.mjs [BASE] [OUT] [--leave-on]` (dev server on BASE): admin switches on, shopper applies on /dealer, admin approves (code PREV3210), a customer order with the code credits 15% only on delivery, held until the return window ends, no double credit; own-code order = 15% off, no commission; partner area at 4 sizes/themes; Admin > Categories move down/up and the home strip follows. Writes live Firestore and deletes everything after; restores switches unless `--leave-on`. Discounts are whole rupees (floor), commission keeps paise.
-- **Self-referral fix (2026-11-06, local, not deployed):** on delivery `reconcilePartner` calls `partnerSelfMatch` (`api/notify-order.ts`). Order phone (shipping/alternative/account/buyer's user doc) or email = the partner's (application, user doc, saved addresses) → family: Rs 0, no units, no unlock credit (`partnerPrivate/<uid>/orders/<rzp>.selfOrder`). Only the delivery name or a saved address (line + pincode) matches → credited with `review: 'pending'`: not unlocked, not in "To settle", "N orders to check" badge in Admin > Partners and a "Check before paying" box in Manage with "Pay it" / "Their own order" (`/api/notify-order` action `review-partner-earning`, admins only). Phones compare on the last 10 digits, names/addresses on letters+digits only. Not caught: a buyer with a different phone, email, name and address (a friend) — accepted, that is a real referral in practice.
+- **Self-referral fix (2026-11-06, live):** on delivery `reconcilePartner` calls `partnerSelfMatch` (`api/notify-order.ts`). Order phone (shipping/alternative/account/buyer's user doc) or email = the partner's (application, user doc, saved addresses) → family: Rs 0, no units, no unlock credit (`partnerPrivate/<uid>/orders/<rzp>.selfOrder`). Only the delivery name or a saved address (line + pincode) matches → credited with `review: 'pending'`: not unlocked, not in "To settle", "N orders to check" badge in Admin > Partners and a "Check before paying" box in Manage with "Pay it" / "Their own order" (`/api/notify-order` action `review-partner-earning`, admins only). Phones compare on the last 10 digits, names/addresses on letters+digits only. Not caught: a buyer with a different phone, email, name and address (a friend) — accepted, that is a real referral in practice.
 - **Lakshmi coin card:** live; spec `docs/specs/lakshmi-coin-gift.md`; switch it on in Admin > Commerce settings > Lakshmi coin when the owner says so.
 - **SEO:** report `docs/seo/SEO-2026-11-05.md`; sitemap/catalog served by `api/media.ts`.
 
@@ -24,19 +24,18 @@ Last updated: 2026-11-06 (Self-referral fix done locally, commit after 57fad23, 
 - **Rewards:** turned on in Admin (owner's yes, 2026-10-22).
 - **Admins:** admin@iconoiq.com (password equals the email: the owner must change it) and iconoiq@gmail.com (client sets a password with "Forgot password"). The order-alert WhatsApp number is empty.
 - **Test data in iconoiq-85b53 (remove before launch):** shopper `preview.shopper@iconoiq-test.invalid` (login in `scripts/qa/shopper.local`, git-ignored), 13 fixture orders and a temporary admin from `node scripts/qa/ui-fixtures.mjs seed`. Remove with `node scripts/qa/ui-fixtures.mjs remove`, then delete the shopper in Firebase Auth and `users/`.
-- **Unfinished or uncommitted work:** none (the fix is committed locally; not pushed).
+- **Unfinished or uncommitted work:** none.
 - **How to run and check it:** `npm run dev` (port 5182: `npx vite --port 5182 --strictPort --host 127.0.0.1`); `node scripts/check.mjs` runs tests, build and screenshots.
 
 ## Next steps (in order)
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 1 | **Deploy the self-referral fix** (owner's OK first: push = deploy): optionally first `node scripts/qa/partner-live.mjs` with the dev server (owner's OK: writes live Firestore; new step 5b checks own-phone → Rs 0 and own-name → "Check before paying" → "Pay it", shots in OUT). Then push, and confirm Vercel > Deployments shows Ready (Hobby blocks a head commit not authored by `iconoiq-lab`) | No | Medium |
-| 2 | Razorpay = Javani's live account (owner 2026-11-03). Done: iconoiq.com submitted for website approval (24-48 h), the 3 keys are in local `.env`. Keys are on Vercel (redeployed, `8bcff1c`). Left: after approval a real small test order + refund | No | High |
-| 3 | Before launch: remove the test data (above); owner changes the admin@iconoiq.com password and sets the alert WhatsApp number (Admin > Settings); social links; COD yes/no (some COD code exists in `orderStatus.ts`/`orderService.ts`) | No | Medium |
-| 4 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
+| 1 | Razorpay = Javani's live account (owner 2026-11-03). Done: iconoiq.com submitted for website approval (24-48 h), the 3 keys are in local `.env`. Keys are on Vercel (redeployed, `8bcff1c`). Left: after approval a real small test order + refund | No | High |
+| 2 | Before launch: remove the test data (above); owner changes the admin@iconoiq.com password and sets the alert WhatsApp number (Admin > Settings); social links; COD yes/no (some COD code exists in `orderStatus.ts`/`orderService.ts`) | No | Medium |
+| 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (deploy the self-referral fix).` Step 2 waits on Razorpay website approval.
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Razorpay test order)`, once Razorpay approves the website; until then step 2 (needs the owner's answers).
 
 ## Waiting on the client or the user
 
@@ -54,4 +53,4 @@ Last updated: 2026-11-06 (Self-referral fix done locally, commit after 57fad23, 
 - A category the admin adds later gets the "more" icon in the strip; give it one in `DEFAULT_ICONS` (`CategoryIconNav.tsx`) or draw one in `IconoIcons.tsx`.
 - Dev server port: if 5182 is busy, use another; `check.mjs` uses 5183 for its preview. Dev pages never reach network idle: in Playwright wait for `load` plus a short fixed wait.
 - Browsers: creative work and both live admin sessions are in the DREAM TEAM SERVICES Chrome; the client's own accounts (Firebase, Cloudflare, Vercel) in the ICONOIQ Chrome.
-- After any push, open Vercel > Deployments and confirm "Ready": a push can be silently "Blocked" (Hobby + private repo + non-member commit author). Never write "deployed" from the push alone (lesson 2026-11-06: three deploys were wrongly marked live).
+- After any push, confirm the build: `gh api repos/iconoiq-lab/iconoiq/commits/<sha>/status` (Vercel's status: "success" = deployed; or Vercel > Deployments "Ready"). The first live-check run can fail at "application saved as pending" (read too early; the script now waits). A push can be silently "Blocked" (Hobby + private repo + non-member commit author). Never write "deployed" from the push alone (lesson 2026-11-06: three deploys were wrongly marked live).
