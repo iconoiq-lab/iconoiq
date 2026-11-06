@@ -50,7 +50,7 @@ const TermsConditions = () => {
             <section className={policySectionClassName}>
               <h2 className={policyHeadingClassName}>3. Payments</h2>
               <p className={policyBodyClassName}>
-                We accept online payments securely through Razorpay. We also offer Cash on Delivery (if applicable).
+                We accept online payments securely through Razorpay. Cash on Delivery is not available.
               </p>
             </section>
 

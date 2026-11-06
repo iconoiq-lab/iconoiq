@@ -74,7 +74,7 @@
 
 ## Waiting on the client ([NEED] list)
 
-- [NEED: confirm the WhatsApp number] (the phone number, 918106670346, is used for now)
+- [NEED: confirm the WhatsApp number] (the phone number, 918106670346, is used for now; the owner chose it for order alerts, 2026-11-06)
 - [NEED: confirm the Udyam address may be shown publicly] (it is in the footer, contact and policy pages)
 - [NEED: opening or support hours]
 - [NEED: social links (Instagram, Facebook, YouTube)]

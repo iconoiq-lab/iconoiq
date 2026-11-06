@@ -66,8 +66,7 @@ const CancellationRefundPolicy = () => {
               </p>
               <ul className={policyListClassName}>
                 <li>Refund will be processed within 7 business days.</li>
-                <li>For prepaid orders, refund will be made to the original payment method.</li>
-                <li>For Cash on Delivery (COD) orders, refund will be processed to the customer's bank account after verification.</li>
+                <li>Refunds are made to the original payment method.</li>
               </ul>
             </section>
 

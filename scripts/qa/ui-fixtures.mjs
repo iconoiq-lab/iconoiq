@@ -2,9 +2,14 @@
 // seed:   demo orders in every status for the preview shopper, plus a temporary admin
 //         whose login is written to scripts/qa/admin.local (git-ignored).
 // remove: deletes every fixture order, the temporary admin and admin.local.
-// Everything is marked demo: true and uiFixture: true. Run from ssecommerce/:
+// remove-all (before launch): also deletes the preview shopper (Auth, users/<uid> with its
+//         subcollections, cart, every order and partner record of that uid) and shopper.local.
+// seed recreates the preview shopper (and shopper.local) when it is missing, so the live checks
+// (partner-live, coin-gift-live, ui-shots...) still work after a remove-all.
+// Everything is marked demo: true and uiFixture: true (the shopper: uiFixtureShopper). Run from the repo root:
 //   node scripts/qa/ui-fixtures.mjs seed
 //   node scripts/qa/ui-fixtures.mjs remove
+//   node scripts/qa/ui-fixtures.mjs remove-all
 import { createRequire } from 'node:module';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, unlinkSync, readdirSync } from 'node:fs';
@@ -38,9 +43,56 @@ async function remove() {
   console.log(`removed ${orders.size} fixture orders and ${users.size} temporary admin(s)`);
 }
 
+const SHOPPER_FILE = 'scripts/qa/shopper.local';
+const SHOPPER_EMAIL = `preview.shopper@${BRAND_SLUG}-test.invalid`;
+
+async function findShopper() {
+  const email = existsSync(SHOPPER_FILE) ? JSON.parse(readFileSync(SHOPPER_FILE, 'utf8')).email : SHOPPER_EMAIL;
+  return admin.auth().getUserByEmail(email).catch(() => null);
+}
+
+async function removeShopper() {
+  const user = await findShopper();
+  if (user) {
+    const uid = user.uid;
+    const userDoc = await db.doc(`users/${uid}`).get();
+    if (userDoc.exists && !userDoc.data().uiFixtureShopper) throw new Error(`refusing: users/${uid} is not the preview shopper`);
+    let n = 0;
+    for (const field of ['userId', 'uid', 'partnerUid']) {
+      for (const name of ['orders', 'partnerApplications', 'dealerApplications']) {
+        const snap = await db.collection(name).where(field, '==', uid).get().catch(() => ({ docs: [] }));
+        for (const d of snap.docs) { await db.recursiveDelete(d.ref); n++; }
+      }
+    }
+    for (const path of [`users/${uid}`, `carts/${uid}`, `wishlists/${uid}`, `partners/${uid}`, `partnerPrivate/${uid}`, `rewards/${uid}`]) {
+      const ref = db.doc(path);
+      if ((await ref.get()).exists || (await ref.listCollections()).length) { await db.recursiveDelete(ref); n++; }
+    }
+    await admin.auth().deleteUser(uid);
+    console.log(`removed the preview shopper ${user.email} and ${n} of its records`);
+  } else console.log('no preview shopper to remove');
+  if (existsSync(SHOPPER_FILE)) unlinkSync(SHOPPER_FILE);
+}
+
+async function ensureShopper() {
+  const user = await findShopper();
+  if (user && existsSync(SHOPPER_FILE)) return JSON.parse(readFileSync(SHOPPER_FILE, 'utf8'));
+  if (user) throw new Error(`the preview shopper exists but ${SHOPPER_FILE} is missing: run remove-all, then seed`);
+  const password = randomBytes(18).toString('base64url');
+  const created = await admin.auth().createUser({ email: SHOPPER_EMAIL, password, emailVerified: true, displayName: 'Preview Shopper' });
+  await db.doc(`users/${created.uid}`).set({
+    uid: created.uid, email: SHOPPER_EMAIL, name: 'Preview Shopper', displayName: 'Preview Shopper', phone: '+919000000000',
+    role: 'customer', accountStatus: 'active', demo: true, uiFixtureShopper: true, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  const creds = { email: SHOPPER_EMAIL, password };
+  writeFileSync(SHOPPER_FILE, JSON.stringify(creds, null, 2));
+  console.log(`created the preview shopper ${SHOPPER_EMAIL} (login in ${SHOPPER_FILE})`);
+  return creds;
+}
+
 async function seed() {
   await remove();
-  const shopper = JSON.parse(readFileSync('scripts/qa/shopper.local', 'utf8'));
+  const shopper = await ensureShopper();
   const uid = (await admin.auth().getUserByEmail(shopper.email)).uid;
   const products = (await db.collection('products').where('flags.isActive', '==', true).limit(40).get()).docs
     .map((d) => ({ id: d.id, ...d.data() }))
@@ -144,5 +196,6 @@ async function seed() {
 
 if (process.argv[2] === 'seed') await seed();
 else if (process.argv[2] === 'remove') await remove();
-else console.log('usage: node scripts/qa/ui-fixtures.mjs seed|remove');
+else if (process.argv[2] === 'remove-all') { await remove(); await removeShopper(); }
+else console.log('usage: node scripts/qa/ui-fixtures.mjs seed|remove|remove-all');
 process.exit(0);

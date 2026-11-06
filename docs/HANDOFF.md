@@ -7,7 +7,7 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-06 (Self-referral fix DEPLOYED: f05a0dd, Vercel commit status "Deployment has completed". Live check `partner-live.mjs` PASS incl. step 5b before the push.)
+Last updated: 2026-11-06 (Pre-launch cleanup: test data removed from iconoiq-85b53, order-alert WhatsApp set, COD = no; policy text change committed locally, not pushed.)
 
 ## State
 
@@ -22,8 +22,9 @@ Last updated: 2026-11-06 (Self-referral fix DEPLOYED: f05a0dd, Vercel commit sta
 - **Done:** Phases 0-3 (look "Temple Modern"); Firebase `iconoiq-85b53` with rules, 12 indexes and the dummy catalogue (`node scripts/seed-iconoiq.mjs`, all `demo: true`); Cloudflare R2 + analytics token; Vercel vars; domain iconoiq.com on Vercel (www). Details in the archive file.
 - **Phase 5 open:** Razorpay keys (KYC in progress) and a test order; DNS move to Cloudflare waits on the owner switching GoDaddy's nameservers to gene/trey.ns.cloudflare.com; after that: R2 custom domain media.iconoiq.com, `CLOUDFLARE_ZONE_ID`, cache purge on the token, `R2_PUBLIC_URL`, `scripts/rewrite-media-urls.mjs` (the catalog rewrite now goes through `/api/media?catalog=1`, so it no longer needs moving).
 - **Rewards:** turned on in Admin (owner's yes, 2026-10-22).
-- **Admins:** admin@iconoiq.com (password equals the email: the owner must change it) and iconoiq@gmail.com (client sets a password with "Forgot password"). The order-alert WhatsApp number is empty.
-- **Test data in iconoiq-85b53 (remove before launch):** shopper `preview.shopper@iconoiq-test.invalid` (login in `scripts/qa/shopper.local`, git-ignored), 13 fixture orders and a temporary admin from `node scripts/qa/ui-fixtures.mjs seed`. Remove with `node scripts/qa/ui-fixtures.mjs remove`, then delete the shopper in Firebase Auth and `users/`.
+- **Admins:** admin@iconoiq.com (password equals the email: the owner must change it) and iconoiq@gmail.com (client sets a password with "Forgot password"). Order-alert WhatsApp (`siteSettings/adminNotification.whatsappNumber`) = 918106670346 (owner, 2026-11-06).
+- **Test data: removed (2026-11-06)** with `node scripts/qa/ui-fixtures.mjs remove-all` (13 fixture orders, temp admin, preview shopper with cart/wishlist/login history; `scripts/qa/*.local` deleted). Firebase now: 0 orders, 3 accounts (admin@iconoiq.com, iconoiq@gmail.com, thedreamteamservicespvt@gmail.com). The demo catalogue (`demo: true` products, banners, collections, showcases) stays until Phase 6. **Live checks (`partner-live`, `coin-gift-live`, `ui-shots --as`...) need the test logins: run `node scripts/qa/ui-fixtures.mjs seed` first (recreates the shopper + temp admin + fixture orders), then `remove-all` after.**
+- **COD = no (2026-11-06, Claude's call on the owner's "do the best"):** online payment only (checkout never had a COD option). Terms and Refund pages no longer mention COD (commit after f05a0dd, not pushed yet).
 - **Unfinished or uncommitted work:** none.
 - **How to run and check it:** `npm run dev` (port 5182: `npx vite --port 5182 --strictPort --host 127.0.0.1`); `node scripts/check.mjs` runs tests, build and screenshots.
 
@@ -32,7 +33,7 @@ Last updated: 2026-11-06 (Self-referral fix DEPLOYED: f05a0dd, Vercel commit sta
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
 | 1 | Razorpay = Javani's live account (owner 2026-11-03). Done: iconoiq.com submitted for website approval (24-48 h), the 3 keys are in local `.env`. Keys are on Vercel (redeployed, `8bcff1c`). Left: after approval a real small test order + refund | No | High |
-| 2 | Before launch: remove the test data (above); owner changes the admin@iconoiq.com password and sets the alert WhatsApp number (Admin > Settings); social links; COD yes/no (some COD code exists in `orderStatus.ts`/`orderService.ts`) | No | Medium |
+| 2 | Pre-launch: done except the owner's own items: change the admin@iconoiq.com password (Account page or "Forgot password"), send social links (then `BRAND.social` in `src/config/brand.ts`). Push the policy commit with the next deploy | No | Low |
 | 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
 
 **Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Razorpay test order)`, once Razorpay approves the website; until then step 2 (needs the owner's answers).
