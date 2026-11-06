@@ -7,7 +7,7 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-06 (e282b8e pushed and DEPLOYED: live site has the coin card, SEO pass, sitemap. Search Console verified (HTML file) and sitemap.xml submitted; its status said "Couldn't fetch" right after submit: re-check in a day. Earlier pushes cc19727..b35ea64 were Blocked, e282b8e was not: unclear why, so always check Vercel).
+Last updated: 2026-11-06 (e282b8e pushed and DEPLOYED: live site has the coin card, SEO pass, sitemap. Search Console verified (HTML file); sitemap.xml status Success, 15 pages discovered. Bing Webmaster: site + sitemap imported from Search Console (iconoiq@gmail.com, view-only access); status "Processing", data takes up to 48 h: re-check `bing.com/webmasters/sitemaps` in ICONOIQ Chrome. Live curl checks passed (sitemap, catalog JSON, robots, verification file). Reusable skill `dts-seo-playbook` is committed in the brain repo; the push to GitHub still needs the owner to run it in their own terminal. Earlier pushes cc19727..b35ea64 were Blocked, e282b8e was not: unclear why, so always check Vercel).
 
 ## State
 
