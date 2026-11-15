@@ -7,7 +7,7 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-16 (live = 7309361; owner said the UPI ID was saved but `siteSettings/payment` is still missing: checkout is still on the rejected Razorpay; WhatsApp keys missing.)
+Last updated: 2026-11-16 later (live = 1aaf74a, success; re-checked: `siteSettings/payment` still 404 after the owner said "saved"; owner said the UPI ID was saved but `siteSettings/payment` is still missing: checkout is still on the rejected Razorpay; WhatsApp keys missing.)
 
 ## State
 
@@ -37,7 +37,7 @@ Last updated: 2026-11-16 (live = 7309361; owner said the UPI ID was saved but `s
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 0 | **Before the demo (still open 2026-11-16: not saved):** the owner logs in as admin, enters the UPI ID + payee name in Admin > Commerce settings > Payments, picks UPI QR and presses Save (never set it for them). Then one real small UPI order + admin approve | No | Medium |
+| 0 | **Before the demo (still open 2026-11-16, checked twice: not saved; a real save shows the green toast "Checkout now takes UPI QR payments"):** the owner logs in as admin, enters the UPI ID + payee name in Admin > Commerce settings > Payments, picks UPI QR and presses Save (never set it for them). Then one real small UPI order + admin approve | No | Medium |
 | 1 | WhatsApp: put `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID` (Meta WhatsApp Business API) on Vercel, redeploy, then switch `whatsappOtp` back on in `src/config/features.ts` | No | Medium |
 | 2 | Razorpay: Javani's account REJECTED iconoiq.com. Only if the owner wants cards: a new Razorpay account for ICONOIQ (owner's KYC), then swap the keys on Vercel | No | High |
 | 3 | Pre-launch: change the admin@iconoiq.com password, send social links (`BRAND.social`); client content: About story, real product photos, policy review + effective dates | No | Low |
