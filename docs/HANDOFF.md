@@ -7,10 +7,11 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-15 (live = b25e7ee; Razorpay REJECTED iconoiq.com; owner sets UPI in Admin; tsc clean; /assets cached 1 year.)
+Last updated: 2026-11-15 night (live = 6cc91b2; full admin + customer test done; UPI ID still NOT saved by the owner; WhatsApp keys missing.)
 
 ## State
 
+- **Pre-demo test pass (2026-11-15 night, live = 6cc91b2, Vercel success):** the UPI flow was tested live end to end with a temporary test UPI ID (QR dialog, empty-submit refused, UTR + screenshot, confirmation, admin approve -> Paid/verified, customer order page), then the setting was put back (no `siteSettings/payment` doc = Razorpay default) and every test record deleted. **The owner's UPI ID was never saved: the doc is missing, so live checkout still uses the rejected Razorpay until they press Save in Admin > Commerce settings > Payments.** Fixed in 6cc91b2: UPI confirmation says "Order placed, we check your UPI payment" (was "We have your payment"); admin order page shows "UPI payment to check" instead of the Razorpay "Payment not confirmed" box on `upi_` orders; UPI screenshot thumbnail radius; `/api/whatsapp-send` returns 200 `{skipped:'whatsapp_not_configured'}` for order templates when `WHATSAPP_TOKEN`/`WHATSAPP_PHONE_ID` are missing (they ARE missing on Vercel: no customer or owner WhatsApp messages go out; owner alerts still come as browser push); `whatsappOtp` switched OFF (sign-up was blocked on a WhatsApp code that never arrives; switch back on when the Meta keys are on Vercel); About page rebuilt from real facts only (BRAND, `SHOP_FOR`, categories), Contact uses `/art/` images, policy-page and home "[NEED]" lines hidden. Live sweep: 8 admin pages (1440 + 390) and 5 shopper pages (390, light + dark) with no console errors. Fixtures removed again (`ui-fixtures.mjs remove-all`): 0 orders. One test screenshot stays in R2 under `payments/` (harmless).
 - **Manual UPI mode (2026-11-15, live at 108b382):** Admin > Commerce settings > Payments switches Razorpay / UPI QR (`siteSettings/payment {mode, upiId, payeeName}`, default razorpay). UPI: `api/create-order.ts` makes a `upi_...` id + `manualPayments/<id>` (no Razorpay); checkout dialog `src/components/checkout/UpiPayDialog.tsx` shows the QR for the exact amount, takes UTR + screenshot (R2 `payments/<uid>/`), `/api/notify-order` `upi-claim`; order saved as payment pending. Admin order page `UpiPaymentReview` → `review-upi-payment` (admin only) writes `payments/<id>` (method upi) and sets paid, or rejects. Duplicate UTRs flagged; points/cashback can't be spent in UPI mode. Tests `tests/upi-payment.test.ts`. Rules released 2026-11-15 with `node scripts/qa/deploy-rules.mjs` (the `firebase` CLI gets 403: other account; always use this script). **Left: the owner enters the real UPI ID + payee name in Admin and switches to UPI** (the store stays on Razorpay until then).
 - **SEO pass (2026-11-15, same commits):** `/llms.txt` (vercel rewrite → `api/media?llms=1`), `BRAND.homeTitle`, og:image size/alt tags, Product + Breadcrumb JSON-LD, category/about/contact titles, `useNoindex()` on private routes, robots.txt blocks account pages. Live: `/llms.txt`, robots, sitemap = 200, new home title + og:image tags served. PageSpeed mobile not re-run yet. Needs from client: public address + hours (LocalBusiness), social links.
 - **Razorpay REJECTED iconoiq.com (seen 2026-11-15 in Javani's dashboard > Websites & API keys):** "business model deviation… create a new account" for this URL. The Javani live keys will not take payments on iconoiq.com. Plan: UPI QR mode now; a separate Razorpay account for ICONOIQ (owner's KYC) only if cards are needed later.
@@ -35,12 +36,12 @@ Last updated: 2026-11-15 (live = b25e7ee; Razorpay REJECTED iconoiq.com; owner s
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 0 | The owner enters the UPI ID + payee name himself in Admin > Commerce settings > Payments (owner 2026-11-15: so they can change it any time; never set it for them) and picks UPI QR. Then: check the live checkout QR, one real small UPI order + admin approve | No | Medium |
-| 1 | Razorpay: Javani's account REJECTED iconoiq.com. Only if the owner wants cards: a new Razorpay account for ICONOIQ (owner's KYC), then swap the keys on Vercel | No | High |
-| 2 | Pre-launch: done except the owner's own items: change the admin@iconoiq.com password (Account page or "Forgot password"), send social links (then `BRAND.social` in `src/config/brand.ts`) | No | Low |
-| 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
+| 0 | **Before the demo:** the owner enters the UPI ID + payee name in Admin > Commerce settings > Payments, picks UPI QR and presses Save (never set it for them). Then one real small UPI order + admin approve | No | Medium |
+| 1 | WhatsApp: put `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID` (Meta WhatsApp Business API) on Vercel, redeploy, then switch `whatsappOtp` back on in `src/config/features.ts` | No | Medium |
+| 2 | Razorpay: Javani's account REJECTED iconoiq.com. Only if the owner wants cards: a new Razorpay account for ICONOIQ (owner's KYC), then swap the keys on Vercel | No | High |
+| 3 | Pre-launch: change the admin@iconoiq.com password, send social links (`BRAND.social`); client content: About story, real product photos, policy review + effective dates | No | Low |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 0: I switched to UPI, check the live checkout QR`.
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 0: I saved the UPI ID in Admin, check the live checkout QR`.
 
 ## Waiting on the client or the user
 

@@ -88,4 +88,6 @@
 - [NEED: GST: confirm no GST is charged, and what changes once the client registers]
 - Provisional selling rules, to confirm in Phase 6: delivery ₹50 inside Telangana and ₹100 outside, free above ₹999, 4-7 business days, 7-day returns for any reason, reply within 24 hours, the template's policy pages
 - Phase 5: Firebase project created (iconoiq-85b53), setup pending, Razorpay KYC (in progress), Vercel, WhatsApp Business API account, Gemini API key, image storage (Cloudinary or Cloudflare R2)
-- Phase 6: real product count and photos (the catalogue is dummy for now), about story, real reviews, FAQ
+- Phase 6: real product count and photos (the catalogue is dummy for now), about story, real reviews, FAQ (the About page shows only real facts until the story arrives; add an "Our story" section then)
+- [NEED: policy pages: client review and effective date] (the date line is hidden until then)
+- [NEED: WhatsApp Business API keys on Vercel] (customer/owner WhatsApp messages are skipped and the sign-up WhatsApp code is off until then)
