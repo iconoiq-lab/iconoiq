@@ -35,16 +35,16 @@ Last updated: 2026-11-15 (live = fbcf4f2; Razorpay REJECTED iconoiq.com on Javan
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 0 | Owner sends the UPI ID + payee name → Claude saves `siteSettings/payment {mode:'upi', upiId, payeeName}`, checks the live checkout QR, then one real small UPI order + admin approve | No | Medium |
+| 0 | The owner enters the UPI ID + payee name himself in Admin > Commerce settings > Payments (owner 2026-11-15: so they can change it any time; never set it for them) and picks UPI QR. Then: check the live checkout QR, one real small UPI order + admin approve | No | Medium |
 | 1 | Razorpay: Javani's account REJECTED iconoiq.com. Only if the owner wants cards: a new Razorpay account for ICONOIQ (owner's KYC), then swap the keys on Vercel | No | High |
 | 2 | Pre-launch: done except the owner's own items: change the admin@iconoiq.com password (Account page or "Forgot password"), send social links (then `BRAND.social` in `src/config/brand.ts`) | No | Low |
 | 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 0 (UPI ID set by the owner: test one real UPI order)`.
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 0: I switched to UPI, check the live checkout QR`.
 
 ## Waiting on the client or the user
 
-- The UPI ID + payee name (step 0). GoDaddy nameserver switch.
+- The owner switching Payments to UPI in Admin (step 0). GoDaddy nameserver switch.
 - The [NEED] list at the end of `PROGRESS.md` (WhatsApp number, public address, hours, social links, launch date, offers).
 
 ## Gotchas
