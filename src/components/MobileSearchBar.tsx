@@ -56,7 +56,8 @@ const MobileSearchBar = () => {
         ref={buttonRef}
         type="button"
         onClick={() => navigate("/search")}
-        aria-label="Search products"
+        // The name must contain the visible words (label-in-name), so it follows the ticker.
+        aria-label={reduceMotion ? STATIC_PLACEHOLDER : `Search for ${CATEGORIES[currentIndex]}`}
         className="flex h-[46px] w-full items-center gap-2.5 rounded-control bg-muted px-4 text-left transition-[transform,background-color] duration-press ease-out hover:bg-foreground/[0.07] active:scale-[0.97]"
       >
         <Search aria-hidden="true" className="size-5 flex-shrink-0 text-foreground/80" />
