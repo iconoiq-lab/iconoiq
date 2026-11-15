@@ -17,7 +17,7 @@ const CancellationRefundPolicy = () => {
   usePageMeta({ title: "Cancellation and refund policy", description: `How to cancel an order, return a product and get a refund from ${BRAND.name}.` });
 
   return (
-    <PolicyPageLayout title="Cancellation and refund policy" effectiveDate="[NEED: client review and effective date]">
+    <PolicyPageLayout title="Cancellation and refund policy">
       <>
             {/* Introduction */}
             <section className={policySectionClassName}>

@@ -99,7 +99,7 @@ const Contact = () => {
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage:
-                "url('/demo/contact.svg')",
+                "url('/art/shop-for-classrooms.webp')",
             }}
           />
           <div aria-hidden="true" className="absolute inset-0 bg-charcoal/55" />
@@ -326,7 +326,7 @@ const Contact = () => {
                     // No store location yet (online-only): same box, brand photo instead of a map.
                     <div className="relative h-full w-full">
                       <img
-                        src="/demo/contact.svg"
+                        src="/art/shop-for-academies.webp"
                         alt=""
                         className="h-full w-full object-cover"
                         loading="lazy"

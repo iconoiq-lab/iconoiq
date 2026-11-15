@@ -15,7 +15,7 @@ const TermsConditions = () => {
   usePageMeta({ title: "Terms and conditions", description: `The terms for buying from ${BRAND.name}: prices, orders, payments, shipping and returns.` });
 
   return (
-    <PolicyPageLayout title="Terms and conditions" effectiveDate="[NEED: client review and effective date]">
+    <PolicyPageLayout title="Terms and conditions">
       <>
             {/* Introduction */}
             <section className={policySectionClassName}>

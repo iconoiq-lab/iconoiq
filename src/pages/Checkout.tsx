@@ -670,7 +670,7 @@ const SPARKS = Array.from({ length: 8 }, (_, i) => {
 });
 
 /** The short full-screen "Order confirmed" moment shown right after payment. */
-const OrderCelebration = () => (
+const OrderCelebration = ({ upi = false }: { upi?: boolean }) => (
   <motion.div
     role="status"
     initial={{ opacity: 0 }}
@@ -706,7 +706,7 @@ const OrderCelebration = () => (
       className="mt-6 px-6 text-center text-2xl font-semibold sm:text-3xl"
       style={HEADING_FONT}
     >
-      Order confirmed
+      {upi ? 'Order placed' : 'Order confirmed'}
     </motion.p>
     <motion.p
       initial={{ opacity: 0, y: 8 }}
@@ -714,7 +714,7 @@ const OrderCelebration = () => (
       transition={{ delay: 0.24, duration: DUR.modal, ease: EASE_OUT }}
       className="mt-2 px-8 text-center text-sm text-charcoal-foreground/80"
     >
-      Thank you for your order.
+      {upi ? 'Thank you. We are checking your UPI payment.' : 'Thank you for your order.'}
     </motion.p>
   </motion.div>
 );
@@ -2125,7 +2125,7 @@ const MobileCheckout = () => {
       </div>
 
       {/* ─── Order confirmed moment ─── */}
-      <AnimatePresence>{showOrderAnimation && <OrderCelebration />}</AnimatePresence>
+      <AnimatePresence>{showOrderAnimation && <OrderCelebration upi={!!upiUtr} />}</AnimatePresence>
 
       {/* ─── Order Success Page ─── */}
       <AnimatePresence>
@@ -2174,10 +2174,12 @@ const MobileCheckout = () => {
                 className="mb-2 text-center text-2xl font-semibold text-foreground outline-none"
                 style={HEADING_FONT}
               >
-                Order confirmed
+                {upiUtr ? 'Order placed' : 'Order confirmed'}
               </h2>
               <p className="mx-auto mb-6 max-w-xs text-center text-sm leading-relaxed text-muted-foreground">
-                We have your payment and your order. You can track it any time in My orders.
+                {upiUtr
+                  ? 'We have your order. We check your UPI payment and confirm it within a few hours. Track it any time in My orders.'
+                  : 'We have your payment and your order. You can track it any time in My orders.'}
               </p>
 
               <div className="space-y-4">
@@ -3299,7 +3301,7 @@ const Checkout = () => {
       />
 
       {/* ─── Order confirmed moment (Desktop) ─── */}
-      <AnimatePresence>{showOrderAnimation && <OrderCelebration />}</AnimatePresence>
+      <AnimatePresence>{showOrderAnimation && <OrderCelebration upi={!!upiUtr} />}</AnimatePresence>
 
       {/* ─── Order Success Dialog (Desktop) ─── */}
       <Dialog open={showOrderSuccess} onOpenChange={(open) => { if (!open) setShowOrderSuccess(false); }}>
@@ -3332,10 +3334,12 @@ const Checkout = () => {
             </div>
 
             <DialogTitle className="mb-2 text-center text-2xl font-semibold text-foreground" style={HEADING_FONT}>
-              Order confirmed
+              {upiUtr ? 'Order placed' : 'Order confirmed'}
             </DialogTitle>
             <DialogDescription className="mx-auto mb-8 max-w-sm text-center text-sm leading-relaxed text-muted-foreground">
-              We have your payment and your order. You can track it any time in My orders.
+              {upiUtr
+                ? 'We have your order. We check your UPI payment and confirm it within a few hours. Track it any time in My orders.'
+                : 'We have your payment and your order. You can track it any time in My orders.'}
             </DialogDescription>
 
             <div className="space-y-4">

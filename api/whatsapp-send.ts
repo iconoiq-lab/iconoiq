@@ -117,6 +117,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const to = String(body.to || '').replace(/[^+\d]/g, '');
   if (!to) return res.status(400).json({ ok: false, error: 'Missing recipient "to"' });
 
+  // WhatsApp not set up yet (no Meta keys): order messages are skipped quietly
+  // so checkout and admin screens don't log server errors. OTP still fails loudly.
+  if (isOrderTemplate && (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID)) {
+    return res.status(200).json({ ok: false, skipped: 'whatsapp_not_configured' });
+  }
+
   try {
     if (kind === 'text') {
       const text = String(body.text || '').slice(0, 1000);

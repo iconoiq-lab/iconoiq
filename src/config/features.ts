@@ -24,7 +24,7 @@ export const FEATURES: Record<FeatureKey, boolean> = {
   videoCalls: true,
   newsletter: true,
   whatsappInbox: true,
-  whatsappOtp: true,
+  whatsappOtp: false, // Off until the WhatsApp Business API keys are on Vercel (REQUIREMENTS.md: email-only at launch)
   whatsappEnquiry: true,
   aiImagePrompts: true,
   testimonials: true,

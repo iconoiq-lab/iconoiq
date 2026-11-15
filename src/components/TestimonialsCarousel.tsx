@@ -271,9 +271,6 @@ const TestimonialsCarousel = () => {
                   </div>
                 ))}
               </dl>
-              <p className="mt-7 border-t border-charcoal-foreground/10 pt-5 text-xs leading-relaxed text-charcoal-foreground/65">
-                [NEED: one line on what the store promises its customers]
-              </p>
             </div>
           </div>
         </div>

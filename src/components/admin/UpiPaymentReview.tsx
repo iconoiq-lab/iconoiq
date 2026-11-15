@@ -108,7 +108,7 @@ export function UpiPaymentReview({ order, className }: { order: Order; className
           ) : null}
           {shot && (
             <a href={shot} target="_blank" rel="noopener noreferrer" className="inline-flex flex-col gap-1">
-              <img src={shot} alt="Payment screenshot the customer sent" className="max-h-72 w-auto rounded-control border object-contain" loading="lazy" />
+              <img src={shot} alt="Payment screenshot the customer sent" className="max-h-72 w-auto rounded-card border object-contain" loading="lazy" />
               <span className="inline-flex items-center gap-1 text-xs underline">
                 Open the screenshot <ExternalLink aria-hidden="true" className="h-3 w-3" />
               </span>

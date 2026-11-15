@@ -782,7 +782,7 @@ const AdminOrderDetails = () => {
     }
   }
   const itemsUnchecked = !!record?.cartHash && orderHash === null;
-  let paymentCheck: 'none' | 'loading' | 'error' | 'verified' | 'mismatch' | 'missing' | 'legacy' | 'unlinked';
+  let paymentCheck: 'none' | 'loading' | 'error' | 'verified' | 'mismatch' | 'missing' | 'legacy' | 'unlinked' | 'upi';
   if (!rzpId) {
     paymentCheck = isCod ? 'none' : 'unlinked';
   } else if (lookup.state === 'found') {
@@ -790,7 +790,8 @@ const AdminOrderDetails = () => {
     paymentCheck = record.cartHash && orderHash === undefined ? 'loading' : paymentIssues.length ? 'mismatch' : 'verified';
   } else if (lookup.state === 'missing') {
     // Orders saved before they were stored under their payment never got a record.
-    paymentCheck = order.id === rzpId ? 'missing' : 'legacy';
+    // A manual UPI order has no record until an admin approves it in the UPI panel below.
+    paymentCheck = rzpId.startsWith('upi_') ? 'upi' : order.id === rzpId ? 'missing' : 'legacy';
   } else {
     paymentCheck = lookup.state;
   }
@@ -802,6 +803,8 @@ const AdminOrderDetails = () => {
         ? { text: 'Order does not match payment', className: 'text-status-danger-fg' }
         : paymentCheck === 'missing'
           ? { text: 'Not confirmed', className: 'text-status-warning-fg' }
+          : paymentCheck === 'upi'
+            ? { text: 'UPI payment to check', className: 'text-status-warning-fg' }
           : paymentCheck === 'unlinked'
             ? { text: 'No payment linked', className: 'text-status-warning-fg' }
             : {

@@ -26,7 +26,7 @@ const ShippingPolicy = () => {
   usePageMeta({ title: "Shipping policy", description: `Where ${BRAND.name} delivers, how long orders take and how tracking works.` });
 
   return (
-    <PolicyPageLayout title="Shipping policy" effectiveDate="[NEED: client review and effective date]">
+    <PolicyPageLayout title="Shipping policy">
       <>
             {/* Introduction */}
             <section className={policySectionClassName}>

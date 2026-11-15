@@ -19,7 +19,7 @@ const PrivacyPolicy = () => {
   usePageMeta({ title: "Privacy policy", description: `What ${BRAND.name} collects, how it is used and who it is shared with.` });
 
   return (
-    <PolicyPageLayout title="Privacy policy" effectiveDate="[NEED: client review and effective date]">
+    <PolicyPageLayout title="Privacy policy">
       <>
             {/* Introduction */}
             <section className={policySectionClassName}>
