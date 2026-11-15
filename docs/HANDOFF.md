@@ -7,10 +7,11 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-16 later (live = 1aaf74a, success; re-checked: `siteSettings/payment` still 404 after the owner said "saved"; owner said the UPI ID was saved but `siteSettings/payment` is still missing: checkout is still on the rejected Razorpay; WhatsApp keys missing.)
+Last updated: 2026-11-16 night (live = b11bf81; UPI QR mode ON with the owner's UPI ID, live checkout QR verified; WhatsApp keys missing.)
 
 ## State
 
+- **UPI live (2026-11-16 night, live = b11bf81):** on the owner's chat instruction Claude saved `siteSettings/payment` = UPI, `9849834102@ybl`, payee "ICONOIQ" (owner will edit it in Admin later). Live test as a temporary shopper at 390 px: cart -> address -> "Pay by UPI (scan QR)" -> `/api/create-order` 200 -> QR dialog "Pay Rs 1,399 by UPI" with that UPI ID, no console errors. Test records removed (`manualPayments/upi_...`, `ui-fixtures remove-all`: 0 orders). Also fixed: checkout add-ons showed a struck-out "was" price equal to the price.
 - **UPI save check (2026-11-16, live = 7309361):** the owner said they saved the UPI ID, but `siteSettings/payment` does not exist and no admin account has signed in or refreshed since 2026-11-15 05:25 UTC, so the Save never ran. Rules and save code are fine (the test save worked). Added `src/components/admin/PaymentSetupNotice.tsx`: a red "Customers cannot pay yet" box on the admin Dashboard while mode is not UPI, linking to `?tab=payments`. Also fixed About: it read `category.children` (always empty), now `subcategories` (checked live). tsc 0 errors, `check.mjs` ok.
 - **Pre-demo test pass (2026-11-15 night, live = 6cc91b2, Vercel success):** the UPI flow was tested live end to end with a temporary test UPI ID (QR dialog, empty-submit refused, UTR + screenshot, confirmation, admin approve -> Paid/verified, customer order page), then the setting was put back (no `siteSettings/payment` doc = Razorpay default) and every test record deleted. **The owner's UPI ID was never saved: the doc is missing, so live checkout still uses the rejected Razorpay until they press Save in Admin > Commerce settings > Payments.** Fixed in 6cc91b2: UPI confirmation says "Order placed, we check your UPI payment" (was "We have your payment"); admin order page shows "UPI payment to check" instead of the Razorpay "Payment not confirmed" box on `upi_` orders; UPI screenshot thumbnail radius; `/api/whatsapp-send` returns 200 `{skipped:'whatsapp_not_configured'}` for order templates when `WHATSAPP_TOKEN`/`WHATSAPP_PHONE_ID` are missing (they ARE missing on Vercel: no customer or owner WhatsApp messages go out; owner alerts still come as browser push); `whatsappOtp` switched OFF (sign-up was blocked on a WhatsApp code that never arrives; switch back on when the Meta keys are on Vercel); About page rebuilt from real facts only (BRAND, `SHOP_FOR`, categories), Contact uses `/art/` images, policy-page and home "[NEED]" lines hidden. Live sweep: 8 admin pages (1440 + 390) and 5 shopper pages (390, light + dark) with no console errors. Fixtures removed again (`ui-fixtures.mjs remove-all`): 0 orders. One test screenshot stays in R2 under `payments/` (harmless).
 - **Manual UPI mode (2026-11-15, live at 108b382):** Admin > Commerce settings > Payments switches Razorpay / UPI QR (`siteSettings/payment {mode, upiId, payeeName}`, default razorpay). UPI: `api/create-order.ts` makes a `upi_...` id + `manualPayments/<id>` (no Razorpay); checkout dialog `src/components/checkout/UpiPayDialog.tsx` shows the QR for the exact amount, takes UTR + screenshot (R2 `payments/<uid>/`), `/api/notify-order` `upi-claim`; order saved as payment pending. Admin order page `UpiPaymentReview` → `review-upi-payment` (admin only) writes `payments/<id>` (method upi) and sets paid, or rejects. Duplicate UTRs flagged; points/cashback can't be spent in UPI mode. Tests `tests/upi-payment.test.ts`. Rules released 2026-11-15 with `node scripts/qa/deploy-rules.mjs` (the `firebase` CLI gets 403: other account; always use this script). **Left: the owner enters the real UPI ID + payee name in Admin and switches to UPI** (the store stays on Razorpay until then).
@@ -37,16 +38,16 @@ Last updated: 2026-11-16 later (live = 1aaf74a, success; re-checked: `siteSettin
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
-| 0 | **Before the demo (still open 2026-11-16, checked twice: not saved; a real save shows the green toast "Checkout now takes UPI QR payments"):** the owner logs in as admin, enters the UPI ID + payee name in Admin > Commerce settings > Payments, picks UPI QR and presses Save (never set it for them). Then one real small UPI order + admin approve | No | Medium |
+| 0 | Done 2026-11-16: UPI QR live. Left: one real small UPI order + admin approve during or after the demo; owner may change the payee name in Admin | No | Low |
 | 1 | WhatsApp: put `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID` (Meta WhatsApp Business API) on Vercel, redeploy, then switch `whatsappOtp` back on in `src/config/features.ts` | No | Medium |
 | 2 | Razorpay: Javani's account REJECTED iconoiq.com. Only if the owner wants cards: a new Razorpay account for ICONOIQ (owner's KYC), then swap the keys on Vercel | No | High |
 | 3 | Pre-launch: change the admin@iconoiq.com password, send social links (`BRAND.social`); client content: About story, real product photos, policy review + effective dates | No | Low |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 0: I saved the UPI ID in Admin, check the live checkout QR`.
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (WhatsApp keys on Vercel)`.
 
 ## Waiting on the client or the user
 
-- The owner switching Payments to UPI in Admin (step 0). GoDaddy nameserver switch.
+- GoDaddy nameserver switch.
 - The [NEED] list at the end of `PROGRESS.md` (WhatsApp number, public address, hours, social links, launch date, offers).
 
 ## Gotchas
