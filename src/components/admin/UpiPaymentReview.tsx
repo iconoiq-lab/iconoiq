@@ -59,8 +59,10 @@ export function UpiPaymentReview({ order, className }: { order: Order; className
   const expected = (Number(p.amountPaise) || 0) / 100;
   const decided = p.status === 'approved' || p.status === 'rejected' || order.upiReview?.status;
   const state = p.status === 'approved' || order.upiReview?.status === 'approved' ? 'approved' : p.status === 'rejected' || order.upiReview?.status === 'rejected' ? 'rejected' : 'open';
-  const utr = p.utr || order.upiPayment?.utr || '';
-  const shot = p.screenshotUrl || order.upiPayment?.screenshotUrl || '';
+  // Only manualPayments values: the server checked them. order.upiPayment is
+  // written by the customer and is never shown or linked here.
+  const utr = p.utr || '';
+  const shot = typeof p.screenshotUrl === 'string' && /^https:\/\/[^\s"'<>]+$/i.test(p.screenshotUrl) ? p.screenshotUrl : '';
 
   return (
     <section aria-label="UPI payment check" className={className}>
@@ -96,7 +98,7 @@ export function UpiPaymentReview({ order, className }: { order: Order; className
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Paid to</dt>
-              <dd className="break-all">{p.upiId || order.upiPayment?.upiId || '-'}</dd>
+              <dd className="break-all">{p.upiId || '-'}</dd>
             </div>
           </dl>
           {p.duplicateUtrOf?.length ? (

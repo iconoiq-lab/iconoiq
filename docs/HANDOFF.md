@@ -7,10 +7,12 @@ This file holds the working state between chats. The working rules live in `~/.c
 - **At the start of a chat:** read this file, then do the first open item under "Next steps", unless the user asks for something else.
 - **At the end of a task:** update "State", "Next steps" and "Last updated".
 
-Last updated: 2026-11-06 (Pre-launch cleanup: test data removed from iconoiq-85b53, order-alert WhatsApp set, COD = no; policy text change committed locally, not pushed.)
+Last updated: 2026-11-15 (Manual UPI payment mode + SEO pass committed locally, NOT pushed; Firestore rules NOT deployed: both were blocked by the auto-mode permission check.)
 
 ## State
 
+- **Manual UPI mode (2026-11-15, commits after b514742, not pushed):** Admin > Commerce settings > Payments switches Razorpay / UPI QR (`siteSettings/payment {mode, upiId, payeeName}`, default razorpay). UPI: `api/create-order.ts` makes a `upi_...` id + `manualPayments/<id>` (no Razorpay); checkout dialog `src/components/checkout/UpiPayDialog.tsx` shows the QR for the exact amount, takes UTR + screenshot (R2 `payments/<uid>/`), `/api/notify-order` `upi-claim`; order saved as payment pending. Admin order page `UpiPaymentReview` → `review-upi-payment` (admin only) writes `payments/<id>` (method upi) and sets paid, or rejects. Duplicate UTRs flagged; points/cashback can't be spent in UPI mode. Tests `tests/upi-payment.test.ts`. **To go live: `npx firebase deploy --only firestore:rules` (manualPayments rule + upiReview blocked key), push, check Vercel status, then the owner enters the real UPI ID and switches to UPI.**
+- **SEO pass (2026-11-15, same commits):** `/llms.txt` (vercel rewrite → `api/media?llms=1`), `BRAND.homeTitle`, og:image size/alt tags, Product + Breadcrumb JSON-LD, category/about/contact titles, `useNoindex()` on private routes, robots.txt blocks account pages. After deploy: check `/llms.txt` = 200 and PageSpeed mobile. Needs from client: public address + hours (LocalBusiness), social links.
 - **Live = f05a0dd (Vercel status success, 2026-11-06).** Coin card, SEO pass, Academy programme are live. Vercel Hobby + private repo blocks pushes whose head commit author is not `iconoiq-lab` (b35ea64..cc19727 were Blocked): after any push, check Vercel > Deployments shows Ready.
 - **Programme switches ON (2026-11-06):** `siteSettings/dealer.enabled` (Admin > Commerce settings > Dealers) and `partnerSettings/main.enabled` (Admin > Partners > Settings: Silver 15%, customer discount 0%, hold 0 days). Live `/dealer` shows "Become a partner". No real partners yet.
 - **Partner live check** `node scripts/qa/partner-live.mjs [BASE] [OUT] [--leave-on]` (dev server on BASE): admin switches on, shopper applies on /dealer, admin approves (code PREV3210), a customer order with the code credits 15% only on delivery, held until the return window ends, no double credit; own-code order = 15% off, no commission; partner area at 4 sizes/themes; Admin > Categories move down/up and the home strip follows. Writes live Firestore and deletes everything after; restores switches unless `--leave-on`. Discounts are whole rupees (floor), commission keeps paise.
@@ -32,11 +34,12 @@ Last updated: 2026-11-06 (Pre-launch cleanup: test data removed from iconoiq-85b
 
 | # | Step | Ultracode? | Effort |
 |---|---|---|---|
+| 0 | Deploy rules + push the UPI/SEO commits (see State), verify Vercel `success`, open `/llms.txt`; owner sets the UPI ID | No | Medium |
 | 1 | Razorpay = Javani's live account (owner 2026-11-03). Done: iconoiq.com submitted for website approval (24-48 h), the 3 keys are in local `.env`. Keys are on Vercel (redeployed, `8bcff1c`). Left: after approval a real small test order + refund | No | High |
 | 2 | Pre-launch: done except the owner's own items: change the admin@iconoiq.com password (Account page or "Forgot password"), send social links (then `BRAND.social` in `src/config/brand.ts`). Push the policy commit with the next deploy | No | Low |
 | 3 | Tell the client: sign in at `/admin` with iconoiq@gmail.com after "Forgot password"; ask whether the four "Shop for" cards point at the right shelves | — | — |
 
-**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 1 (Razorpay test order)`, once Razorpay approves the website; until then step 2 (needs the owner's answers).
+**Message for the next chat:** `Read docs/HANDOFF.md and do Next step 0 (deploy rules, push UPI + SEO, verify live)`.
 
 ## Waiting on the client or the user
 
