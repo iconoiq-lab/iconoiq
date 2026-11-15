@@ -26,7 +26,7 @@ import {
 import { db } from '@/config/firebase';
 
 const buildStaticIceServers = (): RTCIceServer[] => {
-  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+  const env: Partial<ImportMetaEnv> = import.meta.env ?? {};
   const turnUrls = (env.VITE_TURN_URLS || env.VITE_TURN_URL || '')
     .split(',')
     .map((value) => value.trim())
@@ -41,7 +41,7 @@ const buildStaticIceServers = (): RTCIceServer[] => {
 };
 
 async function getIceServers(): Promise<RTCIceServer[]> {
-  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+  const env: Partial<ImportMetaEnv> = import.meta.env ?? {};
   const meteredUrl = String(env.VITE_METERED_TURN_API_URL || '').trim();
   const meteredApiKey = String(env.VITE_METERED_TURN_API_KEY || '').trim();
 

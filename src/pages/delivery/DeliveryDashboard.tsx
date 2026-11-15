@@ -49,6 +49,8 @@ const STATUS_CFG: Record<StatusKey, { label: string; color: string; bg: string; 
   returnRequested: { label: 'Return Requested',  color: 'text-primary',   bg: 'bg-primary/10',     dot: 'bg-primary'   },
   returnScheduled: { label: 'Return Pickup',   color: 'text-highlight',   bg: 'bg-highlight/10',    dot: 'bg-highlight'  },
   returned:        { label: 'Returned',          color: 'text-primary',   bg: 'bg-primary/10',     dot: 'bg-primary'   },
+  refunded:        { label: 'Refunded',          color: 'text-gray-600',  bg: 'bg-gray-100',       dot: 'bg-gray-400'  },
+  deliveryFailed:  { label: 'Delivery Failed',   color: 'text-primary',   bg: 'bg-primary/10',     dot: 'bg-primary'   },
 };
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
