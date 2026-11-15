@@ -87,6 +87,10 @@ class FakeQuery {
     if (op !== '==') throw new Error(`FakeFirestore supports only == queries, not ${op}`);
     return new FakeQuery(this.coll, [...this.filters, [field, value]]);
   }
+  /** Accepted and ignored: tests hold only a few documents. */
+  limit(_n: number) {
+    return this;
+  }
   async get() {
     const all = await this.coll.get();
     const docs = all.docs.filter((d) => this.filters.every(([f, v]) => d.data()?.[f] === v));

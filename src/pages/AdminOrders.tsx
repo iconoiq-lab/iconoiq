@@ -20,6 +20,7 @@ import {
   assignOrderToDeliveryBoy,
   isValidStatusTransition,
   normalizeOrderStatus,
+  isUpiPaymentToCheck,
 } from '@/services/orderService';
 import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyService';
 import { isOn } from '@/config/features';
@@ -489,6 +490,7 @@ const AdminOrders = () => {
                         title={order.manualReviewReason || undefined}
                       />
                     )}
+                    {isUpiPaymentToCheck(order) && <StatusBadge tone="warning" label="UPI to check" />}
                     <StatusBadge tone={status.tone} label={status.label} icon={status.icon} />
                   </div>
                 </div>
@@ -580,6 +582,11 @@ const AdminOrders = () => {
                               title={order.manualReviewReason || undefined}
                               className="h-5 px-1.5 text-[11px]"
                             />
+                          </div>
+                        )}
+                        {isUpiPaymentToCheck(order) && (
+                          <div className="mt-1">
+                            <StatusBadge tone="warning" label="UPI to check" className="h-5 px-1.5 text-[11px]" />
                           </div>
                         )}
                       </td>

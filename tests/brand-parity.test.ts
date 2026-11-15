@@ -9,6 +9,12 @@ import { BRAND } from '../src/config/brand.ts';
  * These tests fail when a copy is left behind, so a miss shows up in `npm test`.
  */
 
+test('api/media.ts STORE_DESCRIPTION matches BRAND.description', () => {
+  const m = readFileSync('api/media.ts', 'utf8').match(/const STORE_DESCRIPTION = '([^']*)';/);
+  assert.ok(m, `api/media.ts has no "const STORE_DESCRIPTION = '...';"`);
+  assert.equal(m[1], BRAND.description);
+});
+
 for (const f of ['api/media.ts', 'api/whatsapp-send.ts', 'api/send-call-notification.ts']) {
   test(`${f} STORE_NAME matches BRAND.name`, () => {
     const m = readFileSync(f, 'utf8').match(/const STORE_NAME = '([^']*)';/);
@@ -27,10 +33,11 @@ test('index.html theme key matches BRAND.storageKeys.theme', () => {
   assert.ok(readFileSync('index.html', 'utf8').includes(`localStorage.getItem('${BRAND.storageKeys.theme}')`));
 });
 
-test('index.html title, og:title and author match BRAND.name', () => {
+test('index.html title, og:title and author match BRAND.homeTitle and BRAND.name', () => {
   const html = readFileSync('index.html', 'utf8');
-  assert.ok(html.includes(`<title>${BRAND.name}</title>`), 'index.html <title>');
-  assert.ok(html.includes(`<meta property="og:title" content="${BRAND.name}"`), 'index.html og:title');
+  assert.ok(BRAND.homeTitle.endsWith(`| ${BRAND.name}`), 'BRAND.homeTitle ends with "| <name>"');
+  assert.ok(html.includes(`<title>${BRAND.homeTitle}</title>`), 'index.html <title>');
+  assert.ok(html.includes(`<meta property="og:title" content="${BRAND.homeTitle}"`), 'index.html og:title');
   assert.ok(html.includes(`<meta name="author" content="${BRAND.name}"`), 'index.html author');
 });
 

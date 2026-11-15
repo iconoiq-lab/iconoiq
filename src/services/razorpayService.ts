@@ -7,6 +7,12 @@
  *   3. On success, POST /api/verify-payment to confirm the signature server-side
  *   4. Resolve with the verified payment, or reject on dismissal / failure
  *
+ * When the shop's payment switch is on UPI (siteSettings/payment), step 1
+ * returns `mode: 'upi'` instead: there is no modal. `onUpiPayment` shows the
+ * QR for the exact amount and collects the UTR and screenshot, the proof is
+ * sent with submitUpiProof, and the order is saved as payment pending until
+ * an admin approves it (api/notify-order.ts review-upi-payment).
+ *
  * The key secret never touches this file — only the public key id is used,
  * and it is returned by /api/create-order (falling back to VITE_RAZORPAY_KEY_ID).
  */
@@ -54,6 +60,26 @@ export interface VerifiedPayment {
   paymentRecorded: boolean;
   /** True when the spend could not be recorded yet (reconcile repairs it). */
   rewardsPending?: boolean;
+  /** Set for a manual UPI payment: the proof the customer sent. The order stays "pending" until an admin approves it. */
+  upi?: { utr: string; screenshotUrl: string; upiId: string; amount: number };
+}
+
+/** What the UPI step needs to show: the exact amount and where to pay. */
+export interface UpiPaymentRequest {
+  /** The upi_ id: also the order's document id and razorpayOrderId. */
+  paymentId: string;
+  /** Rupees, as priced by the server. */
+  amount: number;
+  upiId: string;
+  payeeName: string;
+  /** Short note for the UPI app (the order number). */
+  note: string;
+}
+
+/** The customer's proof of a UPI payment. */
+export interface UpiProof {
+  utr: string;
+  screenshotUrl: string;
 }
 
 export interface RazorpayCheckoutOptions {
@@ -101,6 +127,12 @@ export interface RazorpayCheckoutOptions {
   themeColor?: string;
   /** Extra notes attached to the Razorpay order. */
   notes?: Record<string, string>;
+  /**
+   * Called when the shop takes manual UPI payments. Shows the QR, sends the
+   * proof (submitUpiProof) and resolves with it; rejects with
+   * PaymentCancelledError when the customer closes it.
+   */
+  onUpiPayment?: (request: UpiPaymentRequest) => Promise<UpiProof>;
 }
 
 /** Raised when the customer closes the modal without paying. */
@@ -185,6 +217,9 @@ function loadRazorpayScript(): Promise<void> {
 }
 
 interface CreateOrderResponse {
+  /** 'upi' = a manual UPI payment (no Razorpay order, no key). */
+  mode?: 'upi';
+  upi?: { upiId: string; payeeName: string };
   order_id: string;
   amount: number;
   currency: string;
@@ -240,6 +275,11 @@ async function createOrder(options: RazorpayCheckoutOptions): Promise<CreateOrde
     data = {};
   }
 
+  // Points/cashback cannot be held long enough for a manual UPI check: the
+  // toggles go off and the customer pays the full total.
+  if (res.status === 400 && data.code === 'rewards_not_with_upi') {
+    throw new RewardsUnavailableError(data.error || 'Points and cashback cannot be used with UPI payment.');
+  }
   if (res.status === 409 && data.code === 'rewards_unavailable') {
     throw new RewardsUnavailableError(data.error || 'Rewards are unavailable right now.');
   }
@@ -302,6 +342,51 @@ async function verifyPayment(
   };
 }
 
+/** Send the UTR and screenshot for a manual UPI payment (api/notify-order.ts upi-claim). */
+export async function submitUpiProof(paymentId: string, utr: string, screenshotUrl: string): Promise<{ duplicateUtr: boolean }> {
+  const idToken = await auth.currentUser?.getIdToken().catch(() => '');
+  if (!idToken) throw new Error('Please sign in again to send the payment details.');
+  let res: Response;
+  try {
+    res = await fetch('/api/notify-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ action: 'upi-claim', orderId: paymentId, utr, screenshotUrl }),
+    });
+  } catch {
+    throw new Error('Could not reach the server. Check your connection and try again.');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error && data.error !== 'upi_failed' ? data.error : 'Could not send the payment details. Please try again.');
+  }
+  return { duplicateUtr: data.duplicateUtr === true };
+}
+
+async function payByUpi(options: RazorpayCheckoutOptions, order: CreateOrderResponse): Promise<VerifiedPayment> {
+  if (!options.onUpiPayment || !order.upi) {
+    throw new Error('UPI payment is not available on this page. Please refresh and try again.');
+  }
+  const amount = Number(order.amount) / 100;
+  const proof = await options.onUpiPayment({
+    paymentId: order.order_id,
+    amount,
+    upiId: order.upi.upiId,
+    payeeName: order.upi.payeeName,
+    note: (options.receipt || order.order_id).slice(0, 40),
+  });
+  return {
+    razorpayPaymentId: '',
+    razorpayOrderId: order.order_id,
+    razorpaySignature: '',
+    pointsApplied: 0,
+    pointsValue: 0,
+    cashbackApplied: 0,
+    paymentRecorded: true,
+    upi: { utr: proof.utr, screenshotUrl: proof.screenshotUrl, upiId: order.upi.upiId, amount },
+  };
+}
+
 /**
  * Run the full create → pay → verify flow.
  *
@@ -313,6 +398,7 @@ export async function payWithRazorpay(
   options: RazorpayCheckoutOptions,
 ): Promise<VerifiedPayment> {
   const order = await createOrder(options);
+  if (order.mode === 'upi') return payByUpi(options, order);
   await loadRazorpayScript();
 
   if (!window.Razorpay) {

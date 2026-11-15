@@ -29,6 +29,10 @@
       "destination": "/api/media?sitemap=1"
     },
     {
+      "source": "/llms.txt",
+      "destination": "/api/media?llms=1"
+    },
+    {
       "source": "/product/:id",
       "has": [
         {

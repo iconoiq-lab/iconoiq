@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToOrder, Order, requestReturn, cancelReturn } from '@/services/orderService';
+import { subscribeToOrder, Order, requestReturn, cancelReturn, upiPaymentLabel } from '@/services/orderService';
 import Header from '@/components/Header';
 import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
@@ -1458,7 +1458,7 @@ const OrderDetailsPage = () => {
             <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '12px', color: receipt.muted }}>Payment</span>
-                <span style={{ fontSize: '12px', fontWeight: '500', color: receipt.text }}>{formatPaymentMethod(order.paymentMethod)}</span>
+                <span style={{ fontSize: '12px', fontWeight: '500', color: receipt.text }}>{order.paymentMethod === 'UPI' ? upiPaymentLabel(order) : formatPaymentMethod(order.paymentMethod)}</span>
               </div>
               <div style={{ marginTop: '10px' }}>
                 <p style={{ fontSize: '12px', color: receipt.muted, margin: '0 0 4px 0' }}>Delivery address</p>

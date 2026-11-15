@@ -23,6 +23,7 @@ import {
   Store,
   Ticket,
   Gift,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +47,7 @@ import { DealerSettingsTab } from '@/components/admin/DealerSettingsTab';
 import { LoyaltyTiersSection } from '@/components/admin/LoyaltyTiersSection';
 import { ScratchWinSettingsTab } from '@/components/admin/ScratchWinSettingsTab';
 import { CoinGiftSettingsTab } from '@/components/admin/CoinGiftSettingsTab';
+import { PaymentSettingsTab } from '@/components/admin/PaymentSettingsTab';
 import { hasTierErrors, rewardSettingsAdjusted } from '@/lib/loyaltyTiersForm';
 import { fadeUp } from '@/lib/motion';
 import {
@@ -971,7 +973,7 @@ const RewardsTab = () => {
   );
 };
 
-const COMMERCE_TABS = ['delivery', 'support', 'rewards', 'scratch', 'coin', 'dealers'] as const;
+const COMMERCE_TABS = ['delivery', 'payments', 'support', 'rewards', 'scratch', 'coin', 'dealers'] as const;
 
 // Tabs that belong to a feature switch. A switched-off tab is not shown and ?tab= cannot open it.
 const TAB_FEATURE: Partial<Record<(typeof COMMERCE_TABS)[number], FeatureKey>> = {
@@ -992,6 +994,7 @@ const AdminCommerceSettings = () => {
 
   const areas = [
     'delivery, GST',
+    'payments',
     'customer support',
     ...(tabIsOn('rewards') ? ['rewards'] : []),
     ...(tabIsOn('scratch') ? ['Scratch & Win'] : []),
@@ -1011,6 +1014,9 @@ const AdminCommerceSettings = () => {
         <TabsList className="mb-6 w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="delivery" className="gap-1.5">
             <Truck aria-hidden="true" className="h-4 w-4" /> Delivery and GST
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="gap-1.5">
+            <Wallet aria-hidden="true" className="h-4 w-4" /> Payments
           </TabsTrigger>
           <TabsTrigger value="support" className="gap-1.5">
             <HeadphonesIcon aria-hidden="true" className="h-4 w-4" /> Support
@@ -1037,6 +1043,9 @@ const AdminCommerceSettings = () => {
 
         <TabsContent value="delivery">
           <DeliveryGstTab />
+        </TabsContent>
+        <TabsContent value="payments">
+          <PaymentSettingsTab />
         </TabsContent>
         <TabsContent value="support">
           <SupportTab />

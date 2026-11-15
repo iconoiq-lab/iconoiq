@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { firestore } from 'firebase-admin';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 /**
  * POST /api/create-order
@@ -77,6 +77,22 @@ const RESERVE_TIMEOUT_MS = 9000;
  */
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
 const WEB_API_KEY = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
+/**
+ * The shop's payment switch, siteSettings/payment (Admin -> Commerce settings
+ * -> Payments): 'razorpay' (the default) or 'upi', a manual UPI transfer the
+ * customer proves with a screenshot and the shop checks by hand. Returns the
+ * UPI details when UPI is on, null for Razorpay. Same rules as
+ * src/lib/paymentMode.ts.
+ */
+export const UPI_ID = /^[A-Za-z0-9._-]{2,256}@[A-Za-z][A-Za-z0-9.-]{1,64}$/;
+export function upiSettings(doc: Record<string, any> | null): { upiId: string; payeeName: string } | 'not_set_up' | null {
+  if (!doc || doc.mode !== 'upi') return null;
+  const upiId = String(doc.upiId || '').trim();
+  const payeeName = String(doc.payeeName || '').trim().slice(0, 60);
+  if (!UPI_ID.test(upiId) || !payeeName) return 'not_set_up';
+  return { upiId, payeeName };
+}
+
 const PAYMENTS_UNAVAILABLE = 'Online payment is not available right now. Please try again later or contact us.';
 
 const firestoreBase = () =>
@@ -1288,15 +1304,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'items[] is required to price this order' });
   }
 
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  // The customer sees `error` in the checkout toast, so it says what to do; the
-  // missing variable names go to the server log for the owner.
-  if (!keyId || !keySecret) {
-    console.error('[create-order] RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not configured');
-    return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
-  }
-
   if (!PROJECT_ID || !WEB_API_KEY) {
     console.error('[create-order] Firebase project id / web API key are not configured');
     return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
@@ -1316,6 +1323,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // ── Which way the shop takes money right now ──
+  let upi: { upiId: string; payeeName: string } | null = null;
+  try {
+    const mode = upiSettings(await getDoc('siteSettings/payment'));
+    if (mode === 'not_set_up') {
+      console.error('[create-order] UPI mode is on but the UPI ID or payee name is missing');
+      return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
+    }
+    upi = mode;
+  } catch (error: unknown) {
+    console.error('[create-order] payment settings read failed:', error instanceof Error ? error.message : error);
+    return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
+  }
+
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  // The customer sees `error` in the checkout toast, so it says what to do; the
+  // missing variable names go to the server log for the owner.
+  if (!upi && (!keyId || !keySecret)) {
+    console.error('[create-order] RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not configured');
+    return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
+  }
+
   // ── Who is paying ── (before pricing: an approved dealer pays dealer prices)
   // Sent whenever the customer is signed in. It binds the payment to them
   // (rw_uid), which is what lets an order be recorded as paid and earn points.
@@ -1330,6 +1360,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     uidError = error instanceof Error ? error.message : 'Sign-in check failed';
   }
   if (uidError && claimsDealer) return res.status(503).json({ ...DEALER_UNAVAILABLE, detail: uidError });
+  // A UPI transfer is matched to an account by hand, so the payer must be known.
+  if (upi && !uid) {
+    return res.status(401).json({ error: 'Please sign in again to pay by UPI.', ...(uidError ? { detail: uidError } : {}) });
+  }
 
   let serverTotal: number;
   let quote: DealerQuote;
@@ -1475,6 +1509,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const wantsRewards = body.usePoints === true || body.useCashback === true;
+  // Points and cashback are reserved for 30 minutes, far less than a manual
+  // UPI check takes, so they are spent only with Razorpay.
+  if (upi && wantsRewards) {
+    return res.status(400).json({ code: 'rewards_not_with_upi', error: 'Points and cashback cannot be used with UPI payment. Turn them off and pay again.' });
+  }
   const conflict = (code: 'rewards_unavailable' | 'rewards_changed', detail?: string) =>
     res.status(409).json({
       code,
@@ -1574,6 +1613,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : {}),
     ...(partnerUse ? { rw_partner: partnerNote(partnerUse, parts.subtotal, redemption, items) } : {}),
   };
+
+  // ── Manual UPI: record what the customer must pay; the shop approves it later ──
+  // manualPayments/<id> is server-only (firestore.rules). On approval
+  // api/notify-order.ts turns it into payments/<id> from these same notes.
+  if (upi && uid) {
+    const id = `upi_${Date.now().toString(36)}${randomBytes(6).toString('hex')}`;
+    try {
+      const { admin, db } = await adminSdk();
+      await withTimeout(
+        db.collection('manualPayments').doc(id).set({
+          uid,
+          amountPaise: amountInPaise,
+          currency,
+          receipt,
+          notes,
+          upiId: upi.upiId,
+          payeeName: upi.payeeName,
+          status: 'awaiting',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
+        ADMIN_TIMEOUT_MS,
+        'UPI request',
+      );
+    } catch (error: unknown) {
+      console.error('[create-order] manual UPI record failed:', error instanceof Error ? error.message : error);
+      return res.status(503).json({ error: PAYMENTS_UNAVAILABLE });
+    }
+    return res.status(200).json({
+      mode: 'upi',
+      order_id: id,
+      amount: amountInPaise,
+      currency,
+      upi: { upiId: upi.upiId, payeeName: upi.payeeName },
+      pointsApplied: 0,
+      pointsValue: 0,
+      cashbackApplied: 0,
+    });
+  }
 
   let orderId: string;
   let orderAmount: number | undefined;

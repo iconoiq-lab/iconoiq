@@ -29,6 +29,7 @@ import { useLoyaltyStatus } from '@/hooks/useLoyaltyStatus';
 import { useDealer } from '@/hooks/useDealer';
 import { usePartner } from '@/hooks/usePartner';
 import { BRAND } from '@/config/brand';
+import { useNoindex } from '@/hooks/usePageMeta';
 import { formatMemberNumber, memberDigits } from '@/lib/loyaltyCard';
 import { updateSecuritySettings } from '@/services/securityService';
 import { validatePassword } from '@/lib/passwordValidation';
@@ -73,6 +74,8 @@ const SignInPlaceholder = () => (
 
 const Account = () => {
   const { user, loading, updateUserProfile } = useAuth();
+  // /login and /account: never in search results.
+  useNoindex();
   const navigate = useNavigate();
   const location = useLocation();
 

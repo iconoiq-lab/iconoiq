@@ -4,6 +4,7 @@ import { AwsClient } from 'aws4fetch';
 import { randomBytes } from 'node:crypto';
 
 const STORE_NAME = 'ICONOIQ'; // must equal BRAND.name (tests/brand-parity.test.ts)
+const STORE_DESCRIPTION = 'Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples.'; // must equal BRAND.description (tests/brand-parity.test.ts)
 
 /**
  * /api/media - the only door into object storage (Cloudflare R2 today).
@@ -12,6 +13,7 @@ const STORE_NAME = 'ICONOIQ'; // must equal BRAND.name (tests/brand-parity.test.
  *   GET  /api/media?og=product&id=<id>   -> link-preview HTML for WhatsApp etc. (public)
  *   GET  /api/media?catalog=1            -> the catalog snapshot, for /catalog/products.json (public)
  *   GET  /api/media?sitemap=1            -> sitemap.xml (public)
+ *   GET  /api/media?llms=1               -> llms.txt (public)
  *   POST /api/media { action: 'upload' } -> store one file (+ optional preview / og image)
  *   POST /api/media { action: 'delete' } -> remove files by public URL
  *   POST /api/media { action: 'publish-catalog' }            -> rebuild catalog snapshot (admin)
@@ -87,7 +89,7 @@ const PRODUCT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Category =
   | 'products' | 'banners' | 'home' | 'gallery' | 'showcases' | 'testimonials'
-  | 'media' | 'receipts' | 'avatars' | 'reviews';
+  | 'media' | 'receipts' | 'avatars' | 'reviews' | 'payments';
 
 /**
  * `perUser` categories are open to any signed-in user and keyed by their uid.
@@ -105,6 +107,8 @@ const CATEGORIES: Record<Category, { perUser: boolean; allowPdf: boolean; maxIma
   receipts: { perUser: false, allowPdf: true },
   avatars: { perUser: true, allowPdf: false },
   reviews: { perUser: true, allowPdf: false },
+  // UPI payment screenshots: the customer's own proof, checked by the shop (api/notify-order.ts upi-claim).
+  payments: { perUser: true, allowPdf: false },
 };
 
 /** Matches only keys this endpoint generated - nothing else can be deleted. */
@@ -901,7 +905,7 @@ export function productPreviewHtml(product: PreviewProduct | null, pageUrl: stri
   const about = String(product?.description || '').replace(/\s+/g, ' ').trim();
   let description = [price, about].filter(Boolean).join(' · ');
   if (description.length > 200) description = `${description.slice(0, 197).trimEnd()}...`;
-  if (!description) description = 'Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples.'; // must equal BRAND.description (src/config/brand.ts)
+  if (!description) description = STORE_DESCRIPTION;
   const imageType = image?.endsWith('.png') ? 'image/png' : image?.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
 
   const t = escapeHtml(title);
@@ -1070,37 +1074,127 @@ ${rows.join('\n')}
 `;
 }
 
-async function handleSitemap(req: VercelRequest, res: VercelResponse) {
-  let products: SitemapProduct[] = [];
-  let slugs: string[] = [];
+type CrawlCategory = { name: string; slug: string; subcategories: string[] };
+
+/** Search crawlers wait longer than link-preview bots; a cold start can take a few seconds. */
+function withTimeout<T>(work: Promise<T>, ms = 7000): Promise<T> {
+  return Promise.race([work, new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`no answer in ${ms}ms`)), ms))]);
+}
+
+/** The catalog snapshot and the visible categories, for the sitemap and llms.txt. `complete` is false when a read failed. */
+async function readCrawlData(label: string) {
+  let products: CatalogProduct[] = [];
+  let categories: CrawlCategory[] = [];
   let complete = true;
   try {
-    products = ((await readCatalog())?.file.products as SitemapProduct[] | undefined) ?? [];
+    products = (await readCatalog())?.file.products ?? [];
   } catch (err) {
     complete = false;
-    console.warn('[media] sitemap: catalog unavailable:', err);
+    console.warn(`[media] ${label}: catalog unavailable:`, err);
   }
   try {
     initAdmin();
-    const snap = await Promise.race([
-      admin.firestore().collection('categories').get(),
-      // Search crawlers wait longer than link-preview bots; a cold start can take a few seconds.
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('no answer in 7000ms')), 7000)),
-    ]);
-    slugs = snap.docs
+    const snap = await withTimeout(admin.firestore().collection('categories').get());
+    categories = snap.docs
       .filter((d) => d.get('hidden') !== true && typeof d.get('slug') === 'string' && d.get('slug'))
-      .map((d) => String(d.get('slug')));
+      .sort((a, b) => Number(a.get('order') ?? 1e9) - Number(b.get('order') ?? 1e9))
+      .map((d) => ({
+        name: String(d.get('name') || d.get('slug')),
+        slug: String(d.get('slug')),
+        subcategories: ((d.get('subcategories') as { name?: unknown }[] | undefined) ?? [])
+          .map((sub) => (typeof sub?.name === 'string' ? sub.name.trim() : ''))
+          .filter(Boolean),
+      }));
   } catch (err) {
     complete = false;
-    console.warn('[media] sitemap: categories unavailable:', err instanceof Error ? err.message : err);
+    console.warn(`[media] ${label}: categories unavailable:`, err instanceof Error ? err.message : err);
   }
+  return { products, categories, complete };
+}
+
+/** A partial answer (storage or Firestore down) is cached briefly so the full one returns soon. */
+const crawlCache = (complete: boolean) =>
+  complete ? 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' : 'public, max-age=0, s-maxage=60';
+
+async function handleSitemap(req: VercelRequest, res: VercelResponse) {
+  const { products, categories, complete } = await readCrawlData('sitemap');
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  // A partial answer (storage or Firestore down) is cached briefly so the full one returns soon.
-  res.setHeader(
-    'Cache-Control',
-    complete ? 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' : 'public, max-age=0, s-maxage=60',
-  );
-  return res.status(200).send(sitemapXml(siteOrigin(req), products, slugs));
+  res.setHeader('Cache-Control', crawlCache(complete));
+  return res.status(200).send(sitemapXml(siteOrigin(req), products as SitemapProduct[], categories.map((c) => c.slug)));
+}
+
+// ── llms.txt (public) ───────────────────────────────────────────────────────
+//
+// GET /llms.txt is rewritten here (vercel.json): a plain-text summary for AI
+// search tools (llmstxt.org). Facts only: the description, the live contact
+// details (Admin > Commerce > Support), the main pages, the visible categories
+// and every live real product. Sample (demo) and hidden products never appear.
+
+/** Path, name, one line. Keep in step with SITEMAP_PAGES. */
+const LLMS_PAGES: [string, string, string][] = [
+  ['/', 'Home', 'The store front: collections and new arrivals'],
+  ['/products', 'All products', 'The full range'],
+  ['/about', 'About', `Who ${STORE_NAME} is and what it makes`],
+  ['/contact', 'Contact', 'Phone, email and WhatsApp'],
+  ['/customer-support', 'Customer support', 'Help with orders, and common questions'],
+  ['/shipping-policy', 'Shipping policy', 'Where orders ship and how long they take'],
+  ['/cancellation-refund-policy', 'Cancellation and refund policy', 'Cancelling, returns and refunds'],
+  ['/privacy-policy', 'Privacy policy', 'What is collected and how it is used'],
+  ['/terms-conditions', 'Terms and conditions', 'The terms of sale'],
+];
+
+type LlmsProduct = SitemapProduct & { name?: unknown; price?: unknown; category?: unknown; description?: unknown };
+export type LlmsContact = { phone?: string; email?: string };
+
+/** One line of plain text: no newlines or square brackets (they would break the markdown links), cut at `max` characters. */
+const oneLine = (value: unknown, max = 160) => {
+  let text = String(value ?? '').replace(/\s+/g, ' ').replace(/[[\]]/g, '').trim();
+  if (text.length > max) text = `${text.slice(0, max - 1).trimEnd()}…`;
+  return text;
+};
+
+export function llmsTxt(origin: string, products: LlmsProduct[], categories: CrawlCategory[], contact: LlmsContact = {}): string {
+  const lines: string[] = [`# ${STORE_NAME}`, '', `> ${STORE_DESCRIPTION}`, '', `${STORE_NAME} is an online store: ${origin}/`, ''];
+  const contactLines = [
+    contact.email?.trim() ? `- Email: ${oneLine(contact.email, 120)}` : '',
+    contact.phone?.trim() ? `- Phone: ${oneLine(contact.phone, 40)}` : '',
+  ].filter(Boolean);
+  if (contactLines.length) lines.push('## Contact', '', ...contactLines, '');
+  lines.push('## Main pages', '', ...LLMS_PAGES.map(([path, name, about]) => `- [${name}](${origin}${path}): ${about}`), '');
+  if (categories.length) {
+    lines.push('## Collections', '');
+    for (const c of categories) {
+      const subs = c.subcategories.length ? `: ${oneLine(c.subcategories.join(', '), 200)}` : '';
+      lines.push(`- [${oneLine(c.name, 80)}](${origin}/category/${encodeURIComponent(c.slug)})${subs}`);
+    }
+    lines.push('');
+  }
+  const live = products.filter((p) => p.id && p.demo !== true && p.flags?.isActive === true && oneLine(p.name));
+  if (live.length) {
+    lines.push('## Products', '');
+    for (const p of live) {
+      const price = typeof p.price === 'number' && p.price > 0 ? `₹${p.price.toLocaleString('en-IN')}` : '';
+      const facts = [price, oneLine(p.category, 60), oneLine(p.description, 160)].filter(Boolean).join('. ');
+      lines.push(`- [${oneLine(p.name, 100)}](${origin}/product/${encodeURIComponent(String(p.id))})${facts ? `: ${facts}` : ''}`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+async function handleLlms(req: VercelRequest, res: VercelResponse) {
+  const { products, categories, complete } = await readCrawlData('llms');
+  let contact: LlmsContact = {};
+  try {
+    initAdmin();
+    const snap = await withTimeout(admin.firestore().doc('siteSettings/customerSupport').get());
+    if (snap.exists) contact = { phone: String(snap.get('phone') || ''), email: String(snap.get('email') || '') };
+  } catch (err) {
+    console.warn('[media] llms: support details unavailable:', err instanceof Error ? err.message : err);
+  }
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', crawlCache(complete));
+  return res.status(200).send(llmsTxt(siteOrigin(req), products as LlmsProduct[], categories, contact));
 }
 
 // ── Entry ───────────────────────────────────────────────────────────────────
@@ -1116,6 +1210,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (req.method === 'GET' && /[?&]catalog=1(&|$)/.test(req.url || '')) return await handleCatalogFeed(res);
     if (req.method === 'GET' && /[?&]sitemap=1(&|$)/.test(req.url || '')) return await handleSitemap(req, res);
+    if (req.method === 'GET' && /[?&]llms=1(&|$)/.test(req.url || '')) return await handleLlms(req, res);
 
     const caller = await authenticate(req);
 

@@ -49,7 +49,7 @@ export const USES_CLOUDINARY =
 
 export type MediaCategory =
   | 'products' | 'banners' | 'home' | 'gallery' | 'showcases' | 'testimonials'
-  | 'media' | 'receipts' | 'avatars' | 'reviews';
+  | 'media' | 'receipts' | 'avatars' | 'reviews' | 'payments';
 
 export type MediaErrorCode =
   | 'TOO_LARGE' | 'BAD_TYPE' | 'LIMIT_REACHED' | 'AUTH' | 'FORBIDDEN'

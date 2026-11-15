@@ -51,8 +51,8 @@ const VALUES = [
 
 const About = () => {
   usePageMeta({
-    title: "About us",
-    description: BRAND.description,
+    title: `About ${BRAND.name}: Indian Iconography Learning Kits`,
+    description: `Why ${BRAND.name} makes Indian iconography learning kits: Shilpa Shastra and temple heritage, made hands-on for children, schools, academies and temples.`,
   });
 
   return (

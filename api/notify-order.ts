@@ -974,6 +974,8 @@ async function writePaymentRecord(
 async function loadPayment(db: admin.firestore.Firestore, rzp: string): Promise<PaymentRecord | null> {
   const snap = await db.collection('payments').doc(rzp).get();
   if (snap.exists) return snap.data() as PaymentRecord;
+  // A manual UPI payment has no Razorpay order: it counts only once the shop approved it.
+  if (rzp.startsWith('upi_')) return null;
   const { state, order } = await paymentState(rzp);
   return state === 'paid' ? writePaymentRecord(db, rzp, order) : null;
 }
@@ -1629,6 +1631,7 @@ export async function releaseHolds(
     byOrder.set(rzp, [...(byOrder.get(rzp) || []), doc]);
   }
   for (const [rzp, docs] of byOrder) {
+    if (rzp.startsWith('upi_')) continue; // UPI checkouts never reserve points (api/create-order.ts)
     const { state, order } = await paymentState(rzp);
     const now = admin.firestore.Timestamp.now();
     if (state === 'paid') {
@@ -2005,6 +2008,113 @@ async function tokensForRole(db: admin.firestore.Firestore, role: string): Promi
   return all;
 }
 
+// ── Manual UPI payments ──────────────────────────────────────────────────────
+// manualPayments/<upi_...> is written by api/create-order.ts when the shop's
+// payment switch is on UPI. The customer adds the UTR and a screenshot
+// (upi-claim); an admin approves or rejects it (review-upi-payment). Approval
+// writes payments/<id> from the server's own notes, the same record a verified
+// Razorpay payment gets, so points, partner credit and coin cards follow.
+
+const UTR = /^[A-Za-z0-9]{8,30}$/;
+
+/** The customer's proof: the UTR and a screenshot they uploaded to their own payments/ folder. */
+export async function claimUpiPayment(
+  db: admin.firestore.Firestore,
+  callerUid: string,
+  id: string,
+  utrRaw: unknown,
+  screenshotRaw: unknown,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const utr = String(utrRaw || '').replace(/\s+/g, '').toUpperCase();
+  const screenshot = String(screenshotRaw || '');
+  const base = (process.env.R2_PUBLIC_URL || '').trim().replace(/\/+$/, '');
+  if (!UTR.test(utr)) return { status: 400, body: { error: 'Enter the 12-digit UTR / transaction ID from your UPI app.' } };
+  if (!base || !screenshot.startsWith(`${base}/payments/${callerUid}/`) || screenshot.length > 400) {
+    return { status: 400, body: { error: 'Upload the payment screenshot again.' } };
+  }
+  const ref = db.collection('manualPayments').doc(id);
+  const dup = await db.collection('manualPayments').where('utr', '==', utr).limit(3).get();
+  const duplicateOf = dup.docs.map((d) => d.id).filter((other) => other !== id);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const p = snap.data();
+    if (!snap.exists || !p || p.uid !== callerUid) return { status: 404, body: { error: 'Payment request not found.' } };
+    if (p.status === 'approved' || p.status === 'rejected') return { status: 409, body: { error: 'This payment was already checked.' } };
+    tx.update(ref, {
+      utr,
+      screenshotUrl: screenshot,
+      status: 'submitted',
+      submittedAt: admin.firestore.Timestamp.now(),
+      ...(duplicateOf.length ? { duplicateUtrOf: duplicateOf } : {}),
+    });
+    return { status: 200, body: { ok: true, duplicateUtr: duplicateOf.length > 0 } };
+  });
+}
+
+/** An admin's decision on a UPI payment. Approve = paid; reject = not paid (the shop then cancels the order). */
+export async function reviewUpiPayment(
+  db: admin.firestore.Firestore,
+  adminUid: string,
+  id: string,
+  decision: 'approve' | 'reject',
+  reasonRaw: unknown,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const ref = db.collection('manualPayments').doc(id);
+  const orderRef = db.collection('orders').doc(id);
+  const paymentRef = db.collection('payments').doc(id);
+  const reason = String(reasonRaw || '').trim().slice(0, 300);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const orderSnap = await tx.get(orderRef);
+    const p = snap.data();
+    if (!snap.exists || !p) return { status: 404, body: { error: 'Payment request not found.' } };
+    if (p.status === 'approved' || p.status === 'rejected') {
+      return { status: 409, body: { error: `This payment was already ${p.status}.`, state: p.status } };
+    }
+    const order = orderSnap.data();
+    if (order && order.userId !== p.uid) return { status: 409, body: { error: 'The order belongs to another customer.' } };
+    const now = admin.firestore.Timestamp.now();
+    const state = decision === 'approve' ? 'approved' : 'rejected';
+    const review = { status: state, at: now, by: adminUid, ...(reason ? { reason } : {}) };
+    tx.update(ref, { status: state, reviewedAt: now, reviewedBy: adminUid, ...(reason ? { reason } : {}) });
+    if (decision === 'approve') {
+      const notes = (p.notes || {}) as Record<string, string>;
+      tx.set(
+        paymentRef,
+        {
+          uid: p.uid,
+          razorpayOrderId: id,
+          amountPaise: whole(p.amountPaise),
+          base: money(notes.rw_base),
+          points: 0,
+          pointsValue: 0,
+          cashback: 0,
+          cartHash: String(notes.rw_cart || ''),
+          ...(notes.rw_sub != null && String(notes.rw_sub) !== '' ? { subtotal: money(notes.rw_sub) } : {}),
+          ...(notes.rw_dealer === '1' ? { dealer: true, regularSubtotal: money(notes.rw_regular) } : {}),
+          ...partnerFieldsFromNote(notes.rw_partner),
+          method: 'upi',
+          upiUtr: String(p.utr || ''),
+          status: 'verified',
+          verifiedAt: now,
+          verifiedBy: adminUid,
+          source: 'upi-manual',
+        },
+        { merge: true },
+      );
+    }
+    if (order) {
+      tx.update(orderRef, {
+        paymentStatus: decision === 'approve' ? 'paid' : 'failed',
+        ...(decision === 'approve' ? { paymentVerifiedAt: now } : {}),
+        upiReview: review,
+        updatedAt: now,
+      });
+    }
+    return { status: 200, body: { ok: true, state, orderFound: !!order } };
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -2028,6 +2138,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     uid?: string;
     /** review-partner-earning (admins only): 'pay' clears the check, 'own' = the partner's own order. */
     decision?: string;
+    /** upi-claim: the UPI transaction reference and the uploaded screenshot URL. review-upi-payment: decision approve|reject, reason. */
+    utr?: string;
+    screenshotUrl?: string;
+    reason?: string;
     audience?: 'customer' | 'admins' | 'delivery';
     title?: string;
     body?: string;
@@ -2046,11 +2160,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const isPartnerRefresh = body.action === 'refresh-partner';
   const isCoinReveal = body.action === 'coin-reveal';
   const isPartnerReview = body.action === 'review-partner-earning';
+  const isUpiClaim = body.action === 'upi-claim';
+  const isUpiReview = body.action === 'review-upi-payment';
   if (!orderId && !isRelease && !isPartnerRefresh && !isPartnerReview) return res.status(400).json({ error: 'orderId is required' });
   // An order id (and a card id, a document id under the caller's own user
   // document) is one path segment: a slash would reach another document.
   if (orderId && !/^[\w-]{1,128}$/.test(orderId)) return res.status(400).json({ error: 'invalid orderId' });
-  if (!isReconcile && !isRelease && !isScratch && !isPartnerRefresh && !isCoinReveal && !isPartnerReview) {
+  if (!isReconcile && !isRelease && !isScratch && !isPartnerRefresh && !isCoinReveal && !isPartnerReview && !isUpiClaim && !isUpiReview) {
     if (!audience || !['customer', 'admins', 'delivery'].includes(audience)) {
       return res.status(400).json({ error: 'audience must be customer|admins|delivery' });
     }
@@ -2133,6 +2249,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (err) {
       console.error('[notify-order] review-partner-earning failed:', err instanceof Error ? err.message : err);
       return res.status(503).json({ error: 'review_failed' });
+    }
+  }
+
+  if (isUpiClaim || isUpiReview) {
+    if (!orderId.startsWith('upi_')) return res.status(400).json({ error: 'not a UPI payment' });
+    if (isUpiReview && !isAdmin) return res.status(403).json({ error: 'admins only' });
+    if (isUpiReview && body.decision !== 'approve' && body.decision !== 'reject') {
+      return res.status(400).json({ error: 'decision must be approve|reject' });
+    }
+    try {
+      const r = isUpiClaim
+        ? await claimUpiPayment(db, callerUid, orderId, body.utr, body.screenshotUrl)
+        : await reviewUpiPayment(db, callerUid, orderId, body.decision as 'approve' | 'reject', body.reason);
+      return res.status(r.status).json(r.body);
+    } catch (err) {
+      console.error(`[notify-order] ${body.action} failed:`, err instanceof Error ? err.message : err);
+      return res.status(503).json({ error: 'upi_failed' });
     }
   }
 

@@ -8,6 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { EASE_OUT } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { BRAND } from '@/config/brand';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 const HEADING_FONT: React.CSSProperties = {
   fontFamily: 'var(--font-heading)',
@@ -30,6 +31,7 @@ const AdminLogin = () => {
 
   const { login, user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  usePageMeta({ title: 'Admin sign in', noindex: true });
 
   React.useEffect(() => {
     if (user && isAdmin) navigate('/admin/dashboard');

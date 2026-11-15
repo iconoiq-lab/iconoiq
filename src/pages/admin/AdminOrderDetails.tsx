@@ -45,6 +45,7 @@ import { reconcileOrderRewards, type ReconcileResult } from '@/services/rewardsS
 import { cartKey } from '@/lib/rewards';
 import { dealerOrderTotals } from '@/lib/dealerPriceForm';
 import { DealerOrderChip, DealerOrderTotalsRows } from '@/components/admin/DealerOrderRows';
+import { UpiPaymentReview } from '@/components/admin/UpiPaymentReview';
 import { scratchCardView, voidReasonText } from '@/lib/scratchWin';
 import { getScratchCard, type ScratchCard } from '@/services/scratchWinService';
 import { coinName, readOrderCoinGift } from '@/lib/coinGift';
@@ -910,6 +911,9 @@ const AdminOrderDetails = () => {
           </span>
         </Notice>
       )}
+
+      {/* Manual UPI payment: the customer's UTR and screenshot, approved or rejected by hand. */}
+      <UpiPaymentReview order={order} />
 
       {/* Lakshmi coin card: which printed card goes in the parcel (server-written, see api/notify-order.ts). */}
       {coin && (

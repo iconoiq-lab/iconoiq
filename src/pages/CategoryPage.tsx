@@ -59,6 +59,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 import { SmartImage } from "@/components/ui/smart-image";
 import { BRAND } from "@/config/brand";
+import { SITE_URL } from "@/lib/siteUrl";
 import { DealerPriceInline } from "@/components/dealer/DealerPrice";
 import { useDealerUnit } from "@/hooks/useDealer";
 import { useTallSticky } from "@/hooks/useTallSticky";
@@ -763,14 +764,26 @@ const CategoryPage = () => {
   const pageTitle = currentCategory?.name || tagMeta?.label || "Products";
   const categoryMissing = !currentCategory && !tagMeta && !showAll && !loading && categories.length > 0;
 
+  // Search title and description: the collection's own words (its name and subcategories) plus the store's description.
+  const collectionName = showAll ? "All products" : pageTitle;
+  const subNames = currentCategory?.subcategories.map((s) => s.name).filter(Boolean).join(", ") ?? "";
+  let collectionDescription = `${showAll ? `Every product from ${BRAND.name}` : `${pageTitle} from ${BRAND.name}`}${subNames ? `: ${subNames}` : ""}. ${BRAND.description}`;
+  if (collectionDescription.length > 155) collectionDescription = `${collectionDescription.slice(0, 154).replace(/\s+\S*$/, "")}…`;
   usePageMeta({
-    title: categoryMissing ? "Collection not found" : titlePending ? undefined : showAll ? "All products" : pageTitle,
-    description: categoryMissing || titlePending
-      ? undefined
-      : showAll
-      ? `The full range from ${BRAND.name}.`
-      : `Shop ${pageTitle} from ${BRAND.name}.`,
+    title: categoryMissing ? "Collection not found" : titlePending ? undefined : `${collectionName} | Indian Iconography | ${BRAND.name}`,
+    description: categoryMissing || titlePending ? undefined : collectionDescription,
     noindex: categoryMissing,
+    jsonLd:
+      currentCategory && !categoryMissing
+        ? {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+              { "@type": "ListItem", position: 2, name: currentCategory.name, item: `${SITE_URL}/category/${encodeURIComponent(currentCategory.slug)}` },
+            ],
+          }
+        : null,
   });
 
   if (categoryMissing) {

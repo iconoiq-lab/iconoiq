@@ -20,7 +20,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
-import { ArrowLeft, Tag, ChevronDown, ChevronRight, Plus, Minus, CreditCard, MapPin, Sparkles, ShoppingBag, Truck, X, Trash2, Check, ShieldCheck, RotateCcw, Info } from 'lucide-react';
+import { ArrowLeft, Tag, ChevronDown, ChevronRight, Plus, Minus, CreditCard, QrCode, MapPin, Sparkles, ShoppingBag, Truck, X, Trash2, Check, ShieldCheck, RotateCcw, Info } from 'lucide-react';
 import { getActiveProductsCached } from '@/services/productCache';
 import { adaptFirebaseToUI, UIProduct } from '@/lib/productAdapter';
 import { getUserAddresses, getDefaultAddress, Address, addAddress, AddressFormData } from '@/services/addressService';
@@ -50,6 +50,8 @@ import { RETURNS_CHIP_LABEL } from '@/lib/returnWindow';
 import { BRAND } from '@/config/brand';
 import { isOn } from '@/config/features';
 import { CoinGiftPrompt } from '@/components/coin/CoinGiftDialog';
+import { useUpiPayDialog } from '@/components/checkout/UpiPayDialog';
+import { usePaymentSettings } from '@/hooks/usePaymentSettings';
 
 const HEADING_FONT = { fontFamily: "var(--font-heading)", fontStretch: "var(--font-heading-stretch)" } as const;
 
@@ -173,11 +175,14 @@ const PaymentMethodCard = ({
   value,
   onChange,
   name,
+  upi = false,
   className = '',
 }: {
   value: string;
   onChange: (method: string) => void;
   name: string;
+  /** The shop takes manual UPI payments (siteSettings/payment). */
+  upi?: boolean;
   className?: string;
 }) => (
   <fieldset className={className}>
@@ -185,18 +190,24 @@ const PaymentMethodCard = ({
     <label className="flex cursor-pointer items-center justify-between gap-3 rounded-card border-2 border-primary bg-primary/5 p-3.5">
       <span className="flex items-center gap-3">
         <span className="flex size-9 flex-shrink-0 items-center justify-center rounded-control bg-primary">
-          <CreditCard aria-hidden="true" className="size-4 text-primary-foreground" />
+          {upi ? (
+            <QrCode aria-hidden="true" className="size-4 text-primary-foreground" />
+          ) : (
+            <CreditCard aria-hidden="true" className="size-4 text-primary-foreground" />
+          )}
         </span>
         <span>
-          <span className="block text-sm font-medium text-foreground">Pay online (Razorpay)</span>
-          <span className="text-xs text-muted-foreground">Cards, UPI, wallets and net banking</span>
+          <span className="block text-sm font-medium text-foreground">{upi ? 'Pay by UPI (scan QR)' : 'Pay online (Razorpay)'}</span>
+          <span className="text-xs text-muted-foreground">
+            {upi ? 'GPay, PhonePe, Paytm or any UPI app. We confirm it within a few hours' : 'Cards, UPI, wallets and net banking'}
+          </span>
         </span>
       </span>
       <input
         type="radio"
         name={name}
-        value="Razorpay"
-        checked={value === 'Razorpay'}
+        value={upi ? 'UPI' : 'Razorpay'}
+        checked={value === (upi ? 'UPI' : 'Razorpay')}
         onChange={(e) => onChange(e.target.value)}
         className="size-4 flex-shrink-0 accent-primary"
       />
@@ -865,6 +876,11 @@ const MobileCheckout = () => {
   const [tempSelectedAddress, setTempSelectedAddress] = useState<Address | null>(null);
   // Razorpay is the only method today; the card on the checkout step shows it.
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Razorpay');
+  // The shop's payment switch: Razorpay, or a manual UPI transfer checked by hand.
+  const upiMode = usePaymentSettings().mode === 'upi';
+  const upiDialog = useUpiPayDialog();
+  const [upiUtr, setUpiUtr] = useState('');
+  useEffect(() => setSelectedPaymentMethod(upiMode ? 'UPI' : 'Razorpay'), [upiMode]);
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
@@ -1067,6 +1083,12 @@ const MobileCheckout = () => {
   const rewardsState = useRewards(isOn('rewards') ? user?.uid : undefined);
   const [usePoints, setUsePoints] = useState(false);
   const [useCashback, setUseCashback] = useState(false);
+  // Points and cashback cannot stay reserved while a UPI payment waits for a check.
+  useEffect(() => {
+    if (!upiMode) return;
+    setUsePoints(false);
+    setUseCashback(false);
+  }, [upiMode]);
   // Approved dealers pay dealer prices once the cart is worth the dealer minimum
   // at regular prices (the same rule api/create-order.ts applies). Anyone else
   // gets the cart's own subtotal, untouched. Dealer prices take no coupon,
@@ -1201,6 +1223,7 @@ const MobileCheckout = () => {
           amountBeforeRewards: pricing.totalBeforeRewards,
           lineItems: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
           paymentMethod: selectedPaymentMethod,
+          onUpiPayment: upiDialog.request,
           shippingState: selectedAddress.state,
           couponCode: dealerApplies ? undefined : pricing.appliedCoupon?.code,
           usePoints: dealerApplies ? false : pricing.pointsApplied > 0,
@@ -1225,6 +1248,7 @@ const MobileCheckout = () => {
 
 
       // Prepare order data
+      if (verifiedPayment?.upi) setUpiUtr(verifiedPayment.upi.utr);
       const orderData: OrderFormData = {
         orderId: orderId,
         userId: user.uid,
@@ -1275,6 +1299,7 @@ const MobileCheckout = () => {
           razorpayOrderId: verifiedPayment.razorpayOrderId,
           razorpaySignature: verifiedPayment.razorpaySignature,
         } : {}),
+        ...(verifiedPayment?.upi ? { upiPayment: verifiedPayment.upi } : {}),
         ...(verifiedPayment?.pointsApplied && !dealerApplies
           ? { pointsUsed: verifiedPayment.pointsApplied, pointsValue: verifiedPayment.pointsValue }
           : {}),
@@ -1749,7 +1774,7 @@ const MobileCheckout = () => {
             </div>
 
             {/* Loyalty points / wallet cashback (not on dealer-priced orders; none when rewards are off) */}
-            {isOn('rewards') && !dealerApplies && (
+            {isOn('rewards') && !dealerApplies && !upiMode && (
               <div className="mx-4 mb-4">
                 <RewardsRedeemCard
                   balances={rewardsState.balances}
@@ -1985,6 +2010,7 @@ const MobileCheckout = () => {
             {/* Payment Method */}
             <div className="mx-4 mb-3">
               <PaymentMethodCard
+                upi={upiMode}
                 name="paymentMethod"
                 value={selectedPaymentMethod}
                 onChange={setSelectedPaymentMethod}
@@ -2173,7 +2199,11 @@ const MobileCheckout = () => {
                   <div className="py-3.5">
                     <dt className="text-xs text-muted-foreground">Payment</dt>
                     <dd className="mt-0.5 text-sm text-foreground">
-                      {selectedPaymentMethod === 'Razorpay' ? 'Paid online (Razorpay)' : selectedPaymentMethod}
+                      {selectedPaymentMethod === 'Razorpay'
+                        ? 'Paid online (Razorpay)'
+                        : selectedPaymentMethod === 'UPI'
+                          ? `UPI payment being checked${upiUtr ? ` (UTR ${upiUtr})` : ''}. We confirm it within a few hours.`
+                          : selectedPaymentMethod}
                     </dd>
                   </div>
                 </dl>
@@ -2232,6 +2262,7 @@ const MobileCheckout = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {upiDialog.element}
     </div>
   );
 };
@@ -2263,6 +2294,11 @@ const Checkout = () => {
   const [tempSelectedAddress, setTempSelectedAddress] = useState<Address | null>(null);
   // Razorpay is the only method today; the card on the checkout step shows it.
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Razorpay');
+  // The shop's payment switch: Razorpay, or a manual UPI transfer checked by hand.
+  const upiMode = usePaymentSettings().mode === 'upi';
+  const upiDialog = useUpiPayDialog();
+  const [upiUtr, setUpiUtr] = useState('');
+  useEffect(() => setSelectedPaymentMethod(upiMode ? 'UPI' : 'Razorpay'), [upiMode]);
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
@@ -2428,6 +2464,12 @@ const Checkout = () => {
   const rewardsState = useRewards(isOn('rewards') ? user?.uid : undefined);
   const [usePoints, setUsePoints] = useState(false);
   const [useCashback, setUseCashback] = useState(false);
+  // Points and cashback cannot stay reserved while a UPI payment waits for a check.
+  useEffect(() => {
+    if (!upiMode) return;
+    setUsePoints(false);
+    setUseCashback(false);
+  }, [upiMode]);
   // Approved dealers pay dealer prices once the cart is worth the dealer minimum
   // at regular prices (the same rule api/create-order.ts applies). Anyone else
   // gets the cart's own subtotal, untouched. Dealer prices take no coupon,
@@ -2558,6 +2600,7 @@ const Checkout = () => {
           amountBeforeRewards: pricing.totalBeforeRewards,
           lineItems: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
           paymentMethod: selectedPaymentMethod,
+          onUpiPayment: upiDialog.request,
           shippingState: selectedAddress.state,
           couponCode: dealerApplies ? undefined : pricing.appliedCoupon?.code,
           usePoints: dealerApplies ? false : pricing.pointsApplied > 0,
@@ -2582,6 +2625,7 @@ const Checkout = () => {
 
 
       // Prepare order data
+      if (verifiedPayment?.upi) setUpiUtr(verifiedPayment.upi.utr);
       const orderData: OrderFormData = {
         orderId: orderId,
         userId: user.uid,
@@ -2632,6 +2676,7 @@ const Checkout = () => {
           razorpayOrderId: verifiedPayment.razorpayOrderId,
           razorpaySignature: verifiedPayment.razorpaySignature,
         } : {}),
+        ...(verifiedPayment?.upi ? { upiPayment: verifiedPayment.upi } : {}),
         ...(verifiedPayment?.pointsApplied && !dealerApplies
           ? { pointsUsed: verifiedPayment.pointsApplied, pointsValue: verifiedPayment.pointsValue }
           : {}),
@@ -3156,7 +3201,7 @@ const Checkout = () => {
             </section>
 
             {/* Loyalty points / wallet cashback (not on dealer-priced orders; none when rewards are off) */}
-            {isOn('rewards') && !dealerApplies && (
+            {isOn('rewards') && !dealerApplies && !upiMode && (
               <RewardsRedeemCard
                 balances={rewardsState.balances}
                 settings={rewardsState.settings}
@@ -3190,6 +3235,7 @@ const Checkout = () => {
               />
 
               <PaymentMethodCard
+                upi={upiMode}
                 name="desktopPaymentMethod"
                 value={selectedPaymentMethod}
                 onChange={setSelectedPaymentMethod}
@@ -3310,7 +3356,11 @@ const Checkout = () => {
                 <div className="flex items-baseline justify-between gap-4 py-3.5">
                   <dt className="text-sm text-muted-foreground">Payment</dt>
                   <dd className="text-sm text-foreground">
-                    {selectedPaymentMethod === 'Razorpay' ? 'Paid online (Razorpay)' : selectedPaymentMethod}
+                    {selectedPaymentMethod === 'Razorpay'
+                        ? 'Paid online (Razorpay)'
+                        : selectedPaymentMethod === 'UPI'
+                          ? `UPI payment being checked${upiUtr ? ` (UTR ${upiUtr})` : ''}. We confirm it within a few hours.`
+                          : selectedPaymentMethod}
                   </dd>
                 </div>
               </dl>
@@ -3368,6 +3418,7 @@ const Checkout = () => {
           {showOrderSuccess && <CoinGiftPrompt orderId={firestoreOrderId} />}
         </DialogContent>
       </Dialog>
+      {upiDialog.element}
 
       <Footer />
     </div>

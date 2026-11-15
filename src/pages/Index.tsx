@@ -16,6 +16,7 @@ import { HOME_BLOCKS, HOME_BLOCK_RESERVE } from "@/config/homeBlocks";
 import { activeSection } from "@/config/activeSections";
 import { subscribeHomeBanners, subscribeHomeCollections } from "@/services/homeContentService";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useCustomerSupport } from "@/hooks/useCustomerSupport";
 import { BRAND } from "@/config/brand";
 import { SITE_URL } from "@/lib/siteUrl";
 
@@ -48,9 +49,10 @@ const Deferred = ({ children, reserve }: { children: ReactNode; reserve: string 
 const Index = () => {
   // Search title and the store's identity for Google (Organization + WebSite). Facts only:
   // add BRAND.social links to sameAs once the client has them.
+  const support = useCustomerSupport();
   const sameAs = (Object.values(BRAND.social ?? {}) as unknown[]).filter((u): u is string => typeof u === "string" && /^https?:\/\//.test(u));
   usePageMeta({
-    title: `${BRAND.name} | Indian Iconography Learning Kits, Mudra Cards and Temple Art`,
+    title: BRAND.homeTitle,
     canonicalPath: "/",
     jsonLd: {
       "@context": "https://schema.org",
@@ -62,6 +64,11 @@ const Index = () => {
           url: `${SITE_URL}/`,
           logo: `${SITE_URL}/icon-192.png`,
           description: BRAND.description,
+          // The live support details (Admin > Commerce > Support), the same ones the footer shows.
+          ...(support.email ? { email: support.email } : {}),
+          ...(support.phone ? { telephone: support.phone } : {}),
+          areaServed: { "@type": "Country", name: "India" },
+          knowsAbout: ["Indian iconography", "Shilpa Shastra", "Temple architecture", "Bharatanatyam mudras"],
           ...(sameAs.length ? { sameAs } : {}),
         },
         {

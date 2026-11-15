@@ -455,7 +455,9 @@ service cloud.firestore {
             'refundReceiptUrl', 'paymentCollectedAt', 'paymentCollectedBy',
             'partnerCode', 'partnerUid', 'partnerFamily',
             // Lakshmi coin card: written only by api/notify-order.ts (mirror of payments/<id>.coinGift).
-            'coinGift'
+            'coinGift',
+            // The shop's decision on a manual UPI payment (api/notify-order.ts review-upi-payment).
+            'upiReview'
           ]);
       }
       
@@ -588,6 +590,16 @@ service cloud.firestore {
     // hash and the points/cashback spent. The orders create rule needs it to
     // accept an order marked paid; the admin order page compares against it.
     match /payments/{razorpayOrderId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // --- MANUAL UPI PAYMENTS (server-only) ---
+    // manualPayments/<upi_...>: what a customer must pay by UPI (api/create-order.ts),
+    // their UTR and screenshot (upi-claim) and the shop's decision
+    // (review-upi-payment, api/notify-order.ts). A pending claim never goes in
+    // payments/, so it can never mark an order paid by itself.
+    match /manualPayments/{paymentId} {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
       allow write: if false;
     }

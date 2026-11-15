@@ -54,6 +54,60 @@ const STACKED = activeSection("productPage") === "stacked";
 const categorySlug = (name: string) =>
   name.toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
+/**
+ * Product + BreadcrumbList for Google. Facts only: an offer only with a real price, specs from the
+ * admin form (placeholders left out), and no rating or review markup (reviews are not marked up).
+ */
+function productJsonLd(product: UIProductDetail, unavailable: boolean) {
+  const url = `${SITE_URL}/product/${encodeURIComponent(product.id)}`;
+  const images = (product.images && product.images.length > 0 ? product.images : [product.image]).filter(
+    (src): src is string => typeof src === "string" && /^https?:\/\//.test(src),
+  );
+  const specs = specEntries(product.specifications)
+    .filter(([, value]) => !/^\[need:/i.test(value.trim()))
+    .map(([key, value]) => ({ "@type": "PropertyValue", name: SPEC_LABELS[key] ?? key, value: value.trim() }));
+  const organization = { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: BRAND.name, url: `${SITE_URL}/` };
+  const crumbs = [
+    { name: "Home", item: `${SITE_URL}/` },
+    ...(product.category ? [{ name: product.category.replace(/-/g, " "), item: `${SITE_URL}/category/${categorySlug(product.category)}` }] : []),
+    { name: product.title, item: url },
+  ];
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Product",
+        "@id": `${url}#product`,
+        name: product.title,
+        url,
+        ...(images.length ? { image: images } : {}),
+        ...(product.description ? { description: product.description } : {}),
+        sku: product.id,
+        brand: { "@type": "Brand", name: BRAND.name },
+        manufacturer: organization,
+        ...(product.category ? { category: product.category } : {}),
+        ...(specs.length ? { additionalProperty: specs } : {}),
+        ...(Number.isFinite(product.price) && product.price > 0
+          ? {
+              offers: {
+                "@type": "Offer",
+                url,
+                priceCurrency: "INR",
+                price: product.price,
+                availability: unavailable ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+                seller: { "@id": `${SITE_URL}/#organization` },
+              },
+            }
+          : {}),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: c.item })),
+      },
+    ],
+  };
+}
+
 /** Hover zoom only where there is a real pointer; a tap on a phone opens the viewer instead. */
 const canHoverZoom = () =>
   typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -584,26 +638,7 @@ const ProductDetail = () => {
     image: product?.image,
     // Sample listings stay out of search: they are replaced by the real range before launch.
     noindex: notFound || product?.demo === true,
-    jsonLd:
-      product && !notFound && !product.demo
-        ? {
-            "@context": "https://schema.org",
-            "@type": "Product",
-            name: product.title,
-            image: (product.images && product.images.length > 0 ? product.images : [product.image]).filter(Boolean),
-            ...(product.description ? { description: product.description } : {}),
-            sku: product.id,
-            brand: { "@type": "Brand", name: BRAND.name },
-            ...(product.category ? { category: product.category } : {}),
-            offers: {
-              "@type": "Offer",
-              url: `${SITE_URL}/product/${product.id}`,
-              priceCurrency: "INR",
-              price: product.price,
-              availability: isUnavailable(product) ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-            },
-          }
-        : null,
+    jsonLd: product && !notFound && !product.demo ? productJsonLd(product, isUnavailable(product)) : null,
   });
 
   // An approved dealer's unit price for this product, or null (guests,

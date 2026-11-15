@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { useNoindex } from "@/hooks/usePageMeta";
 
 /**
  * Forces the delivery partner section to always render in light mode,
@@ -6,6 +7,8 @@ import { useEffect, type ReactNode } from "react";
  * when the wrapper unmounts (i.e. when the user navigates away).
  */
 const DeliveryLightThemeWrapper = ({ children }: { children: ReactNode }) => {
+  // The delivery partners' app (login included) stays out of search.
+  useNoindex();
   useEffect(() => {
     const root = document.documentElement;
     const hadDark = root.classList.contains("dark");

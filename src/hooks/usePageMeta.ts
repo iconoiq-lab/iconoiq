@@ -18,6 +18,9 @@ export interface PageMeta {
 }
 
 const JSON_LD_ID = 'page-meta-jsonld';
+/** Two robots tags can sit side by side (search engines obey the stricter): the page's own and the private-route one. */
+const ROBOTS_ID = 'page-meta-robots';
+const PRIVATE_ROBOTS_ID = 'private-route-robots';
 
 /** The values index.html shipped with, captured once so every page can restore them. */
 let defaults: { title: string; description: string; ogTitle: string; ogDescription: string; image: string } | null = null;
@@ -62,6 +65,21 @@ function setCanonical(href: string | null) {
   el.setAttribute('href', href);
 }
 
+function setRobots(id: string, content: string | null) {
+  let el = document.getElementById(id) as HTMLMetaElement | null;
+  if (content === null) {
+    el?.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('meta');
+    el.id = id;
+    el.name = 'robots';
+    document.head.appendChild(el);
+  }
+  el.content = content;
+}
+
 function setJsonLd(data: Record<string, unknown> | null | undefined) {
   document.getElementById(JSON_LD_ID)?.remove();
   if (!data) return;
@@ -101,7 +119,7 @@ export function usePageMeta({ title, description, canonicalPath, image, noindex,
     setMeta('name', 'twitter:title', fullTitle);
     setMeta('name', 'twitter:description', desc);
     if (img) setMeta('name', 'twitter:image', img);
-    setMeta('name', 'robots', noindex ? 'noindex, nofollow' : null);
+    setRobots(ROBOTS_ID, noindex ? 'noindex, nofollow' : null);
     setCanonical(noindex ? null : url);
     setJsonLd(jsonLd);
 
@@ -115,13 +133,24 @@ export function usePageMeta({ title, description, canonicalPath, image, noindex,
       setMeta('name', 'twitter:title', null);
       setMeta('name', 'twitter:description', null);
       if (base.image) setMeta('name', 'twitter:image', base.image);
-      setMeta('name', 'robots', null);
+      setRobots(ROBOTS_ID, null);
       setCanonical(null);
       setJsonLd(null);
     };
     // jsonLd is compared by value (jsonLdKey) so an inline object does not re-run this every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, description, canonicalPath, image, noindex, jsonLdKey]);
+}
+
+/**
+ * Keeps a whole private area out of search (sign-in, account, checkout, the admin login) without
+ * touching the page's own title: route guards call it, so pages inside them need no meta of their own.
+ */
+export function useNoindex() {
+  useEffect(() => {
+    setRobots(PRIVATE_ROBOTS_ID, 'noindex, nofollow');
+    return () => setRobots(PRIVATE_ROBOTS_ID, null);
+  }, []);
 }
 
 export default usePageMeta;

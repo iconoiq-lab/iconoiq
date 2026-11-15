@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNoindex } from '@/hooks/usePageMeta';
 import { ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,6 +40,7 @@ const AdminShellSkeleton = () => (
 
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   const { user, userProfile, loading, isAdmin } = useAuth();
+  useNoindex();
   const location = useLocation();
 
   // Show loading state while checking auth

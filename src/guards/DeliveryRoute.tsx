@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNoindex } from '@/hooks/usePageMeta';
 import { Loader2, Truck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { isOn } from '@/config/features';
@@ -11,6 +12,7 @@ interface DeliveryRouteProps {
 
 const DeliveryRoute: React.FC<DeliveryRouteProps> = ({ children }) => {
   const { user, userProfile, loading, isDelivery } = useAuth();
+  useNoindex();
   const location = useLocation();
 
   // Delivery-partner system is disabled — send everyone back home.

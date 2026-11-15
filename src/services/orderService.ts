@@ -243,6 +243,13 @@ export interface Order {
   // verified server-side. Present only on prepaid (online) orders.
   razorpayPaymentId?: string;
   razorpayOrderId?: string;
+  /**
+   * A manual UPI transfer (razorpayOrderId starts with "upi_"): what the
+   * customer says they paid. Only the shop's approval (upiReview, written by
+   * the server) makes it paid.
+   */
+  upiPayment?: { utr: string; screenshotUrl: string; upiId: string; amount: number };
+  upiReview?: { status: 'approved' | 'rejected'; reason?: string; at?: Timestamp; by?: string };
   razorpaySignature?: string;
   // Rewards (display only - the reward ledger and payments/<razorpay order id>
   // are the record; see src/lib/rewards.ts and api/notify-order.ts).
@@ -351,10 +358,29 @@ export const isCashOnDeliveryOrder = (order: Pick<Order, 'paymentMethod'>): bool
   return value.includes('cash on delivery') || value === 'cod' || value.includes('cash');
 };
 
+/** A manual UPI payment the shop checks by hand (see api/notify-order.ts review-upi-payment). */
+export const isManualUpiOrder = (order: { razorpayOrderId?: string | null }): boolean =>
+  String(order.razorpayOrderId || '').startsWith('upi_');
+
+/** A manual UPI order still waiting for the shop to check the payment. */
+/** How a manual UPI payment reads to the customer. */
+export const upiPaymentLabel = (order: Pick<Order, 'paymentStatus' | 'upiReview'>) =>
+  order.paymentStatus === 'paid'
+    ? 'UPI (paid)'
+    : order.paymentStatus === 'failed' || order.upiReview?.status === 'rejected'
+      ? 'UPI (payment not received)'
+      : 'UPI (being checked)';
+
+export const isUpiPaymentToCheck = (
+  order: Pick<Order, 'paymentStatus'> & { razorpayOrderId?: string | null; status?: string },
+): boolean => isManualUpiOrder(order) && order.paymentStatus === 'pending' && order.status !== 'cancelled';
+
 export const isPaymentSettled = (
-  order: Pick<Order, 'paymentMethod' | 'paymentStatus'>,
+  order: Pick<Order, 'paymentMethod' | 'paymentStatus'> & { razorpayOrderId?: string | null },
 ): boolean => {
   if (order.paymentStatus === 'paid') return true;
+  // "UPI" is a prepaid method, but a manual transfer is paid only once approved.
+  if (isManualUpiOrder(order)) return false;
   return isPrepaidPaymentMethod(order.paymentMethod);
 };
 
@@ -614,7 +640,8 @@ const createPaidOrderFallback = async (
   const docRef = orderDocRef(orderData);
   const flagged = {
     ...orderData,
-    paymentStatus: 'paid',
+    // A manual UPI order is never "paid" until the shop approves the transfer.
+    paymentStatus: isManualUpiOrder(orderData) ? 'pending' : 'paid',
     status: 'pending',
     createdAt: now,
     updatedAt: now,
@@ -684,7 +711,8 @@ export const createPaidOrder = async (
 export const createOrder = async (orderData: OrderFormData): Promise<string> => {
   try {
     const now = Timestamp.now();
-    const paymentStatus = isPrepaidPaymentMethod(orderData.paymentMethod) ? 'paid' : 'pending';
+    const paymentStatus =
+      !isManualUpiOrder(orderData) && isPrepaidPaymentMethod(orderData.paymentMethod) ? 'paid' : 'pending';
     const docRef = orderDocRef(orderData);
     const groupedItems = new Map<string, { productId: string; name: string; quantity: number }>();
     for (const item of orderData.items || []) {

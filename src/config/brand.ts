@@ -28,6 +28,11 @@ export const BRAND = {
   legalName: 'ICONOIQ' as string,
   /** From the logo. */
   tagline: 'Indian Iconography Learning Kits' as string,
+  /**
+   * The home page's search title (about 50-65 characters, the buyer's search words, ending with the name).
+   * index.html's <title> and og:title carry the same text (tests/brand-parity.test.ts).
+   */
+  homeTitle: 'Indian Iconography Learning Kits for Kids and Schools | ICONOIQ' as string,
   /** Real facts only. The footer tagline and the meta description; keep api/media.ts and index.html in step. */
   description: 'Indian iconography learning kits inspired by Shilpa Shastra and temple heritage, for children, schools, academies and temples.',
 

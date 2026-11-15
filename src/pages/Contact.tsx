@@ -42,8 +42,8 @@ const Contact = () => {
   const { email: storeEmail, phone, hours } = useCustomerSupport();
 
   usePageMeta({
-    title: "Contact",
-    description: `Questions about a product or an order? Contact ${BRAND.name}.`,
+    title: `Contact ${BRAND.name}`,
+    description: `Questions about a learning kit, an order for a school or academy, or a delivery? Contact ${BRAND.name} and we will help you choose and track your order.`,
   });
 
   useEffect(() => () => {

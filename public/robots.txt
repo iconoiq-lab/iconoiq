@@ -12,6 +12,18 @@ Disallow: /search-results
 Disallow: /wishlist
 Disallow: /call
 Disallow: /my-video-calls
+Disallow: /login
+Disallow: /signup
+Disallow: /auth/
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /write-review
+Disallow: /thank-you-review
+Disallow: /buy-again
+Disallow: /purchase-summary
+Disallow: /security
+Disallow: /profile
 
 # Built live from the catalogue by api/media.ts (vercel.json rewrite).
 Sitemap: https://www.iconoiq.com/sitemap.xml

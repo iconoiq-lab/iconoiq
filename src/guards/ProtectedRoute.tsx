@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNoindex } from '@/hooks/usePageMeta';
 import { Lightbulb, Mail, RefreshCw, CheckCircle } from 'lucide-react';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/config/firebase';
@@ -30,6 +31,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, userProfile, logout, loading } = useAuth();
   const location = useLocation();
+  // Every signed-in page (account, checkout, wishlist, orders...) stays out of search.
+  useNoindex();
   
   // Email verification modal states
   const [showVerificationModal, setShowVerificationModal] = useState(false);
