@@ -105,8 +105,8 @@ const MobileCategories = () => {
               Shop by category
             </h1>
           </div>
-          <img src="/black_logo.png" alt={BRAND.name} className="mr-2 h-6 w-auto dark:hidden" />
-          <img src="/white_logo.png" alt={BRAND.name} className="mr-2 hidden h-6 w-auto dark:block" />
+          <img src="/black_logo.webp" alt={BRAND.name} className="mr-2 h-6 w-auto dark:hidden" />
+          <img src="/white_logo.webp" alt={BRAND.name} className="mr-2 hidden h-6 w-auto dark:block" />
         </div>
       </header>
 

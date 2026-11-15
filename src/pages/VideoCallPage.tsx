@@ -16,7 +16,7 @@ import { BRAND } from '@/config/brand';
 const BrandWatermark = () => (
   <div className="flex items-center gap-2.5">
     <img
-      src="/white_logo.png"
+      src="/white_logo.webp"
       alt={BRAND.name}
       className="h-8 w-auto object-contain drop-shadow-lg"
     />
@@ -438,7 +438,7 @@ const VideoCallPage = () => {
                 <span aria-hidden="true" className="absolute inset-3 rounded-full border-2 border-highlight-soft/28 animate-ping [animation-delay:300ms]" />
                 <span aria-hidden="true" className="absolute inset-6 rounded-full border-2 border-highlight-soft/42 animate-ping [animation-delay:600ms]" />
                 <div className="absolute inset-8 flex items-center justify-center rounded-full bg-primary shadow-xl">
-                  <img src="/white_logo.png" alt="" className="h-8 w-8 object-contain" />
+                  <img src="/white_logo.webp" alt="" className="h-8 w-8 object-contain" />
                 </div>
               </div>
               <p className="font-medium text-charcoal-foreground">Connecting to an expert…</p>

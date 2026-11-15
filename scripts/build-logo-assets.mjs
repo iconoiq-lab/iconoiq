@@ -117,6 +117,11 @@ await wordmark(true).resize(900).png(PNG).toFile('public/white_logo.png');
 await wordmark(false).resize(900).png(PNG).toFile('public/black_logo_full.png');
 await wordmark(true).resize(900).png(PNG).toFile('public/white_logo_full.png');
 await wordmark(false).resize(900).png(PNG).toFile('public/logo-new.png');
+// What the pages show (header, footer, cart, admin): WebP at 600px, enough for the largest
+// logo (h-16, about 190px wide) on a 3x phone screen, at about a quarter of the PNG's bytes.
+const WEBP = { quality: 90, alphaQuality: 100, effort: 6 };
+await sharp('public/black_logo.png').resize(600).webp(WEBP).toFile('public/black_logo.webp');
+await sharp('public/white_logo.png').resize(600).webp(WEBP).toFile('public/white_logo.webp');
 
 // The wordmark's own size, for the <img width height> of the header and footers (the browser reserves
 // the right shape before the file loads) and the invoice. Any proportion works: nothing else assumes one.

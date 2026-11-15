@@ -286,8 +286,8 @@ const Header = () => {
   /** Changes when an admin publishes; re-reads the catalog below. */
   const catalogRevision = useCatalogRevision();
 
-  const lightModeLogo = "/black_logo.png";
-  const darkModeLogo = "/white_logo.png";
+  const lightModeLogo = "/black_logo.webp";
+  const darkModeLogo = "/white_logo.webp";
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userProfile } = useAuth();

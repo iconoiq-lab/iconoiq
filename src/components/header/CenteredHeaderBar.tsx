@@ -29,7 +29,7 @@ const CenteredHeaderBar = ({ isScrolled, search, icons }: CenteredHeaderBarProps
 
           <Link to="/" aria-label={`${BRAND.name} home`} className="flex items-center flex-shrink-0 rounded-control">
             <img
-              src={resolvedTheme === "dark" ? "/white_logo.png" : "/black_logo.png"}
+              src={resolvedTheme === "dark" ? "/white_logo.webp" : "/black_logo.webp"}
               alt=""
               width={LOGO.width}
               height={LOGO.height}

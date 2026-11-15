@@ -1418,7 +1418,7 @@ const MobileCheckout = () => {
             <ArrowLeft aria-hidden="true" />
           </IconButton>
           <img
-            src={resolvedTheme === 'dark' ? '/white_logo.png' : '/black_logo.png'}
+            src={resolvedTheme === 'dark' ? '/white_logo.webp' : '/black_logo.webp'}
             alt={BRAND.name}
             className="h-9 w-auto object-contain"
           />

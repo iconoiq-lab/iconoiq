@@ -95,8 +95,8 @@ interface MobileHeaderProps {
 }
 
 const MobileHeader = ({ skipLink = true }: MobileHeaderProps) => {
-  const lightModeLogo = "/black_logo.png";
-  const darkModeLogo = "/white_logo.png";
+  const lightModeLogo = "/black_logo.webp";
+  const darkModeLogo = "/white_logo.webp";
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { totalItems } = useCart();

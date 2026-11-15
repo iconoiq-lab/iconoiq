@@ -142,7 +142,7 @@ const NewsletterStrip = () => {
 };
 
 const Footer = () => {
-  const darkModeLogo = "/white_logo.png";
+  const darkModeLogo = "/white_logo.webp";
   const [footerSettings, setFooterSettings] = useState<FooterSettings>(DEFAULT_FOOTER);
   // Phone, email and hours come from Admin > Commerce > Support unless the footer editor saves its own.
   const support = useCustomerSupport();

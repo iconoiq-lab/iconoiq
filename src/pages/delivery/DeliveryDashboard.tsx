@@ -147,7 +147,7 @@ const DeliveryDashboard = () => {
       <header className="sticky top-0 z-20 bg-stone-900 shadow-lg">
         {/* Brand row */}
         <div className="mx-auto flex max-w-xl items-center justify-center px-4 pt-3 pb-1.5">
-          <img src="/black_logo.png" alt={BRAND.name} className="h-6 w-auto brightness-0 invert" />
+          <img src="/black_logo.webp" alt={BRAND.name} className="h-6 w-auto brightness-0 invert" />
         </div>
         {/* Partner row */}
         <div className="mx-auto flex max-w-xl items-center justify-between px-4 pb-3">

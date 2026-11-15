@@ -61,8 +61,8 @@ import {
 import { BRAND } from '@/config/brand';
 
 // Public-folder logos (same source as the customer Header)
-const lightModeLogo = "/black_logo.png";
-const darkModeLogo = "/white_logo.png";
+const lightModeLogo = "/black_logo.webp";
+const darkModeLogo = "/white_logo.webp";
 
 type NavItem = {
   path: string;

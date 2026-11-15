@@ -38,7 +38,7 @@ const CompactFooter = ({ settings, categories }: CompactFooterProps) => {
       <div className="relative container-custom">
         <div className="mx-auto max-w-3xl py-12 text-center">
           <img
-            src="/white_logo.png"
+            src="/white_logo.webp"
             alt={BRAND.name}
             width={LOGO.width}
             height={LOGO.height}

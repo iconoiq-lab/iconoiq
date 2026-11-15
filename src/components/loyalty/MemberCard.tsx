@@ -146,7 +146,7 @@ export const MemberCardView = ({
 
         <div className="relative flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <img src="/white_logo.png" alt="" aria-hidden="true" width={330} height={96} className="h-5 w-auto sm:h-6" />
+            <img src="/white_logo.webp" alt="" aria-hidden="true" width={330} height={96} className="h-5 w-auto sm:h-6" />
             <p className="mt-2 text-[11px] font-medium leading-snug text-charcoal-foreground/80">
               {mult(tier.multiplier)} points on every delivered order
             </p>

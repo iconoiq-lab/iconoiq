@@ -183,7 +183,7 @@ const ShoppingCart = () => {
         <div className="border-b border-border">
           <div className="flex items-center justify-between gap-2 py-3 pl-6 pr-4">
             <img
-              src={resolvedTheme === 'dark' ? '/white_logo.png' : '/black_logo.png'}
+              src={resolvedTheme === 'dark' ? '/white_logo.webp' : '/black_logo.webp'}
               alt={BRAND.name}
               className="h-8 w-auto object-contain"
             />
