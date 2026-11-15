@@ -1951,7 +1951,7 @@ const MobileCheckout = () => {
                       </h3>
                       <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5">
                         <span className="text-xs font-bold tabular-nums text-foreground">{formatPrice(product.price)}</span>
-                        {product.oldPrice && (
+                        {!!product.oldPrice && product.oldPrice > product.price && (
                           <span className="price-was text-[10px]">
                             <span className="sr-only">Was </span>
                             {formatPrice(product.oldPrice)}
