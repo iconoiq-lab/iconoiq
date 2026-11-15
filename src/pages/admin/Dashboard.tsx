@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { SmartImage } from "@/components/ui/smart-image";
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { StatCard } from '@/components/admin/StatCard';
+import { PaymentSetupNotice } from '@/components/admin/PaymentSetupNotice';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Spinner } from '@/components/ui/spinner';
 import { ListSkeleton, StatCardsSkeleton } from '@/components/skeletons';
@@ -163,6 +164,8 @@ const Dashboard = () => {
           </Button>
         }
       />
+
+      <PaymentSetupNotice />
 
       {/* Silver rate quick card: silver pricing feature only */}
       {isOn('silverPricing') && (

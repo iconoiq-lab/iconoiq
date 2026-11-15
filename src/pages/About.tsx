@@ -17,7 +17,7 @@ import { DEFAULT_CATEGORIES } from "@/services/categoryService";
 const RANGE = DEFAULT_CATEGORIES.map((category) => ({
   title: category.name,
   to: `/category/${category.slug}`,
-  parts: (category.children ?? []).map((child) => child.name),
+  parts: (category.subcategories ?? []).map((sub) => sub.name),
 }));
 
 const About = () => {
