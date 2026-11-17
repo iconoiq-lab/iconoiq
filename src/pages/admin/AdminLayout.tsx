@@ -42,8 +42,7 @@ import {
   LayoutPanelTop,
   GalleryHorizontal,
   type LucideIcon,
-  FolderTree,
-} from 'lucide-react';
+  FolderTree, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -170,6 +169,7 @@ const AdminLayout = () => {
       ? [{ path: '/admin/delivery-boys', icon: Truck, label: 'Delivery boys' }]
       : []),
     { path: '/admin/customers', icon: Users2, label: 'Customers' },
+    { path: '/admin/business-partners', icon: PieChart, label: 'Business partners' },
     ...(isOn('dealers') ? [{ path: '/admin/dealers', icon: Handshake, label: 'Dealers', count: pendingDealers }] : []),
     ...(isOn('dealers') ? [{ path: '/admin/partners', icon: GraduationCap, label: 'Partners', count: pendingPartners }] : []),
     { path: '/admin/coupons', icon: Ticket, label: 'Coupons' },

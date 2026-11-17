@@ -81,6 +81,7 @@ const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
 const AdminCustomerDetails = lazy(() => import("./pages/admin/AdminCustomerDetails"));
 const AdminDealers = lazy(() => import("./pages/admin/AdminDealers"));
 const AdminPartners = lazy(() => import("./pages/admin/AdminPartners"));
+const AdminBusinessPartners = lazy(() => import("./pages/admin/AdminBusinessPartners"));
 const AdminSiteSettings = lazy(() => import("./pages/admin/AdminSiteSettings"));
 const AdminSilverRate = lazy(() => import("./pages/admin/AdminSilverRate"));
 const AdminCommerceSettings = lazy(() => import("./pages/admin/AdminCommerceSettings"));
@@ -362,6 +363,7 @@ const App = () => {
                 <Route path="site-settings" element={<AdminSiteSettings />} />
                 <Route path="silver-rate" element={<FeatureGate feature="silverPricing" fallback="/admin/dashboard"><AdminSilverRate /></FeatureGate>} />
                 <Route path="commerce-settings" element={<AdminCommerceSettings />} />
+                <Route path="business-partners" element={<AdminBusinessPartners />} />
                 <Route path="marketing" element={<AdminNotifications />} />
                 <Route path="whatsapp" element={<FeatureGate feature="whatsappInbox" fallback="/admin/dashboard"><AdminWhatsApp /></FeatureGate>} />
                 <Route path="notifications" element={<Navigate to="/admin/marketing" replace />} />

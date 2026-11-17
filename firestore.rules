@@ -210,6 +210,13 @@ service cloud.firestore {
     // delivery, GST and silver-rate settings checkout prices from. Everyone
     // may read them; only admins may change them. `siteSettings/catalogVersion`
     // is written by the server with the Admin SDK, which bypasses these rules.
+    // Business partners (the owners) and the income/expense book: admins only.
+    match /businessPartners/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /businessLedger/{docId} {
+      allow read, write: if isAdmin();
+    }
     match /siteSettings/{docId} {
       allow read: if true;
       allow write: if isAdmin();
